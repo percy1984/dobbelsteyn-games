@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+
+# Build output
+/dist/
+/out-tsc/
+/bazel-out/
+/tmp/
+.angular/
+.nx/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Test & coverage
+/coverage/
+/playwright-report/
+/test-results/
+/cypress/videos/
+/cypress/screenshots/
+
+# IDEs / editors
+.idea/
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.suo
+*.user
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Claude Code (local-only) and brainstorm scratch
+.claude/settings.local.json
+.claude/worktrees/
+.superpowers/
+
+# Misc
+.sass-cache/
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+__screenshots__/
