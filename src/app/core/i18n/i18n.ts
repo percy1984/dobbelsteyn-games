@@ -1,4 +1,5 @@
 import { Service, effect, signal } from '@angular/core';
+import { ApiError } from '../api/api-client';
 import { EN } from './en';
 import { NL, TranslationKey } from './nl';
 
@@ -38,6 +39,17 @@ export class I18n {
     return params
       ? text.replace(/\{(\w+)\}/g, (_, name: string) => String(params[name] ?? `{${name}}`))
       : text;
+  }
+
+  /** Foutmelding in de gekozen taal voor een fout uit de API (of een onbekende fout). */
+  errorMessage(error: unknown): string {
+    if (error instanceof ApiError) {
+      const key = `error.${error.code}` as TranslationKey;
+      if (key in NL) {
+        return this.t(key);
+      }
+    }
+    return this.t('error.error');
   }
 
   /** Vertaalde naam van een game. */

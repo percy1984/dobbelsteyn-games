@@ -1,0 +1,79 @@
+<main class="page">
+  <h1>{{ i18n.gameName(slug()) }}</h1>
+
+  <div class="columns">
+    <section class="card" aria-labelledby="create-title">
+      <h2 id="create-title">{{ i18n.t('create.title') }}</h2>
+      <form class="form" (submit)="createLobby($event)" novalidate>
+        <div class="field">
+          <label for="create-name">{{ i18n.t('field.name') }}</label>
+          <input
+            id="create-name"
+            type="text"
+            autocomplete="nickname"
+            [formField]="createForm.name"
+          />
+          @if (createForm.name().touched()) {
+            @for (e of createForm.name().errors(); track e.kind) {
+              <p class="field__error" role="alert">{{ validation(e.kind, 'name') }}</p>
+            }
+          }
+        </div>
+
+        <fieldset class="field">
+          <legend>{{ i18n.t('create.visibility') }}</legend>
+          <label class="choice">
+            <input type="radio" value="public" [formField]="createForm.visibility" />
+            {{ i18n.t('create.public') }}
+          </label>
+          <label class="choice">
+            <input type="radio" value="private" [formField]="createForm.visibility" />
+            {{ i18n.t('create.private') }}
+          </label>
+        </fieldset>
+
+        @if (createModel().visibility === 'private') {
+          <div class="field">
+            <label for="create-pin">{{ i18n.t('field.pin') }}</label>
+            <input id="create-pin" type="text" autocomplete="off" [formField]="createForm.pin" />
+            <p class="field__hint">{{ i18n.t('create.pin.hint') }}</p>
+            @if (createForm.pin().touched()) {
+              @for (e of createForm.pin().errors(); track e.kind) {
+                <p class="field__error" role="alert">{{ validation(e.kind, 'pin') }}</p>
+              }
+            }
+          </div>
+        }
+
+        @if (error()) {
+          <p class="alert" role="alert">{{ error() }}</p>
+        }
+        <button class="button" type="submit">{{ i18n.t('create.submit') }}</button>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="code-title">
+      <h2 id="code-title">{{ i18n.t('joincode.title') }}</h2>
+      <form class="form" (submit)="openCode($event)" novalidate>
+        <div class="field">
+          <label for="join-code">{{ i18n.t('field.code') }}</label>
+          <input
+            id="join-code"
+            type="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            [formField]="codeForm.code"
+          />
+          @if (codeForm.code().touched()) {
+            @for (e of codeForm.code().errors(); track e.kind) {
+              <p class="field__error" role="alert">{{ validation(e.kind, 'code') }}</p>
+            }
+          }
+        </div>
+        <button class="button button--secondary" type="submit">
+          {{ i18n.t('joincode.submit') }}
+        </button>
+      </form>
+    </section>
+  </div>
+</main>

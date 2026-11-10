@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
+use Dg\Api;
+use Dg\ApiException;
 use Dg\Config;
-use Dg\Database;
-use Dg\MigrateEndpoint;
+use Dg\Request;
 use Dg\Response;
 use Dg\Router;
 
@@ -24,29 +25,12 @@ try {
     $debug = $config->debug();
 
     $router = new Router();
-
-    $router->add('GET', '/health', static function () use ($config): Response {
-        try {
-            Database::connect($config->database())->query('SELECT 1');
-            return Response::json(['status' => 'ok']);
-        } catch (Throwable $e) {
-            error_log('Health-check database: ' . $e->getMessage());
-            return Response::json(['status' => 'database-unavailable'], 503);
-        }
-    });
-
-    $router->add('POST', '/migrate', static function () use ($config): Response {
-        $endpoint = new MigrateEndpoint(
-            $config,
-            __DIR__ . '/migrations',
-            static fn () => Database::connect($config->database(), allowMultipleStatements: true),
-        );
-
-        return $endpoint->handle($_SERVER['HTTP_X_MIGRATE_TOKEN'] ?? null);
-    });
+    Api::register($router, $config, __DIR__ . '/migrations');
 
     $path = Router::relativePath($_SERVER['REQUEST_URI'] ?? '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
-    $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $path)->send();
+    $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, Request::fromGlobals())->send();
+} catch (ApiException $e) {
+    Response::error($e->status, $e->getMessage(), $e->errorCode)->send();
 } catch (Throwable $e) {
     error_log($e::class . ': ' . $e->getMessage());
     Response::json(
