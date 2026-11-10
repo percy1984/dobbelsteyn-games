@@ -1,59 +1,53 @@
-# DobbelsteynGames
+# Dobbelsteyn Games
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.6.
+Kaart- en bordspellen om samen te spelen, mobile first. Angular (statische single-page app) met een PHP-API op MySQL. Geen Node.js-server nodig: Node is alleen nodig om te **bouwen**, niet om te draaien.
 
-## Development server
+Het ontwerp staat in [docs/superpowers/specs/2026-11-10-games-platform-design.md](docs/superpowers/specs/2026-11-10-games-platform-design.md). De backlog staat in het GitHub-project "Dobbelsteyn Games".
 
-To start a local development server, run:
+## Vereisten
 
-```bash
-ng serve
-```
+- Node.js 22.22.3 of hoger (of 24.15+ / 26+), dus niet de oudere 22.x-versies.
+- npm (zit bij Node).
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Commando's
 
-## Code scaffolding
+| Commando | Doel |
+| --- | --- |
+| `npm ci` | Dependencies installeren |
+| `npm start` | Ontwikkelserver op http://localhost:4200 |
+| `npm test` | Unit tests (Vitest) |
+| `npm run lint` | ESLint (angular-eslint) |
+| `npm run format` | Prettier over `src/` |
+| `npm run build` | Productiebuild met `base href="/"` |
+| `npm run build:games` | Productiebuild voor `https://www.dobbelsteyn.nl/games/` |
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+De build komt in `dist/dobbelsteyn-games/browser/`.
 
-```bash
-ng generate component component-name
-```
+## Onder een sub-pad draaien
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+De app gebruikt alleen relatieve links en bevat geen vast adres. Het pad waaronder de app draait, stel je in bij de build via `--base-href`:
 
 ```bash
-ng build
+npx ng build --base-href /ander/pad/
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+In Git Bash op Windows wordt `/games/` anders omgezet naar een Windows-pad. Gebruik dan `MSYS_NO_PATHCONV=1` voor het commando, of PowerShell.
 
-## Running unit tests
+Deep links (bijvoorbeeld een lobby-URL) overleven een refresh alleen met een rewrite-regel op de server. Die komt met het deployment-item.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Structuur
 
-```bash
-ng test
+```
+src/app/
+  core/       gedeelde services en hulpmiddelen (API-client, taal, lobby)
+  features/   schermen van het platform (overzicht, lobby, ...)
+  games/      één map per game, elk lazy-loaded
 ```
 
-## Running end-to-end tests
+## Werkwijze
 
-For end-to-end (e2e) testing, run:
+- Elk backlog-item krijgt een eigen branch `issue-<nummer>-<korte-naam>` vanaf `main`.
+- Commitberichten beginnen met het issuenummer (`#12 ...`).
+- Een pull request sluit het issue (`Closes #12`) en wordt na review gemerged.
 
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Zie `CLAUDE.md` voor de Angular-code-afspraken (standalone, signals, toegankelijkheid).
