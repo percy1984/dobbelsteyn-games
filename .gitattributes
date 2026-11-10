@@ -1,0 +1,5 @@
+# Bestanden die op de server of in bash draaien, moeten altijd LF-regeleinden hebben.
+*.sh text eol=lf
+.htaccess text eol=lf
+*.php text eol=lf
+*.sql text eol=lf
