@@ -54,6 +54,15 @@ De stage toont zelf de beurtmelding, de uitslag en "nog een keer"; de game-compo
 3. Een speler zet met `POST /lobbies/{code}/move`. De game valideert (`InvalidMove` geeft 422), daarna spelen bots op de server tot een mens aan de beurt is.
 4. Geeft `outcome()` een uitslag, dan gaat de lobby op `finished`. De maker kan met `POST /lobbies/{code}/rematch` dezelfde spelers terugzetten naar wachten.
 
+## Wegvallen en terugkomen
+
+- Elke poll telt als heartbeat. Zonder heartbeat voor 15 seconden is een speler **weg**; zodra hij weer pollt is hij **terug**. Het spel wacht zonder tijdslimiet en iedereen ziet wie er weg is.
+- Wie een plaats terug wil, komt terug via het **geheime plaats-token** dat de browser per lobby bewaart. Is dat token kwijt (opslag gewist, andere browser), dan is de plaats verloren: er is geen herstel op naam en code, want dan kan iedereen een plaats overnemen.
+- **Beheerders** (maker en gepromoveerde spelers) kunnen een weggevallen speler laten **vervangen door een bot** of het spel **beëindigen**. De bot neemt plaats en hand over en speelt meteen door als hij aan de beurt is; de beheerder kiest het niveau. De eerste actie wint: een tweede beheerder krijgt "deze speler is niet meer weg".
+- Is de maker weg, dan beslissen de aanwezige gepromoveerde spelers; zijn die er ook niet, dan de eerste aanwezige speler in de rij. Komt de maker terug, dan is het beheer weer bij hem.
+- Wordt de maker zelf door een bot vervangen, dan gaat de maker-rol naar de eerste mens in de rij.
+- Een beëindigd spel (`ended`) kan met een rematch opnieuw beginnen. Een speler die de pagina verlaat tijdens een spel telt als weg.
+
 ## Een nieuwe game toevoegen
 
 1. Maak `api/src/Games/<Naam>.php` die `Game` implementeert en voeg hem toe aan `GameRegistry::default()`.

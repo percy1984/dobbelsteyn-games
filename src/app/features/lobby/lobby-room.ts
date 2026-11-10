@@ -3,6 +3,7 @@ import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
 import { ChatPanel } from '../chat/chat-panel';
+import { AwayNotice } from './away-notice';
 import { Countdown } from './countdown';
 import { LobbySettings } from './lobby-settings';
 import { QrShare } from './qr-share';
@@ -12,7 +13,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [ChatPanel, Countdown, LobbySettings, QrShare],
+  imports: [AwayNotice, ChatPanel, Countdown, LobbySettings, QrShare],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -109,6 +110,8 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
           </button>
         </div>
       }
+
+      <dg-away-notice [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
 
       @if (error()) {
         <p class="alert" role="alert">{{ error() }}</p>

@@ -163,6 +163,28 @@ describe('GameStage', () => {
     expect(lobbyChange).toHaveBeenCalledWith(waiting);
   });
 
+  it('toont een beëindigd spel zonder bord, met de mogelijkheid om opnieuw te beginnen', async () => {
+    const api = { rematch: vi.fn() };
+    const { el } = await render(
+      lobby({ status: 'ended', gameView: undefined, activeSeats: undefined }),
+      api,
+    );
+
+    expect(el.querySelector('.stage__status')?.textContent).toBe('Het spel is beëindigd.');
+    expect(el.querySelector('.play')).toBeNull();
+    expect(el.textContent).toContain('Nog een keer');
+  });
+
+  it('toont de wegvalmelding op het speelscherm', async () => {
+    const away = lobby({ seats: [{ ...seat(0, 'Percy') }, { ...seat(1, 'Anna'), isAway: true }] });
+
+    const { el } = await render(away);
+
+    expect(el.querySelector('dg-away-notice')?.textContent).toContain(
+      'Anna is tijdelijk weg. Het spel wacht.',
+    );
+  });
+
   it('schakelt de game uit als het spel afgelopen is', async () => {
     const { el } = await render(
       lobby({ status: 'finished', result: { winners: [0] }, activeSeats: [] }),

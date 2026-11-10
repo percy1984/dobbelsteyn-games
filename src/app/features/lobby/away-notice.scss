@@ -1,0 +1,52 @@
+:host {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.away {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid var(--dg-danger);
+  border-radius: 0.75rem;
+  background: var(--dg-bg);
+
+  &--confirm {
+    border-color: var(--dg-accent);
+  }
+}
+
+.away__text,
+.away__back {
+  margin: 0;
+  font-weight: 600;
+}
+
+.away__back {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--dg-accent);
+  color: var(--dg-on-accent);
+}
+
+.away__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.away__label {
+  font-weight: 600;
+}
+
+.away__end {
+  justify-self: start;
+}
+
+.alert {
+  margin: 0;
+  color: var(--dg-danger);
+  font-weight: 600;
+}

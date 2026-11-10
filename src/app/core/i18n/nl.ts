@@ -142,6 +142,16 @@ export const NL = {
   'share.failed': 'Delen is niet gelukt. Kopieer de link met de hand.',
   'share.pinNote': 'Deze link bevat de PIN: wie hem ziet, kan meedoen.',
   'share.text': 'Doe mee met {game} op Dobbelsteyn Games. Code: {code}',
+  'away.notice': '{name} is tijdelijk weg.',
+  'away.notice.game': '{name} is tijdelijk weg. Het spel wacht.',
+  'away.back': '{name} is terug.',
+  'away.replace': 'Vervangen door een bot',
+  'away.end': 'Spel beëindigen',
+  'away.end.confirm': 'Weet je zeker dat je het spel voor iedereen wilt beëindigen?',
+  'away.end.yes': 'Ja, beëindigen',
+  'away.end.no': 'Annuleren',
+  'stage.ended': 'Het spel is beëindigd.',
+  'error.not_away': 'Deze speler is niet (meer) weg.',
   'lobby.back': 'Naar de game',
 } as const;
 

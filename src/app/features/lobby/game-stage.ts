@@ -6,13 +6,14 @@ import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView } from '../../core/lobby/lobby.models';
 import { GAME_COMPONENTS, GameComponentInputs } from '../../games/game-components';
 import { ChatLauncher } from '../chat/chat-launcher';
+import { AwayNotice } from './away-notice';
 
 /**
  * Het speelscherm: laadt de component van de game, geeft die zijn eigen kijk op het spel en stuurt
  * zetten naar de server. Na afloop staat hier de uitslag, met "nog een keer" voor de maker.
  */
 @Component({
-  imports: [ChatLauncher, NgComponentOutlet, RouterLink],
+  imports: [AwayNotice, ChatLauncher, NgComponentOutlet, RouterLink],
   selector: 'dg-game-stage',
   styleUrl: './game-stage.scss',
   template: `
@@ -20,8 +21,12 @@ import { ChatLauncher } from '../chat/chat-launcher';
       <h1 id="stage-title">{{ i18n.gameName(lobby().game) }}</h1>
       <p class="stage__status" role="status" aria-live="polite">{{ statusText() }}</p>
 
+      <dg-away-notice [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
+
       @if (component(); as game) {
-        <ng-container *ngComponentOutlet="game; inputs: inputs()" />
+        @if (lobby().status !== 'ended') {
+          <ng-container *ngComponentOutlet="game; inputs: inputs()" />
+        }
       } @else if (unavailable()) {
         <p class="alert" role="alert">{{ i18n.t('stage.unavailable') }}</p>
       }
@@ -34,7 +39,7 @@ import { ChatLauncher } from '../chat/chat-launcher';
         <dg-chat-launcher [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
       </div>
 
-      @if (lobby().result) {
+      @if (lobby().result || lobby().status === 'ended') {
         <div class="stage__actions">
           @if (lobby().me?.canManage) {
             <button class="button" type="button" (click)="rematch()">
@@ -86,6 +91,9 @@ export class GameStage {
     const name = (seatNo: number | undefined): string =>
       lobby.seats.find((seat) => seat.seatNo === seatNo)?.name ?? '';
 
+    if (lobby.status === 'ended') {
+      return this.i18n.t('stage.ended');
+    }
     if (lobby.result) {
       const [winner] = lobby.result.winners;
       if (winner === undefined) {
