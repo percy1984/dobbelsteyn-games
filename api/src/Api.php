@@ -29,6 +29,7 @@ final class Api
         $router->add('GET', '/health', $api->health(...));
         $router->add('POST', '/migrate', $api->migrate(...));
 
+        $router->add('GET', '/lobbies', $api->listLobbies(...));
         $router->add('POST', '/lobbies', $api->createLobby(...));
         $router->add('GET', '/lobbies/{code}', $api->showLobby(...));
         $router->add('POST', '/lobbies/{code}/join', $api->joinLobby(...));
@@ -64,6 +65,12 @@ final class Api
     }
 
     // --- Lobby's ---------------------------------------------------------------------------
+
+    /** @param array<string, string> $params */
+    private function listLobbies(array $params, Request $request): Response
+    {
+        return Response::json(['lobbies' => $this->lobbies()->listForGame($request->query['game'] ?? '')]);
+    }
 
     /** @param array<string, string> $params */
     private function createLobby(array $params, Request $request): Response

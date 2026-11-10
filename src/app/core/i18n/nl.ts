@@ -77,6 +77,14 @@ export const NL = {
   'lobby.leave': 'Lobby verlaten',
   'lobby.offline': 'Geen verbinding met de server. We blijven het proberen...',
   'lobby.away': 'weg',
+  'list.title': "Lobby's op dit moment",
+  'list.empty': "Er zijn nu geen lobby's. Maak er zelf een!",
+  'list.players': '{count}/{max} spelers',
+  'list.host': 'van {name}',
+  'list.private': 'Privé: je hebt de PIN nodig',
+  'list.playing': 'Bezig',
+  'list.full': 'Vol',
+  'list.offline': 'De lijst kan niet vernieuwd worden. We blijven het proberen...',
   'lobby.back': 'Naar de game',
 } as const;
 

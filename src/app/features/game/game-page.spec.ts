@@ -6,7 +6,7 @@ import { LobbyApi } from '../../core/lobby/lobby-api';
 import { GamePage } from './game-page';
 
 describe('GamePage', () => {
-  let api: { create: ReturnType<typeof vi.fn> };
+  let api: { create: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn> };
   let fixture: ComponentFixture<GamePage>;
   let el: HTMLElement;
   let navigate: ReturnType<typeof vi.fn>;
@@ -26,7 +26,7 @@ describe('GamePage', () => {
 
   beforeEach(async () => {
     localStorage.clear();
-    api = { create: vi.fn() };
+    api = { create: vi.fn(), list: vi.fn().mockResolvedValue([]) };
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: LobbyApi, useValue: api }],
     });

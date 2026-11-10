@@ -3,10 +3,11 @@ import { FormField, form, maxLength, pattern, required, submit } from '@angular/
 import { Router } from '@angular/router';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
+import { LobbyList } from './lobby-list';
 
 /** Pagina van één game: een nieuwe lobby maken of meedoen met een code. */
 @Component({
-  imports: [FormField],
+  imports: [FormField, LobbyList],
   selector: 'dg-game-page',
   styleUrl: './game-page.scss',
   templateUrl: './game-page.html',

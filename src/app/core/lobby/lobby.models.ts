@@ -55,3 +55,15 @@ export interface Unchanged {
   readonly changed: false;
   readonly version: number;
 }
+
+/** Een regel in de lobbylijst van een game. */
+export interface LobbyListEntry {
+  readonly code: string;
+  readonly status: LobbyStatus;
+  readonly isPrivate: boolean;
+  readonly host: string | null;
+  readonly playerCount: number;
+  readonly maxPlayers: number;
+  /** Alleen een wachtende lobby met een vrije plaats is joinbaar. */
+  readonly joinable: boolean;
+}
