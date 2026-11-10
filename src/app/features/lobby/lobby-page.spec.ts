@@ -76,7 +76,7 @@ describe('LobbyPage', () => {
     expect(el.querySelector('.room__value')?.textContent).toBe('ABCD');
     expect(el.textContent).toContain('PIN: K7P2');
     expect(el.textContent).toContain('Percy');
-    expect(el.querySelector('form')).toBeNull();
+    expect(el.querySelector('#join-name')).toBeNull();
   });
 
   it('schakelt naar het speelscherm als het spel loopt en terug naar de wachtkamer na een rematch', async () => {

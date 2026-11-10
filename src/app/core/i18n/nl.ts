@@ -125,6 +125,12 @@ export const NL = {
   'error.not_your_turn': 'Je bent nu niet aan de beurt.',
   'error.invalid_move': 'Deze zet is niet toegestaan.',
   'error.not_finished': 'Het spel is nog niet afgelopen.',
+  'modal.close': 'Sluiten',
+  'chat.title': 'Chat',
+  'chat.message': 'Bericht',
+  'chat.send': 'Versturen',
+  'chat.empty': 'Nog geen berichten.',
+  'chat.unread': '{count} ongelezen',
   'lobby.back': 'Naar de game',
 } as const;
 

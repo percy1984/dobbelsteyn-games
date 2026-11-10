@@ -1,0 +1,16 @@
+.launcher {
+  gap: 0.5rem;
+}
+
+.launcher__badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--dg-accent);
+  color: var(--dg-on-accent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}

@@ -5,13 +5,14 @@ import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView } from '../../core/lobby/lobby.models';
 import { GAME_COMPONENTS, GameComponentInputs } from '../../games/game-components';
+import { ChatLauncher } from '../chat/chat-launcher';
 
 /**
  * Het speelscherm: laadt de component van de game, geeft die zijn eigen kijk op het spel en stuurt
  * zetten naar de server. Na afloop staat hier de uitslag, met "nog een keer" voor de maker.
  */
 @Component({
-  imports: [NgComponentOutlet, RouterLink],
+  imports: [ChatLauncher, NgComponentOutlet, RouterLink],
   selector: 'dg-game-stage',
   styleUrl: './game-stage.scss',
   template: `
@@ -28,6 +29,10 @@ import { GAME_COMPONENTS, GameComponentInputs } from '../../games/game-component
       @if (error()) {
         <p class="alert" role="alert">{{ error() }}</p>
       }
+
+      <div class="stage__chat">
+        <dg-chat-launcher [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
+      </div>
 
       @if (lobby().result) {
         <div class="stage__actions">

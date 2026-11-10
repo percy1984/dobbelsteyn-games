@@ -516,6 +516,98 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM lobbies')->fetchColumn());
     }
 
+    public function testChatMessagesAreVisibleToEveryoneInTheLobbyOldestFirst(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+
+        $this->lobbies->sendChat($code, $created['token'], 'Hoi Anna!');
+        $view = $this->lobbies->sendChat($code, $anna['token'], '  Hoi   Percy  ');
+
+        $this->assertCount(2, $view['chat']);
+        $this->assertSame('Percy', $view['chat'][0]['name']);
+        $this->assertSame(0, $view['chat'][0]['seatNo']);
+        $this->assertSame('Hoi Anna!', $view['chat'][0]['body']);
+        $this->assertSame('Hoi Percy', $view['chat'][1]['body']);
+        $this->assertGreaterThan($view['chat'][0]['id'], $view['chat'][1]['id']);
+        $this->assertEqualsWithDelta(time(), $view['chat'][1]['at'], 5);
+        $this->assertCount(2, $this->lobbies->viewFor($code, $created['token'])['chat']);
+    }
+
+    public function testChatIsOnlyForPlayersInTheLobby(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->lobbies->sendChat($code, $created['token'], 'Geheim');
+
+        $this->assertApiError(403, fn () => $this->lobbies->sendChat($code, null, 'x'));
+        $this->assertApiError(403, fn () => $this->lobbies->sendChat($code, 'verkeerd', 'x'));
+        $this->assertArrayNotHasKey('chat', $this->lobbies->viewFor($code, null));
+        $this->assertArrayNotHasKey('chat', $this->lobbies->poll($code, null, null));
+    }
+
+    public function testChatHasALengthLimitAndStripsControlCharacters(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+
+        $this->assertApiError(422, fn () => $this->lobbies->sendChat($code, $created['token'], ''));
+        $this->assertApiError(422, fn () => $this->lobbies->sendChat($code, $created['token'], "  \u{200B}  "));
+        $this->assertApiError(422, fn () => $this->lobbies->sendChat($code, $created['token'], str_repeat('a', 301)));
+        $this->assertApiError(422, fn () => $this->lobbies->sendChat($code, $created['token'], ['x']));
+
+        $view = $this->lobbies->sendChat($code, $created['token'], str_repeat('a', 300));
+        $this->assertSame(300, mb_strlen($view['chat'][0]['body']));
+
+        $view = $this->lobbies->sendChat($code, $created['token'], "he\x07llo\u{202E} <b>wereld</b>");
+        $this->assertSame('hello <b>wereld</b>', $view['chat'][1]['body'], 'Opschonen, niet vertalen: de frontend escapet bij tonen.');
+    }
+
+    public function testChatShowsOnlyTheLastFiftyMessages(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        for ($i = 1; $i <= 55; $i++) {
+            $this->lobbies->sendChat($code, $created['token'], "bericht $i");
+        }
+
+        $chat = $this->lobbies->viewFor($code, $created['token'])['chat'];
+
+        $this->assertCount(50, $chat);
+        $this->assertSame('bericht 6', $chat[0]['body']);
+        $this->assertSame('bericht 55', $chat[49]['body']);
+    }
+
+    public function testChatKeepsTheNameOfAPlayerWhoLeft(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $this->lobbies->sendChat($code, $anna['token'], 'Doei!');
+
+        $this->lobbies->leave($code, $anna['token']);
+        $chat = $this->lobbies->viewFor($code, $created['token'])['chat'];
+
+        $this->assertSame('Anna', $chat[0]['name']);
+        $this->assertNull($chat[0]['seatNo']);
+        $this->assertSame('Doei!', $chat[0]['body']);
+    }
+
+    public function testChatBumpsTheVersionSoOthersSeeIt(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $version = $this->lobbies->poll($code, $anna['token'], null)['version'];
+
+        $this->lobbies->sendChat($code, $created['token'], 'Hoi');
+        $seen = $this->lobbies->poll($code, $anna['token'], $version);
+
+        $this->assertGreaterThan($version, $seen['version']);
+        $this->assertSame('Hoi', $seen['chat'][0]['body']);
+    }
+
     public function testEveryChangeBumpsTheVersion(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);

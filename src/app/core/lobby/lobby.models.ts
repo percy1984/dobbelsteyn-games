@@ -51,6 +51,18 @@ export interface LobbyView {
   /** Null zolang het spel loopt. */
   readonly result?: GameResult | null;
   readonly turnNo?: number;
+  /** De laatste chatberichten, oudste eerst (alleen voor spelers in de lobby). */
+  readonly chat?: readonly ChatMessage[];
+}
+
+export interface ChatMessage {
+  readonly id: number;
+  /** Null als de speler de lobby inmiddels verlaten heeft; de naam blijft bij het bericht. */
+  readonly seatNo: number | null;
+  readonly name: string;
+  readonly body: string;
+  /** Tijdstip in seconden sinds 1970. */
+  readonly at: number;
 }
 
 /** Uitkomst van een spel: de winnende plaatsen (leeg bij gelijkspel). */

@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
+import { ChatPanel } from '../chat/chat-panel';
 import { Countdown } from './countdown';
 import { LobbySettings } from './lobby-settings';
 
@@ -10,7 +11,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [Countdown, LobbySettings],
+  imports: [ChatPanel, Countdown, LobbySettings],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -110,6 +111,9 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       }
 
       <dg-lobby-settings [lobby]="lobby()" (changed)="lobbyChange.emit($event)" />
+
+      <h2>{{ i18n.t('chat.title') }}</h2>
+      <dg-chat-panel [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
 
       @if (waiting() && lobby().me?.canManage) {
         <div class="start">
