@@ -16,6 +16,10 @@ return [
         'user' => '',
         'password' => '',
     ],
+    // Geheim token voor POST /api/migrate (automatische migraties na een deploy).
+    // Minstens 32 willekeurige tekens; leeg of korter laat het endpoint uit staan.
+    // Genereren: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+    'migrate_token' => '',
     // true toont foutdetails in de API-respons. Altijd false op de server.
     'debug' => false,
 ];

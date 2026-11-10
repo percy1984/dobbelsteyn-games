@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Dg\Config;
 use Dg\Database;
+use Dg\MigrateEndpoint;
 use Dg\Response;
 use Dg\Router;
 
@@ -32,6 +33,16 @@ try {
             error_log('Health-check database: ' . $e->getMessage());
             return Response::json(['status' => 'database-unavailable'], 503);
         }
+    });
+
+    $router->add('POST', '/migrate', static function () use ($config): Response {
+        $endpoint = new MigrateEndpoint(
+            $config,
+            __DIR__ . '/migrations',
+            static fn () => Database::connect($config->database(), allowMultipleStatements: true),
+        );
+
+        return $endpoint->handle($_SERVER['HTTP_X_MIGRATE_TOKEN'] ?? null);
     });
 
     $path = Router::relativePath($_SERVER['REQUEST_URI'] ?? '/', $_SERVER['SCRIPT_NAME'] ?? '/index.php');
