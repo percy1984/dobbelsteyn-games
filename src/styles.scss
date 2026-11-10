@@ -1,1 +1,48 @@
-/* You can add global styles to this file, and also import other style files */
+// Kleuren als tokens. Contrast is gekozen op WCAG AA (tekst 4.5:1).
+:root {
+  color-scheme: light dark;
+
+  --dg-bg: #f3f4f8;
+  --dg-surface: #ffffff;
+  --dg-text: #1d2330;
+  --dg-muted: #565d6c;
+  --dg-accent: #2f5fd0;
+  --dg-on-accent: #ffffff;
+  --dg-disabled: #b8bcc6;
+  --dg-on-disabled: #4b5160;
+  --dg-focus: #1a3d99;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dg-bg: #12151f;
+    --dg-surface: #1c2130;
+    --dg-text: #e8eaf0;
+    --dg-muted: #aab0c0;
+    --dg-accent: #7aa2ff;
+    --dg-on-accent: #0b1020;
+    --dg-disabled: #4a5062;
+    --dg-on-disabled: #b4bacb;
+    --dg-focus: #b3caff;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--dg-bg);
+  color: var(--dg-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}
