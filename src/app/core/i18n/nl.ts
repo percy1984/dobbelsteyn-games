@@ -152,6 +152,9 @@ export const NL = {
   'away.end.no': 'Annuleren',
   'stage.ended': 'Het spel is beëindigd.',
   'error.not_away': 'Deze speler is niet (meer) weg.',
+  'error.rate_limited': 'Te veel verzoeken. Probeer het over een poosje opnieuw.',
+  'error.server_busy': 'De server is druk. Probeer het over een paar minuten opnieuw.',
+  'error.too_large': 'Het verzoek is te groot.',
   'lobby.back': 'Naar de game',
 } as const;
 
