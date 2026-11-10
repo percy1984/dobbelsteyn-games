@@ -42,6 +42,20 @@ export interface LobbyView {
   readonly settings?: Readonly<Record<string, string>>;
   readonly settingsSchema?: readonly SettingField[];
   readonly pin?: string | null;
+  /** Resterende milliseconden van de aftelling op het moment van dit antwoord (alleen bij `countdown`). */
+  readonly countdownMs?: number | null;
+  /** Jouw kijk op het spel (alleen tijdens en na het spel); de vorm hangt van de game af. */
+  readonly gameView?: unknown;
+  /** Plaatsen die nu een zet mogen doen. */
+  readonly activeSeats?: readonly number[];
+  /** Null zolang het spel loopt. */
+  readonly result?: GameResult | null;
+  readonly turnNo?: number;
+}
+
+/** Uitkomst van een spel: de winnende plaatsen (leeg bij gelijkspel). */
+export interface GameResult {
+  readonly winners: readonly number[];
 }
 
 export interface JoinResult {

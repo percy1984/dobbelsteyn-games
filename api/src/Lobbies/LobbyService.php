@@ -20,7 +20,11 @@ final class LobbyService
     /** Een heartbeat wordt hooguit zo vaak naar de database geschreven; polling blijft zo goedkoop. */
     private const HEARTBEAT_WRITE_SECONDS = 5;
 
+    /** Zo lang duurt de aftelling (3-2-1) voordat het spel echt begint. */
+    public const COUNTDOWN_SECONDS = 3;
+
     private readonly CodeGenerator $codes;
+    private readonly GameRunner $runner;
 
     public function __construct(
         private readonly PDO $pdo,
@@ -28,7 +32,9 @@ final class LobbyService
         ?Rng $rng = null,
         private readonly int $awayAfterSeconds = self::AWAY_AFTER_SECONDS,
     ) {
-        $this->codes = new CodeGenerator($rng ?? new Rng());
+        $rng ??= new Rng();
+        $this->codes = new CodeGenerator($rng);
+        $this->runner = new GameRunner($pdo, $games, $rng);
     }
 
     /**
@@ -119,7 +125,7 @@ final class LobbyService
             if ($me === null) {
                 throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
             }
-            if ($lobby['status'] !== 'waiting') {
+            if (!in_array($lobby['status'], ['waiting', 'finished', 'ended'], true)) {
                 throw new ApiException(409, 'Je kunt de lobby niet meer verlaten nadat het spel gestart is.', 'cannot_leave');
             }
 
@@ -386,6 +392,102 @@ final class LobbyService
     }
 
     /**
+     * Start de aftelling (3-2-1). Alleen de maker of een beheerder, en pas als er genoeg spelers zijn
+     * (mensen en bots tellen mee). Na de aftelling begint het spel vanzelf (zie `advance`).
+     *
+     * @return array<string, mixed>
+     */
+    public function start(string $code, ?string $token): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+            if ($lobby['status'] !== 'waiting') {
+                throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
+            }
+            if (count($this->seats((int) $lobby['id'])) < (int) $lobby['min_players']) {
+                throw new ApiException(409, 'Er zijn nog niet genoeg spelers om te starten.', 'not_enough_players');
+            }
+
+            $this->pdo->prepare(
+                "UPDATE lobbies SET status = 'countdown', countdown_ends_at = NOW(3) + INTERVAL " . self::COUNTDOWN_SECONDS . ' SECOND WHERE id = ?'
+            )->execute([$lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Zet het spel in gang als de aftelling voorbij is. Wordt aangeroepen door polls; het is veilig
+     * om het vaker aan te roepen (de eerste doet het werk, de rest ziet dat het al gebeurd is).
+     */
+    public function advance(string $code): void
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code): void {
+            $lobby = $this->load($code, lock: true);
+            if ($lobby['status'] !== 'countdown' || (int) $lobby['countdown_due'] !== 1) {
+                return;
+            }
+
+            $this->runner->begin($lobby, $this->seats((int) $lobby['id']));
+        });
+    }
+
+    /**
+     * Een zet van een speler. De game valideert hem; bots spelen daarna op de server.
+     *
+     * @param array<string, mixed> $move
+     * @return array<string, mixed>
+     */
+    public function move(string $code, ?string $token, array $move): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token, $move): void {
+            $lobby = $this->load($code, lock: true);
+            $me = $this->seatForToken((int) $lobby['id'], $token);
+            if ($me === null) {
+                throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
+            }
+
+            $this->runner->move($lobby, $this->seats((int) $lobby['id']), (int) $me['seat_no'], $move);
+            $this->pdo->prepare('UPDATE seats SET last_seen_at = NOW(3), is_away = 0 WHERE id = ?')->execute([$me['id']]);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Na afloop: dezelfde spelers nog een keer. Zet de lobby terug naar wachten; alleen de maker of
+     * een beheerder.
+     *
+     * @return array<string, mixed>
+     */
+    public function rematch(string $code, ?string $token): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+            if (!in_array($lobby['status'], ['finished', 'ended'], true)) {
+                throw new ApiException(409, 'Het spel is nog niet afgelopen.', 'not_finished');
+            }
+
+            $this->pdo->prepare('DELETE FROM game_states WHERE lobby_id = ?')->execute([$lobby['id']]);
+            $this->pdo->prepare("UPDATE lobbies SET status = 'waiting', countdown_ends_at = NULL WHERE id = ?")->execute([$lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
      * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
      * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
      *
@@ -395,6 +497,10 @@ final class LobbyService
     {
         $code = Input::code($code);
         $lobby = $this->load($code);
+        if ($lobby['status'] === 'countdown' && (int) $lobby['countdown_due'] === 1) {
+            $this->advance($code);
+            $lobby = $this->load($code);
+        }
         $lobbyId = (int) $lobby['id'];
         $me = $this->seatForToken($lobbyId, $token);
 
@@ -439,6 +545,8 @@ final class LobbyService
             'maxPlayers' => (int) $lobby['max_players'],
             'version' => (int) $lobby['version'],
             'seats' => array_map(fn (array $seat): array => $this->seatView($seat), $seats),
+            // Resterende milliseconden van de aftelling op het moment van dit antwoord.
+            'countdownMs' => $lobby['status'] === 'countdown' ? (int) $lobby['countdown_ms'] : null,
             'me' => null,
         ];
 
@@ -457,6 +565,8 @@ final class LobbyService
             $view['settingsSchema'] = $definition->settingsSchema();
             // Spelers in de lobby mogen de PIN zien: ze delen hem via de QR-code.
             $view['pin'] = (int) $lobby['is_private'] === 1 ? $lobby['pin'] : null;
+            // Alleen de eigen kijk op het spel: verborgen informatie van anderen lekt nooit.
+            $view += $this->runner->viewFor($lobby, (int) $me['seat_no']) ?? [];
         }
 
         return $view;
@@ -479,7 +589,12 @@ final class LobbyService
     /** @return array<string, mixed> */
     private function load(string $code, bool $lock = false): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM lobbies WHERE code = ?' . ($lock ? ' FOR UPDATE' : ''));
+        $stmt = $this->pdo->prepare(
+            'SELECT l.*,
+                    (l.countdown_ends_at IS NOT NULL AND l.countdown_ends_at <= NOW(3)) AS countdown_due,
+                    GREATEST(0, TIMESTAMPDIFF(MICROSECOND, NOW(3), l.countdown_ends_at) DIV 1000) AS countdown_ms
+             FROM lobbies l WHERE l.code = ?' . ($lock ? ' FOR UPDATE' : '')
+        );
         $stmt->execute([$code]);
         $lobby = $stmt->fetch();
         if ($lobby === false) {

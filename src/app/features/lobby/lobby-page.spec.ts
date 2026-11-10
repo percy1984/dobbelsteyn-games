@@ -79,6 +79,29 @@ describe('LobbyPage', () => {
     expect(el.querySelector('form')).toBeNull();
   });
 
+  it('schakelt naar het speelscherm als het spel loopt en terug naar de wachtkamer na een rematch', async () => {
+    const playing = {
+      ...member,
+      status: 'playing' as const,
+      activeSeats: [0],
+      gameView: null,
+      result: null,
+    };
+    const el = await render(fakeApi(vi.fn().mockResolvedValue(playing)));
+
+    expect(el.querySelector('dg-game-stage')).not.toBeNull();
+    expect(el.querySelector('dg-lobby-room')).toBeNull();
+  });
+
+  it('toont de wachtkamer met aftelling tijdens de countdown', async () => {
+    const counting = { ...member, status: 'countdown' as const, countdownMs: 2500 };
+    const el = await render(fakeApi(vi.fn().mockResolvedValue(counting)));
+
+    expect(el.querySelector('dg-lobby-room')).not.toBeNull();
+    expect(el.querySelector('dg-game-stage')).toBeNull();
+    expect(el.querySelector('dg-countdown')).not.toBeNull();
+  });
+
   it('toont het joinscherm als je nog niet in de lobby zit', async () => {
     const el = await render(fakeApi(vi.fn().mockResolvedValue(lobby())));
 

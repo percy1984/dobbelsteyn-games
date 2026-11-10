@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
+import { Countdown } from './countdown';
 import { LobbySettings } from './lobby-settings';
 
 /** Botniveaus: 1 (zwak) tot en met 10 (sterk). */
@@ -9,7 +10,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [LobbySettings],
+  imports: [Countdown, LobbySettings],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -47,7 +48,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             }
 
             @if (seat.kind === 'bot') {
-              @if (lobby().me?.canManage) {
+              @if (lobby().me?.canManage && waiting()) {
                 <select
                   class="select seat__action"
                   [attr.aria-label]="i18n.t('bot.level.label') + ': ' + seat.name"
@@ -110,9 +111,28 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
       <dg-lobby-settings [lobby]="lobby()" (changed)="lobbyChange.emit($event)" />
 
-      <button class="button button--secondary leave" type="button" (click)="leave.emit()">
-        {{ i18n.t('lobby.leave') }}
-      </button>
+      @if (waiting() && lobby().me?.canManage) {
+        <div class="start">
+          <button class="button" type="button" [disabled]="!enoughPlayers()" (click)="start()">
+            {{ i18n.t('start.button') }}
+          </button>
+          @if (!enoughPlayers()) {
+            <p class="hint">{{ i18n.t('start.need', { min: lobby().minPlayers }) }}</p>
+          }
+        </div>
+      } @else if (waiting()) {
+        <p class="hint">{{ i18n.t('start.waiting') }}</p>
+      }
+
+      @if (lobby().status === 'countdown' && countdownEndsAt() !== null) {
+        <dg-countdown [endsAt]="countdownEndsAt()!" />
+      }
+
+      @if (waiting()) {
+        <button class="button button--secondary leave" type="button" (click)="leave.emit()">
+          {{ i18n.t('lobby.leave') }}
+        </button>
+      }
     </section>
   `,
 })
@@ -122,6 +142,8 @@ export class LobbyRoom {
 
   readonly lobby = input.required<LobbyView>();
   readonly leave = output<void>();
+  /** Tijdstip waarop de aftelling afloopt (`Date.now()`-tijd); null als er niet afgeteld wordt. */
+  readonly countdownEndsAt = input<number | null>(null);
   /** Een wijziging die de server al bevestigd heeft; de pagina neemt hem direct over. */
   readonly lobbyChange = output<LobbyView>();
 
@@ -129,9 +151,20 @@ export class LobbyRoom {
   protected readonly error = signal('');
   protected readonly newBotLevel = signal(5);
 
-  protected readonly canAddBot = computed(
-    () => !!this.lobby().me?.canManage && this.lobby().seats.length < this.lobby().maxPlayers,
+  protected readonly waiting = computed(() => this.lobby().status === 'waiting');
+  protected readonly enoughPlayers = computed(
+    () => this.lobby().seats.length >= this.lobby().minPlayers,
   );
+  protected readonly canAddBot = computed(
+    () =>
+      this.waiting() &&
+      !!this.lobby().me?.canManage &&
+      this.lobby().seats.length < this.lobby().maxPlayers,
+  );
+
+  protected start(): Promise<void> {
+    return this.run(() => this.lobbyApi.start(this.lobby().code));
+  }
 
   /** Alleen de maker promoveert, en alleen andere mensen. */
   protected canPromote(seat: SeatView): boolean {

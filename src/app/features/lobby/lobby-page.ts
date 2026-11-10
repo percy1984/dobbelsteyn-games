@@ -5,10 +5,11 @@ import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyPoller } from '../../core/lobby/lobby-poller';
 import { LobbyView } from '../../core/lobby/lobby.models';
 import { SeatSessions } from '../../core/lobby/seat-sessions';
+import { GameStage } from './game-stage';
 import { LobbyJoinForm } from './lobby-join-form';
 import { LobbyRoom } from './lobby-room';
 
-type PageState = 'loading' | 'join' | 'room' | 'error';
+type PageState = 'loading' | 'join' | 'room' | 'game' | 'error';
 
 /**
  * Pagina `lobby/:code`. Heb je een bewaard plaats-token voor deze lobby, dan kom je terug op je
@@ -16,7 +17,7 @@ type PageState = 'loading' | 'join' | 'room' | 'error';
  * De pagina blijft de lobby volgen door te pollen.
  */
 @Component({
-  imports: [LobbyJoinForm, LobbyRoom, RouterLink],
+  imports: [GameStage, LobbyJoinForm, LobbyRoom, RouterLink],
   providers: [LobbyPoller],
   selector: 'dg-lobby-page',
   template: `
@@ -40,6 +41,14 @@ type PageState = 'loading' | 'join' | 'room' | 'error';
             [lobby]="poller.lobby()!"
             (leave)="leave()"
             (lobbyChange)="poller.apply($event)"
+            [countdownEndsAt]="poller.countdownEndsAt()"
+          />
+        }
+        @case ('game') {
+          <dg-game-stage
+            [lobby]="poller.lobby()!"
+            (lobbyChange)="poller.apply($event)"
+            (leave)="leave()"
           />
         }
         @case ('error') {
@@ -75,7 +84,10 @@ export class LobbyPage {
   protected readonly state = computed<PageState>(() => {
     const lobby = this.poller.lobby();
     if (lobby) {
-      return lobby.me ? 'room' : 'join';
+      if (!lobby.me) {
+        return 'join';
+      }
+      return lobby.status === 'playing' || lobby.status === 'finished' ? 'game' : 'room';
     }
     return this.poller.status() === 'error' ? 'error' : 'loading';
   });

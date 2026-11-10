@@ -31,10 +31,33 @@ Toeval komt uit `Dg\Games\Rng` zodat tests een vaste reeks kunnen gebruiken.
 
 Elk veld in `settingsSchema()` is `['key', 'type' => 'choice', 'default', 'choices']`. De frontend toont het veld met de vertaalsleutels `game.<slug>.setting.<key>` en `game.<slug>.setting.<key>.<keuze>`.
 
+## Frontend
+
+De component van een game staat in `src/app/games/<slug>/` en wordt lazy geladen via `GAME_COMPONENTS` (`games/game-components.ts`). De `GameStage` van het platform rendert hem met `NgComponentOutlet` en geeft **alle** velden van `GameComponentInputs` mee als inputs. De component moet dus voor elk veld een `input()` met dezelfde naam declareren, ook als hij er een niet gebruikt (anders geeft Angular NG0303):
+
+| Input | Betekenis |
+| --- | --- |
+| `view` | Jouw kijk op het spel, zoals `Game::view()` hem geeft |
+| `seats` | Alle plaatsen (naam, soort mens/bot, bot-niveau, weg) |
+| `mySeatNo` | Jouw plaatsnummer |
+| `activeSeats` | Plaatsen die nu mogen zetten (voor "jouw beurt") |
+| `result` | Null tijdens het spel, daarna `{ winners: [...] }` |
+| `disabled` | True terwijl een zet onderweg is of het spel afgelopen is |
+| `submit` | `(move) => Promise<void>`: stuurt een zet; de server valideert en antwoordt met de nieuwe staat |
+
+De stage toont zelf de beurtmelding, de uitslag en "nog een keer"; de game-component tekent alleen het spelbord.
+
+## Spelverloop op het platform
+
+1. De maker of een beheerder start met `POST /lobbies/{code}/start` (genoeg spelers, bots tellen mee). De lobby gaat op `countdown` (3 seconden).
+2. De eerstvolgende poll na afloop zet het spel in gang: `Game::start()`, en bots die als eerste aan de beurt zijn spelen meteen. Zo blijft het werken als een telefoon slaapt.
+3. Een speler zet met `POST /lobbies/{code}/move`. De game valideert (`InvalidMove` geeft 422), daarna spelen bots op de server tot een mens aan de beurt is.
+4. Geeft `outcome()` een uitslag, dan gaat de lobby op `finished`. De maker kan met `POST /lobbies/{code}/rematch` dezelfde spelers terugzetten naar wachten.
+
 ## Een nieuwe game toevoegen
 
 1. Maak `api/src/Games/<Naam>.php` die `Game` implementeert en voeg hem toe aan `GameRegistry::default()`.
 2. Maak een testklasse die `GameContractTestCase` uitbreidt (alleen `game()` is verplicht) en voeg regeltests toe. De contracttest speelt voor elk botniveau een heel spel met alleen geldige zetten.
-3. Maak de frontend in `src/app/games/<slug>/` en zet `playable: true` in `core/games/game-catalog.ts`.
+3. Maak de frontend in `src/app/games/<slug>/`, registreer hem in `GAME_COMPONENTS` en zet `playable: true` in `core/games/game-catalog.ts`. Voeg de vertalingen toe: `game.<slug>.setting.*` voor instellingen.
 
 Tic-Tac-Toe (`TicTacToe.php`) is de referentie-implementatie.
