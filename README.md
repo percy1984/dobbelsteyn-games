@@ -23,6 +23,8 @@ Het ontwerp staat in [docs/superpowers/specs/2026-11-10-games-platform-design.md
 
 De build komt in `dist/dobbelsteyn-games/browser/`.
 
+`npm start` stuurt `/api/...` door naar de lokale API in Docker (`proxy.conf.json`, naar `http://localhost:8080/games/api`). Start dus eerst `docker compose up -d` (zie hieronder).
+
 ## PHP-API en database (`api/`)
 
 De API is gewone PHP 8.2 zonder framework en zonder runtime-afhankelijkheden (PDO, prepared statements). Alleen PHP praat met MySQL; de browser nooit. Lokaal draait alles in Docker.

@@ -20,9 +20,9 @@ final class Response
         return new self($status, $data);
     }
 
-    public static function error(int $status, string $message): self
+    public static function error(int $status, string $message, string $code = 'error'): self
     {
-        return new self($status, ['error' => $message]);
+        return new self($status, ['error' => $message, 'code' => $code]);
     }
 
     public function send(): void

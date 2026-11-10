@@ -25,6 +25,57 @@ export const NL = {
   'game.takenoko.name': 'Takenoko',
   'game.fire-and-ice.name': 'Fire-and-Ice',
   'game.maxxen.name': 'Maxxen',
+
+  // Foutmeldingen van de API (sleutel = foutcode uit de API)
+  'error.network': 'Geen verbinding met de server. Probeer het zo opnieuw.',
+  'error.error': 'Er ging iets mis. Probeer het opnieuw.',
+  'error.not_found': 'Niet gevonden.',
+  'error.method_not_allowed': 'Dit kan niet.',
+  'error.bad_json': 'Het verzoek is niet goed aangekomen.',
+  'error.bad_name': 'Vul een naam in van 1 tot 20 tekens.',
+  'error.bad_pin_format': 'Een PIN bestaat uit precies 4 letters of cijfers.',
+  'error.lobby_not_found': 'Deze lobby bestaat niet (meer).',
+  'error.unknown_game': 'Deze game bestaat niet.',
+  'error.game_started': 'Het spel is al gestart; je kunt niet meer meedoen.',
+  'error.bad_pin': 'Onjuiste PIN.',
+  'error.name_taken': 'Deze naam is al in gebruik in deze lobby.',
+  'error.lobby_full': 'De lobby is vol.',
+  'error.not_in_lobby': 'Je zit niet in deze lobby.',
+  'error.cannot_leave': 'Je kunt de lobby niet meer verlaten nadat het spel gestart is.',
+  'error.no_code': 'Er is nu geen vrije lobbycode. Probeer het zo opnieuw.',
+  'error.bad_message': 'Een bericht bestaat uit 1 tot 300 tekens.',
+
+  // Formulieren
+  'field.name': 'Jouw naam',
+  'field.pin': 'PIN',
+  'field.code': 'Lobbycode',
+  'validation.required': 'Dit veld is verplicht.',
+  'validation.name': 'Maximaal 20 tekens.',
+  'validation.pin': 'Precies 4 letters of cijfers.',
+  'validation.code': 'Een code van 4 of 5 letters.',
+
+  // Game-pagina
+  'create.title': 'Nieuwe lobby',
+  'create.visibility': 'Zichtbaarheid',
+  'create.public': 'Openbaar',
+  'create.private': 'Privé (met PIN)',
+  'create.pin.hint': 'Vier letters of cijfers. Laat leeg voor een willekeurige PIN.',
+  'create.submit': 'Lobby maken',
+  'joincode.title': 'Meedoen met een code',
+  'joincode.submit': 'Verder',
+
+  // Lobby
+  'join.title': 'Meedoen aan lobby {code}',
+  'join.submit': 'Meedoen',
+  'lobby.loading': 'Laden...',
+  'lobby.code': 'Lobbycode',
+  'lobby.pin': 'PIN: {pin}',
+  'lobby.private': 'Privé',
+  'lobby.players': 'Spelers ({count} van {max})',
+  'lobby.you': 'jij',
+  'lobby.creator': 'maker',
+  'lobby.leave': 'Lobby verlaten',
+  'lobby.back': 'Naar de game',
 } as const;
 
 export type TranslationKey = keyof typeof NL;

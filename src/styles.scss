@@ -11,6 +11,8 @@
   --dg-disabled: #b8bcc6;
   --dg-on-disabled: #4b5160;
   --dg-focus: #1a3d99;
+  --dg-danger: #b3261e;
+  --dg-border: #c9cdd8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +26,8 @@
     --dg-disabled: #4a5062;
     --dg-on-disabled: #b4bacb;
     --dg-focus: #b3caff;
+    --dg-danger: #ffb4ab;
+    --dg-border: #3a4157;
   }
 }
 
@@ -45,4 +49,109 @@ body {
     Roboto,
     sans-serif;
   line-height: 1.5;
+}
+
+// Gedeelde bouwstenen voor pagina's en formulieren.
+.page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.card {
+  padding: 1rem;
+  border: 1px solid var(--dg-border);
+  border-radius: 1rem;
+  background: var(--dg-surface);
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+
+  label,
+  legend {
+    font-weight: 600;
+  }
+
+  input[type='text'] {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 2px solid var(--dg-border);
+    border-radius: 0.5rem;
+    background: var(--dg-bg);
+    color: inherit;
+    font: inherit;
+
+    &:focus-visible {
+      outline: 3px solid var(--dg-focus);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.field__hint {
+  margin: 0;
+  color: var(--dg-muted);
+  font-size: 0.875rem;
+}
+
+.field__error,
+.alert {
+  margin: 0;
+  color: var(--dg-danger);
+  font-weight: 600;
+}
+
+fieldset.field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 2px solid var(--dg-accent);
+  border-radius: 999px;
+  background: var(--dg-accent);
+  color: var(--dg-on-accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    border-color: var(--dg-disabled);
+    background: var(--dg-disabled);
+    color: var(--dg-on-disabled);
+    cursor: not-allowed;
+  }
+
+  &--secondary {
+    background: transparent;
+    color: var(--dg-text);
+    border-color: var(--dg-border);
+  }
 }

@@ -13,7 +13,7 @@ final class Router
     /** @var list<array{method: string, pattern: string, handler: callable}> */
     private array $routes = [];
 
-    /** @param callable(array<string, string>): Response $handler */
+    /** @param callable(array<string, string>, Request): Response $handler */
     public function add(string $method, string $pattern, callable $handler): void
     {
         $this->routes[] = ['method' => $method, 'pattern' => $pattern, 'handler' => $handler];
@@ -33,8 +33,9 @@ final class Router
         return $path === '/index.php' ? '/' : $path;
     }
 
-    public function dispatch(string $method, string $path): Response
+    public function dispatch(string $method, string $path, ?Request $request = null): Response
     {
+        $request ??= new Request($method);
         $pathMatched = false;
 
         foreach ($this->routes as $route) {
@@ -44,13 +45,13 @@ final class Router
             }
             $pathMatched = true;
             if ($route['method'] === $method) {
-                return ($route['handler'])($params);
+                return ($route['handler'])($params, $request);
             }
         }
 
         return $pathMatched
-            ? Response::error(405, 'Methode niet toegestaan.')
-            : Response::error(404, 'Niet gevonden.');
+            ? Response::error(405, 'Methode niet toegestaan.', 'method_not_allowed')
+            : Response::error(404, 'Niet gevonden.', 'not_found');
     }
 
     /** @return array<string, string>|null */
