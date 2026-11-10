@@ -131,6 +131,17 @@ export const NL = {
   'chat.send': 'Versturen',
   'chat.empty': 'Nog geen berichten.',
   'chat.unread': '{count} ongelezen',
+  'share.button': 'QR-code',
+  'share.title': 'Lobby delen',
+  'share.alt': 'QR-code om lobby {code} te openen',
+  'share.link': 'Link',
+  'share.copyLink': 'Link kopiëren',
+  'share.copyImage': 'QR kopiëren',
+  'share.share': 'Delen',
+  'share.copied': 'Gekopieerd',
+  'share.failed': 'Delen is niet gelukt. Kopieer de link met de hand.',
+  'share.pinNote': 'Deze link bevat de PIN: wie hem ziet, kan meedoen.',
+  'share.text': 'Doe mee met {game} op Dobbelsteyn Games. Code: {code}',
   'lobby.back': 'Naar de game',
 } as const;
 
