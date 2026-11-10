@@ -1,0 +1,28 @@
+.switcher {
+  display: inline-flex;
+  border: 2px solid var(--dg-accent);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.switcher__button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    background: var(--dg-accent);
+    color: var(--dg-on-accent);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: -3px;
+  }
+}
