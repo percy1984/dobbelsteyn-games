@@ -11,6 +11,7 @@ export const POLL_INTERVAL_MS = new InjectionToken<number>('POLL_INTERVAL_MS', {
 });
 
 const MAX_BACKOFF_MS = 10_000;
+const COUNTDOWN_POLL_MS = 500;
 
 /**
  * Houdt één lobby actueel door te pollen. Het antwoord is piepklein zolang er niets verandert
@@ -29,6 +30,11 @@ export class LobbyPoller {
   /** `error` alleen als er nog geen lobby is geladen of de lobby niet (meer) bestaat. */
   readonly status = signal<'loading' | 'ready' | 'error'>('loading');
   readonly error = signal<unknown>(null);
+  /**
+   * Tijdstip (`Date.now()`) waarop de aftelling afloopt, zodat de pagina lokaal kan aftellen
+   * zonder te pollen. Null als er niet afgeteld wordt.
+   */
+  readonly countdownEndsAt = signal<number | null>(null);
   /** Meerdere polls achter elkaar mislukt: de verbinding is waarschijnlijk weg. */
   readonly offline = signal(false);
 
@@ -78,7 +84,7 @@ export class LobbyPoller {
 
   /** Neemt een bekende nieuwe staat over (bijvoorbeeld het antwoord op joinen), zonder te wachten. */
   apply(lobby: LobbyView): void {
-    this.lobby.set(lobby);
+    this.setLobby(lobby);
     this.status.set('ready');
   }
 
@@ -95,7 +101,7 @@ export class LobbyPoller {
         return;
       }
       if (!('changed' in result)) {
-        this.lobby.set(result);
+        this.setLobby(result);
       }
       this.status.set('ready');
       this.failures = 0;
@@ -120,6 +126,15 @@ export class LobbyPoller {
     this.schedule();
   }
 
+  private setLobby(lobby: LobbyView): void {
+    this.lobby.set(lobby);
+    this.countdownEndsAt.set(
+      lobby.status === 'countdown' && lobby.countdownMs != null
+        ? Date.now() + lobby.countdownMs
+        : null,
+    );
+  }
+
   private fail(error: unknown): void {
     this.error.set(error);
     this.status.set('error');
@@ -129,7 +144,12 @@ export class LobbyPoller {
     if (!this.running || this.doc.hidden) {
       return;
     }
-    const delay = Math.min(this.interval * 2 ** Math.min(this.failures, 3), MAX_BACKOFF_MS);
-    this.timer = setTimeout(() => void this.tick(), Math.max(delay, this.interval));
+    // Tijdens de aftelling vaker pollen, zodat het spel direct begint als de aftelling afloopt.
+    const base =
+      this.lobby()?.status === 'countdown'
+        ? Math.min(this.interval, COUNTDOWN_POLL_MS)
+        : this.interval;
+    const delay = Math.min(base * 2 ** Math.min(this.failures, 3), MAX_BACKOFF_MS);
+    this.timer = setTimeout(() => void this.tick(), Math.max(delay, base));
   }
 }

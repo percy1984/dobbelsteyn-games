@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView } from '../../core/lobby/lobby.models';
@@ -19,7 +19,7 @@ import { LobbyView } from '../../core/lobby/lobby.models';
         @for (field of lobby().settingsSchema; track field.key) {
           @let current = lobby().settings?.[field.key] ?? field.default;
           @let label = i18n.text('game.' + lobby().game + '.setting.' + field.key);
-          @if (lobby().me?.canManage) {
+          @if (canEdit()) {
             <div class="field">
               <label [for]="'setting-' + field.key">{{ label }}</label>
               <select
@@ -45,7 +45,7 @@ import { LobbyView } from '../../core/lobby/lobby.models';
           }
         }
 
-        @if (!lobby().me?.canManage) {
+        @if (!canEdit()) {
           <p class="field__hint">{{ i18n.t('settings.readonly') }}</p>
         }
         @if (error()) {
@@ -63,6 +63,9 @@ export class LobbySettings {
   readonly changed = output<LobbyView>();
 
   protected readonly busy = signal(false);
+  protected readonly canEdit = computed(
+    () => !!this.lobby().me?.canManage && this.lobby().status === 'waiting',
+  );
   protected readonly error = signal('');
 
   protected async change(key: string, value: string): Promise<void> {

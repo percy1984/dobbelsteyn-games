@@ -41,6 +41,25 @@ export class LobbyApi {
     );
   }
 
+  /** Start de aftelling (3-2-1); daarna begint het spel vanzelf. Alleen maker of beheerder. */
+  start(code: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(`lobbies/${code}/start`, {}, this.sessions.get(code)?.token);
+  }
+
+  /** Een zet in het lopende spel; de server valideert hem. */
+  move(code: string, move: unknown): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/move`,
+      { move },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** Na afloop: dezelfde spelers nog een keer (maker of beheerder). */
+  rematch(code: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(`lobbies/${code}/rematch`, {}, this.sessions.get(code)?.token);
+  }
+
   /** Zet een bot op de eerste vrije plaats (maker of beheerder). Niveau 1 tot en met 10. */
   addBot(code: string, level: number): Promise<LobbyView> {
     return this.api.post<LobbyView>(

@@ -36,6 +36,9 @@ final class Api
         $router->add('POST', '/lobbies/{code}/leave', $api->leaveLobby(...));
         $router->add('POST', '/lobbies/{code}/settings', $api->updateSettings(...));
         $router->add('POST', '/lobbies/{code}/promote', $api->promote(...));
+        $router->add('POST', '/lobbies/{code}/start', $api->startGame(...));
+        $router->add('POST', '/lobbies/{code}/move', $api->move(...));
+        $router->add('POST', '/lobbies/{code}/rematch', $api->rematch(...));
         $router->add('POST', '/lobbies/{code}/bots', $api->addBot(...));
         $router->add('POST', '/lobbies/{code}/bots/level', $api->setBotLevel(...));
         $router->add('POST', '/lobbies/{code}/bots/remove', $api->removeBot(...));
@@ -159,6 +162,29 @@ final class Api
             $request->seatToken(),
             is_int($request->body['seatNo'] ?? null) ? $request->body['seatNo'] : -1,
         ));
+    }
+
+    /** @param array<string, string> $params */
+    private function startGame(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->start($params['code'], $request->seatToken()));
+    }
+
+    /** @param array<string, string> $params */
+    private function move(array $params, Request $request): Response
+    {
+        $move = $request->body['move'] ?? null;
+        if (!is_array($move)) {
+            throw new ApiException(422, 'Ongeldige zet.', 'invalid_move');
+        }
+
+        return Response::json($this->lobbies()->move($params['code'], $request->seatToken(), $move));
+    }
+
+    /** @param array<string, string> $params */
+    private function rematch(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->rematch($params['code'], $request->seatToken()));
     }
 
     // --- Hulpmiddelen ----------------------------------------------------------------------

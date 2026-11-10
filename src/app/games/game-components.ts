@@ -1,0 +1,27 @@
+import { Type } from '@angular/core';
+import { GameResult, SeatView } from '../core/lobby/lobby.models';
+
+/**
+ * Wat het platform aan de component van een game meegeeft. Een game-component declareert voor elk
+ * veld een `input()` met dezelfde naam, en stuurt een zet met `submit(zet)`.
+ */
+export interface GameComponentInputs {
+  /** Jouw kijk op het spel, zoals de server hem geeft (de vorm hangt van de game af). */
+  readonly view: unknown;
+  readonly seats: readonly SeatView[];
+  readonly mySeatNo: number;
+  /** Plaatsen die nu mogen zetten. */
+  readonly activeSeats: readonly number[];
+  /** Null zolang het spel loopt. */
+  readonly result: GameResult | null;
+  /** True zolang een zet onderweg is of het spel afgelopen is. */
+  readonly disabled: boolean;
+  /** Stuurt een zet naar de server; de server valideert en antwoordt met de nieuwe staat. */
+  readonly submit: (move: unknown) => Promise<void>;
+}
+
+/**
+ * De frontend-component per game, lazy geladen uit `games/<slug>/`. Een game komt hier pas in
+ * zodra hij gebouwd is (zie docs/game-contract.md).
+ */
+export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {};

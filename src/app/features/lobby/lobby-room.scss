@@ -98,3 +98,16 @@ h2 {
     font-weight: 600;
   }
 }
+
+.start {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  margin-bottom: 1rem;
+}
+
+.hint {
+  margin: 0 0 1rem;
+  color: var(--dg-muted);
+  font-size: 0.875rem;
+}

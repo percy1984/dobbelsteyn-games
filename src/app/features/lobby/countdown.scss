@@ -1,0 +1,44 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  background: color-mix(in srgb, var(--dg-bg) 88%, transparent);
+  text-align: center;
+}
+
+.overlay__label {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.overlay__number {
+  margin: 0;
+  font-size: clamp(6rem, 30vw, 12rem);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--dg-accent);
+  animation: pop 900ms ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  30% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay__number {
+    animation: none;
+  }
+}
