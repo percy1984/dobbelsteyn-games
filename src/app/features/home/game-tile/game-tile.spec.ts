@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { GameInfo } from '../../../core/games/game-catalog';
+import { I18n } from '../../../core/i18n/i18n';
 import { GameTile } from './game-tile';
 
 describe('GameTile', () => {
@@ -14,14 +15,16 @@ describe('GameTile', () => {
   }
 
   beforeEach(async () => {
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [GameTile],
       providers: [provideRouter([])],
     }).compileComponents();
+    TestBed.inject(I18n).setLang('nl');
   });
 
   it('is niet klikbaar en toont "Binnenkort" als de game nog niet speelbaar is', async () => {
-    const el = await render({ slug: 'nim', name: 'Nim', playable: false });
+    const el = await render({ slug: 'nim', playable: false });
 
     expect(el.querySelector('a')).toBeNull();
     expect(el.querySelector('.tile--soon')?.getAttribute('aria-disabled')).toBe('true');
@@ -29,7 +32,7 @@ describe('GameTile', () => {
   });
 
   it('is een link naar de game als die speelbaar is', async () => {
-    const el = await render({ slug: 'tic-tac-toe', name: 'Tic-Tac-Toe', playable: true });
+    const el = await render({ slug: 'tic-tac-toe', playable: true });
 
     const link = el.querySelector('a');
     expect(link).not.toBeNull();
@@ -38,12 +41,16 @@ describe('GameTile', () => {
   });
 
   it('maakt initialen van de naam als tijdelijke illustratie', async () => {
-    const el = await render({
-      slug: 'klein-hartenjagen',
-      name: 'Klein Hartenjagen',
-      playable: false,
-    });
+    const el = await render({ slug: 'klein-hartenjagen', playable: false });
 
     expect(el.querySelector('.tile__art')?.textContent).toBe('KH');
+  });
+
+  it('toont de naam en status in de gekozen taal', async () => {
+    TestBed.inject(I18n).setLang('en');
+    const el = await render({ slug: 'love-letters', playable: false });
+
+    expect(el.textContent).toContain('Love Letter');
+    expect(el.textContent).toContain('Coming soon');
   });
 });
