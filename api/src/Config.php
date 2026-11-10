@@ -51,6 +51,16 @@ final class Config
         ];
     }
 
+    /**
+     * Geheim token voor POST /migrate. Null (endpoint uit) als het ontbreekt of korter is dan 32 tekens.
+     */
+    public function migrateToken(): ?string
+    {
+        $token = $this->values['migrate_token'] ?? null;
+
+        return is_string($token) && strlen($token) >= 32 ? $token : null;
+    }
+
     public function debug(): bool
     {
         return ($this->values['debug'] ?? false) === true;

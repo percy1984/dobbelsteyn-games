@@ -1,9 +1,12 @@
+-- Migraties moeten opnieuw uitvoerbaar zijn (IF NOT EXISTS): een run die halverwege stopt, wordt
+-- niet als uitgevoerd geregistreerd en draait bij de volgende aanroep opnieuw.
+--
 -- Eerste schema voor het games-platform: lobby's, plaatsen, chat en spelstaat.
 -- Bewust portable gehouden (MySQL 8 en MariaDB): geen 0900-collations, geen exotische functies.
 -- De server is gezaghebbend: de volledige spelstaat staat hier, per speler gefilterde views
 -- worden in PHP berekend (zie de spec: verborgen informatie per speler).
 
-CREATE TABLE lobbies (
+CREATE TABLE IF NOT EXISTS lobbies (
     id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
     -- 4 of 5 ondubbelzinnige hoofdletters; vergelijken is hoofdletterongevoelig door de collation.
     code              VARCHAR(5) NOT NULL,
@@ -28,7 +31,7 @@ CREATE TABLE lobbies (
     CONSTRAINT ck_lobbies_players CHECK (min_players >= 1 AND max_players >= min_players)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE seats (
+CREATE TABLE IF NOT EXISTS seats (
     id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
     lobby_id     INT UNSIGNED NOT NULL,
     seat_no      TINYINT UNSIGNED NOT NULL,
@@ -50,7 +53,7 @@ CREATE TABLE seats (
     CONSTRAINT ck_seats_bot_level CHECK (bot_level IS NULL OR bot_level BETWEEN 1 AND 10)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE chat_messages (
+CREATE TABLE IF NOT EXISTS chat_messages (
     id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     lobby_id   INT UNSIGNED NOT NULL,
     -- NULL als de plaats later verdwijnt; de naam blijft dan zichtbaar bij het bericht.
@@ -64,7 +67,7 @@ CREATE TABLE chat_messages (
     CONSTRAINT fk_chat_seat FOREIGN KEY (seat_id) REFERENCES seats (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE game_states (
+CREATE TABLE IF NOT EXISTS game_states (
     lobby_id   INT UNSIGNED NOT NULL,
     -- Volledige, gezaghebbende staat (inclusief verborgen informatie); nooit rechtstreeks naar de browser.
     state      JSON NOT NULL,

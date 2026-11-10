@@ -26,6 +26,13 @@ final class ConfigTest extends TestCase
         (new Config(['db' => ['host' => 'db']]))->database();
     }
 
+    public function testMigrateTokenNeedsAtLeast32Characters(): void
+    {
+        $this->assertNull((new Config([]))->migrateToken());
+        $this->assertNull((new Config(['migrate_token' => str_repeat('a', 31)]))->migrateToken());
+        $this->assertSame(str_repeat('a', 32), (new Config(['migrate_token' => str_repeat('a', 32)]))->migrateToken());
+    }
+
     public function testDebugIsOffByDefault(): void
     {
         $this->assertFalse((new Config([]))->debug());
