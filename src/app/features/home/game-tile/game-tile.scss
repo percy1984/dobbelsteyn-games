@@ -1,0 +1,75 @@
+:host {
+  display: block;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 1rem 0.75rem;
+  border: 2px solid var(--dg-accent);
+  border-radius: 1rem;
+  background: var(--dg-surface);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.tile__art {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--dg-accent);
+  color: var(--dg-on-accent);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.tile__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tile__status {
+  font-size: 0.8125rem;
+  color: var(--dg-muted);
+}
+
+.tile--playable {
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.15);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 2px;
+  }
+}
+
+// Games die nog niet speelbaar zijn: grijze rand, niet klikbaar.
+.tile--soon {
+  border-color: var(--dg-disabled);
+  cursor: not-allowed;
+
+  .tile__art {
+    background: var(--dg-disabled);
+    color: var(--dg-on-disabled);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+}

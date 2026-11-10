@@ -1,4 +1,14 @@
-<main>
-  <h1>Dobbelsteyn Games</h1>
-  <p>Kaart- en bordspellen om samen te spelen. Het overzicht volgt snel.</p>
+<main class="page">
+  <header class="page__header">
+    <h1>Dobbelsteyn Games</h1>
+    <p>Kaart- en bordspellen om samen te spelen, ieder op de eigen telefoon.</p>
+  </header>
+
+  <ul class="grid">
+    @for (game of games; track game.slug) {
+      <li class="grid__item">
+        <dg-game-tile [game]="game" />
+      </li>
+    }
+  </ul>
 </main>
