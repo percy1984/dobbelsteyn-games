@@ -1,5 +1,6 @@
 :host {
   display: block;
+  height: 100%;
 }
 
 .tile {
@@ -72,4 +73,9 @@
   .tile {
     transition: none;
   }
+}
+
+.tile__status--play {
+  color: var(--dg-accent);
+  font-weight: 700;
 }

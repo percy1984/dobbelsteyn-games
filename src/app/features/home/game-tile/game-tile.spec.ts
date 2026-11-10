@@ -38,6 +38,7 @@ describe('GameTile', () => {
     expect(link).not.toBeNull();
     expect(link?.getAttribute('href')).toBe('/games/tic-tac-toe');
     expect(el.textContent).not.toContain('Binnenkort');
+    expect(el.textContent).toContain('Spelen');
   });
 
   it('maakt initialen van de naam als tijdelijke illustratie', async () => {

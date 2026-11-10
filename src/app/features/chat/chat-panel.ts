@@ -20,25 +20,27 @@ import { LobbyView } from '../../core/lobby/lobby.models';
   styleUrl: './chat-panel.scss',
   template: `
     <div class="chat">
-      <ol
+      <div
         #log
         class="chat__log"
         role="log"
         aria-live="polite"
         [attr.aria-label]="i18n.t('chat.title')"
       >
-        @for (message of messages(); track message.id) {
-          <li class="message" [class.message--mine]="message.seatNo === lobby().me?.seatNo">
-            <span class="message__meta">
-              <strong>{{ message.name }}</strong>
-              <time [attr.datetime]="iso(message.at)">{{ time(message.at) }}</time>
-            </span>
-            <span class="message__body">{{ message.body }}</span>
-          </li>
-        } @empty {
-          <li class="chat__empty">{{ i18n.t('chat.empty') }}</li>
-        }
-      </ol>
+        <ol class="chat__list">
+          @for (message of messages(); track message.id) {
+            <li class="message" [class.message--mine]="message.seatNo === lobby().me?.seatNo">
+              <span class="message__meta">
+                <strong>{{ message.name }}</strong>
+                <time [attr.datetime]="iso(message.at)">{{ time(message.at) }}</time>
+              </span>
+              <span class="message__body">{{ message.body }}</span>
+            </li>
+          } @empty {
+            <li class="chat__empty">{{ i18n.t('chat.empty') }}</li>
+          }
+        </ol>
+      </div>
 
       <form class="chat__form" (submit)="send($event)" novalidate>
         <label class="chat__label" for="chat-text">{{ i18n.t('chat.message') }}</label>

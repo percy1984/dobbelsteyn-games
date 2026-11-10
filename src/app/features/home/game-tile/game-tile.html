@@ -2,6 +2,7 @@
   <a class="tile tile--playable" [routerLink]="['games', game().slug]">
     <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
     <span class="tile__name">{{ name() }}</span>
+    <span class="tile__status tile__status--play">{{ i18n.t('tile.play') }}</span>
   </a>
 } @else {
   <div class="tile tile--soon" aria-disabled="true">
