@@ -1,0 +1,48 @@
+h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+
+  label {
+    font-weight: 600;
+  }
+}
+
+.select {
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 2px solid var(--dg-border);
+  border-radius: 0.5rem;
+  background: var(--dg-bg);
+  color: inherit;
+  font: inherit;
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 1px;
+  }
+}
+
+.readonly {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  margin: 0 0 0.25rem;
+}
+
+.field__hint {
+  margin: 0.25rem 0 0;
+  color: var(--dg-muted);
+  font-size: 0.875rem;
+}
+
+.alert {
+  margin: 0.5rem 0 0;
+  color: var(--dg-danger);
+  font-weight: 600;
+}

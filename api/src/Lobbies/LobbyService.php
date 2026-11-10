@@ -8,6 +8,7 @@ use Dg\ApiException;
 use Dg\Games\GameRegistry;
 use Dg\Games\Rng;
 use Dg\Input;
+use InvalidArgumentException;
 use PDO;
 use Throwable;
 
@@ -174,6 +175,96 @@ final class LobbyService
             'maxPlayers' => (int) $row['max_players'],
             'joinable' => $row['status'] === 'waiting' && (int) $row['players'] < (int) $row['max_players'],
         ], $stmt->fetchAll());
+    }
+
+    /**
+     * Wijzigt de spelinstellingen. Mag de maker en een gepromoveerde speler, tot het spel start.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public function updateSettings(string $code, ?string $token, array $settings): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token, $settings): void {
+            $lobby = $this->load($code, lock: true);
+            $me = $this->requireManager($lobby, $token);
+            if ($lobby['status'] !== 'waiting') {
+                throw new ApiException(409, 'De instellingen kunnen niet meer gewijzigd worden.', 'cannot_change');
+            }
+
+            try {
+                $normalized = $this->games->get($lobby['game'])->normalizeSettings($settings);
+            } catch (InvalidArgumentException) {
+                throw new ApiException(422, 'Ongeldige instelling.', 'bad_settings');
+            }
+
+            $this->pdo->prepare('UPDATE lobbies SET settings = ? WHERE id = ?')
+                ->execute([json_encode($normalized, JSON_THROW_ON_ERROR), $lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Promoveert een speler (die dan ook instellingen mag wijzigen) of haalt dat weer weg. Alleen de
+     * maker doet dit; de maker zelf kan niet gedegradeerd worden en bots kunnen niet gepromoveerd worden.
+     *
+     * @return array<string, mixed>
+     */
+    public function setPromoted(string $code, ?string $token, int $seatNo, bool $promoted): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token, $seatNo, $promoted): void {
+            $lobby = $this->load($code, lock: true);
+            $me = $this->seatForToken((int) $lobby['id'], $token);
+            if ($me === null) {
+                throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
+            }
+            if ((int) $me['is_creator'] !== 1) {
+                throw new ApiException(403, 'Alleen de maker kan spelers promoveren.', 'not_creator');
+            }
+
+            $target = null;
+            foreach ($this->seats((int) $lobby['id']) as $seat) {
+                if ((int) $seat['seat_no'] === $seatNo) {
+                    $target = $seat;
+                }
+            }
+            if ($target === null) {
+                throw new ApiException(404, 'Deze plaats bestaat niet.', 'seat_not_found');
+            }
+            if ($target['kind'] !== 'human' || (int) $target['is_creator'] === 1) {
+                throw new ApiException(409, 'Alleen andere spelers kunnen gepromoveerd worden.', 'cannot_promote');
+            }
+
+            $this->pdo->prepare('UPDATE seats SET is_promoted = ? WHERE id = ?')->execute([$promoted ? 1 : 0, $target['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Geeft de plaats van de speler terug als die de lobby mag beheren (maker of gepromoveerd).
+     *
+     * @param array<string, mixed> $lobby
+     * @return array<string, mixed>
+     */
+    private function requireManager(array $lobby, ?string $token): array
+    {
+        $me = $this->seatForToken((int) $lobby['id'], $token);
+        if ($me === null) {
+            throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
+        }
+        if ((int) $me['is_creator'] !== 1 && (int) $me['is_promoted'] !== 1) {
+            throw new ApiException(403, 'Alleen de maker of een gepromoveerde speler mag dit.', 'not_allowed');
+        }
+
+        return $me;
     }
 
     /**

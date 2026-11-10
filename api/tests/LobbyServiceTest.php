@@ -346,6 +346,86 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertApiError(404, fn () => $this->lobbies->listForGame(''));
     }
 
+    public function testCreatorCanChangeSettingsAndEveryoneSeesThem(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+
+        $view = $this->lobbies->updateSettings($code, $created['token'], ['starter' => 'second']);
+
+        $this->assertSame(['starter' => 'second'], $view['settings']);
+        $this->assertSame(['starter' => 'second'], $this->lobbies->viewFor($code, $anna['token'])['settings']);
+        $this->assertGreaterThan($created['lobby']['version'], $view['version']);
+    }
+
+    public function testOrdinaryPlayerCannotChangeSettings(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+
+        $this->assertApiError(403, fn () => $this->lobbies->updateSettings($code, $anna['token'], ['starter' => 'first']));
+        $this->assertApiError(403, fn () => $this->lobbies->updateSettings($code, null, ['starter' => 'first']));
+        $this->assertSame(['starter' => 'random'], $this->lobbies->viewFor($code, $created['token'])['settings']);
+    }
+
+    public function testPromotedPlayerMayChangeSettingsUntilDemoted(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+
+        $promoted = $this->lobbies->setPromoted($code, $created['token'], 1, true);
+        $this->assertTrue($promoted['seats'][1]['isPromoted']);
+        $this->assertTrue($this->lobbies->viewFor($code, $anna['token'])['me']['canManage']);
+        $this->lobbies->updateSettings($code, $anna['token'], ['starter' => 'first']);
+
+        $this->lobbies->setPromoted($code, $created['token'], 1, false);
+        $this->assertApiError(403, fn () => $this->lobbies->updateSettings($code, $anna['token'], ['starter' => 'second']));
+    }
+
+    public function testOnlyTheCreatorMayPromote(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $this->lobbies->setPromoted($code, $created['token'], 1, true);
+
+        $this->assertApiError(403, fn () => $this->lobbies->setPromoted($code, $anna['token'], 0, true), );
+        $this->assertApiError(403, fn () => $this->lobbies->setPromoted($code, null, 1, false));
+    }
+
+    public function testCreatorCannotBeDemotedAndBotsCannotBePromoted(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->pdo->exec("INSERT INTO seats (lobby_id, seat_no, kind, name, bot_level) SELECT id, 1, 'bot', 'Bot', 5 FROM lobbies");
+
+        $this->assertApiError(409, fn () => $this->lobbies->setPromoted($code, $created['token'], 0, false));
+        $this->assertApiError(409, fn () => $this->lobbies->setPromoted($code, $created['token'], 1, true));
+        $this->assertApiError(404, fn () => $this->lobbies->setPromoted($code, $created['token'], 7, true));
+        $this->assertTrue($this->lobbies->viewFor($code, $created['token'])['me']['isCreator']);
+    }
+
+    public function testInvalidSettingsAreRejectedAndNothingChanges(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+
+        $this->assertApiError(422, fn () => $this->lobbies->updateSettings($code, $created['token'], ['starter' => 'nooit']));
+        $this->assertApiError(422, fn () => $this->lobbies->updateSettings($code, $created['token'], ['starter' => ['x']]));
+        $this->assertSame(['starter' => 'random'], $this->lobbies->viewFor($code, $created['token'])['settings']);
+    }
+
+    public function testSettingsCannotChangeAfterTheGameStarted(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $this->pdo->exec("UPDATE lobbies SET status = 'playing'");
+
+        $this->assertApiError(409, fn () => $this->lobbies->updateSettings($created['lobby']['code'], $created['token'], ['starter' => 'first']));
+    }
+
     public function testEveryChangeBumpsTheVersion(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);

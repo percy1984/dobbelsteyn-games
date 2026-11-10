@@ -45,6 +45,12 @@ export const EN = {
   'error.not_in_lobby': 'You are not in this lobby.',
   'error.cannot_leave': 'You can no longer leave the lobby after the game has started.',
   'error.no_code': 'There is no free lobby code right now. Please try again in a moment.',
+  'error.not_allowed': 'Only the host or a manager can do this.',
+  'error.not_creator': 'Only the host can make players manager.',
+  'error.cannot_change': 'The settings can no longer be changed.',
+  'error.bad_settings': 'Invalid setting.',
+  'error.seat_not_found': 'This seat does not exist.',
+  'error.cannot_promote': 'Only other players can become manager.',
   'error.bad_message': 'A message is 1 to 300 characters.',
 
   // Forms
@@ -87,5 +93,14 @@ export const EN = {
   'list.playing': 'In progress',
   'list.full': 'Full',
   'list.offline': 'The list cannot be refreshed. We keep trying...',
+  'game.tic-tac-toe.setting.starter': 'Who starts?',
+  'game.tic-tac-toe.setting.starter.random': 'Random',
+  'game.tic-tac-toe.setting.starter.first': 'First player in the list',
+  'game.tic-tac-toe.setting.starter.second': 'Second player in the list',
+  'settings.title': 'Settings',
+  'settings.readonly': 'Only the host or a manager can change the settings.',
+  'seat.promote': 'Make manager',
+  'seat.demote': 'Remove manager',
+  'lobby.promoted': 'manager',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;

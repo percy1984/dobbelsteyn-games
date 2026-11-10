@@ -43,6 +43,12 @@ export const NL = {
   'error.not_in_lobby': 'Je zit niet in deze lobby.',
   'error.cannot_leave': 'Je kunt de lobby niet meer verlaten nadat het spel gestart is.',
   'error.no_code': 'Er is nu geen vrije lobbycode. Probeer het zo opnieuw.',
+  'error.not_allowed': 'Alleen de maker of een beheerder mag dit.',
+  'error.not_creator': 'Alleen de maker kan spelers beheerder maken.',
+  'error.cannot_change': 'De instellingen kunnen niet meer gewijzigd worden.',
+  'error.bad_settings': 'Ongeldige instelling.',
+  'error.seat_not_found': 'Deze plaats bestaat niet.',
+  'error.cannot_promote': 'Alleen andere spelers kunnen beheerder worden.',
   'error.bad_message': 'Een bericht bestaat uit 1 tot 300 tekens.',
 
   // Formulieren
@@ -85,6 +91,15 @@ export const NL = {
   'list.playing': 'Bezig',
   'list.full': 'Vol',
   'list.offline': 'De lijst kan niet vernieuwd worden. We blijven het proberen...',
+  'game.tic-tac-toe.setting.starter': 'Wie begint?',
+  'game.tic-tac-toe.setting.starter.random': 'Willekeurig',
+  'game.tic-tac-toe.setting.starter.first': 'Eerste speler in de lijst',
+  'game.tic-tac-toe.setting.starter.second': 'Tweede speler in de lijst',
+  'settings.title': 'Instellingen',
+  'settings.readonly': 'Alleen de maker of een beheerder kan de instellingen wijzigen.',
+  'seat.promote': 'Beheerder maken',
+  'seat.demote': 'Beheerder weghalen',
+  'lobby.promoted': 'beheerder',
   'lobby.back': 'Naar de game',
 } as const;
 

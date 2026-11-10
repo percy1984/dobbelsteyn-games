@@ -72,3 +72,17 @@ h2 {
     border: 1px solid var(--dg-border);
   }
 }
+
+.seat__action {
+  margin-left: auto;
+}
+
+.leave {
+  margin-top: 1rem;
+}
+
+.alert {
+  margin: 0 0 0.5rem;
+  color: var(--dg-danger);
+  font-weight: 600;
+}
