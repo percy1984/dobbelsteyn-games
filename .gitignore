@@ -60,3 +60,8 @@ __screenshots__/
 .superpowers/brainstorm/.last-port
 .superpowers/brainstorm/.last-token
 .superpowers/brainstorm/*/state/
+
+# PHP-API: credentials en dev-afhankelijkheden (config.example.php blijft wel in git)
+api/config.php
+api/vendor/
+api/.phpunit.cache/

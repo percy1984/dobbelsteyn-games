@@ -1,0 +1,41 @@
+# Lokale testomgeving: PHP 8.2 + Apache en MySQL.
+#   API:    http://localhost:8080/games/api/health
+#   MySQL:  localhost:3307 (gebruiker games / wachtwoord games_local)
+# Starten:  docker compose up -d --build
+services:
+  web:
+    build: ./docker/php
+    ports:
+      - "8080:80"
+    volumes:
+      - ./api:/var/www/html/games/api
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: dobbelsteyn_games
+      MYSQL_USER: games
+      MYSQL_PASSWORD: games_local
+      MYSQL_ROOT_PASSWORD: root_local
+    ports:
+      - "3307:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pgames_local", "-ugames"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  composer:
+    image: composer:2
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - ./api:/app
+
+volumes:
+  db-data:
