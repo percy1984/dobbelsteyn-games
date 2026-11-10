@@ -23,6 +23,27 @@ Het ontwerp staat in [docs/superpowers/specs/2026-11-10-games-platform-design.md
 
 De build komt in `dist/dobbelsteyn-games/browser/`.
 
+## PHP-API en database (`api/`)
+
+De API is gewone PHP 8.2 zonder framework en zonder runtime-afhankelijkheden (PDO, prepared statements). Alleen PHP praat met MySQL; de browser nooit. Lokaal draait alles in Docker.
+
+```bash
+docker compose up -d --build                                    # PHP + Apache op :8080, MySQL op :3307
+cp api/config.example.php api/config.php                        # lokaal: vul host "db", db/user/wachtwoord uit docker-compose.yml
+docker compose exec web php /var/www/html/games/api/bin/migrate.php   # schema aanmaken
+curl http://localhost:8080/games/api/health                     # {"status":"ok"}
+
+docker compose --profile tools run --rm composer install        # eenmalig: PHPUnit
+docker compose exec -w /var/www/html/games/api web php vendor/bin/phpunit
+```
+
+In Git Bash op Windows worden paden als `/var/www/...` omgezet. Zet dan `MSYS_NO_PATHCONV=1` voor het commando, of gebruik PowerShell.
+
+- **Credentials:** staan alleen in `api/config.php`. Dat bestand staat in `.gitignore` en wordt nooit gecommit. `api/config.example.php` zonder waarden wel. Op Hostinger maak je `config.php` zelf aan op de server (host `127.0.0.1`).
+- **Beveiliging:** `api/.htaccess` blokkeert directe toegang tot `config*.php`, `*.sql`, `composer.*` e.d., schakelt mappenlijsten uit en stuurt alles naar `index.php`. `src/`, `bin/`, `migrations/` en `tests/` hebben elk een eigen `.htaccess` (`Require all denied`).
+- **Sub-pad:** de router werkt met paden relatief aan de API-map, dus `api/` draait onder elk pad.
+- **Migraties:** genummerde SQL-bestanden in `api/migrations/`, eenmalig uitgevoerd door `bin/migrate.php` (alleen via de command line). Op de server draai je dat niet via het web; hoe dat bij deployment gaat, volgt bij het deployment-item.
+
 ## Onder een sub-pad draaien
 
 De app gebruikt alleen relatieve links en bevat geen vast adres. Het pad waaronder de app draait, stel je in bij de build via `--base-href`:
