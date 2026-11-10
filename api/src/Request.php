@@ -7,6 +7,9 @@ namespace Dg;
 /** Wat de API van een binnenkomend verzoek nodig heeft. */
 final class Request
 {
+    /** Grootste toegestane body van een verzoek. */
+    public const MAX_BODY_BYTES = 16384;
+
     /**
      * @param array<string, string> $query
      * @param array<string, mixed> $body
@@ -31,7 +34,11 @@ final class Request
         }
 
         $body = [];
-        $raw = file_get_contents('php://input');
+        // Een spelverzoek is klein; veel grotere bodies zijn misbruik en lezen we niet in.
+        $raw = file_get_contents('php://input', false, null, 0, self::MAX_BODY_BYTES + 1);
+        if ($raw !== false && strlen($raw) > self::MAX_BODY_BYTES) {
+            throw new ApiException(413, 'Het verzoek is te groot.', 'too_large');
+        }
         if ($raw !== false && trim($raw) !== '') {
             $decoded = json_decode($raw, true);
             if (!is_array($decoded) || array_is_list($decoded) && $decoded !== []) {
@@ -41,8 +48,9 @@ final class Request
         }
 
         // Achter een CDN/proxy staat het echte adres in X-Forwarded-For; zonder proxy in REMOTE_ADDR.
+        // We nemen het laatste adres: dat voegt de proxy zelf toe, het eerste kan door de client verzonnen zijn.
         $forwarded = $headers['x-forwarded-for'] ?? '';
-        $ip = $forwarded !== '' ? trim(explode(',', $forwarded)[0]) : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $ip = $forwarded !== '' ? trim(array_slice(explode(',', $forwarded), -1)[0]) : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
 
         return new self(
             $_SERVER['REQUEST_METHOD'] ?? 'GET',

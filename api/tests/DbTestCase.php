@@ -35,5 +35,6 @@ abstract class DbTestCase extends TestCase
         }
 
         $this->pdo->exec('DELETE FROM lobbies');
+        $this->pdo->exec('DELETE FROM rate_limits');
     }
 }

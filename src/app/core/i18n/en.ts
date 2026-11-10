@@ -154,5 +154,8 @@ export const EN = {
   'away.end.no': 'Cancel',
   'stage.ended': 'The game has been ended.',
   'error.not_away': 'This player is not away (anymore).',
+  'error.rate_limited': 'Too many requests. Please try again in a little while.',
+  'error.server_busy': 'The server is busy. Please try again in a few minutes.',
+  'error.too_large': 'The request is too large.',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;

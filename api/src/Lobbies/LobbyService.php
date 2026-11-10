@@ -8,6 +8,8 @@ use Dg\ApiException;
 use Dg\Games\GameRegistry;
 use Dg\Games\Rng;
 use Dg\Input;
+use Dg\Limits;
+use Dg\RateLimiter;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
@@ -28,13 +30,16 @@ final class LobbyService
 
     private readonly CodeGenerator $codes;
     private readonly GameRunner $runner;
+    private readonly RateLimiter $limiter;
 
     public function __construct(
         private readonly PDO $pdo,
         private readonly GameRegistry $games,
         ?Rng $rng = null,
         private readonly int $awayAfterSeconds = self::AWAY_AFTER_SECONDS,
+        private readonly Limits $limits = new Limits(),
     ) {
+        $this->limiter = new RateLimiter($pdo);
         $rng ??= new Rng();
         $this->codes = new CodeGenerator($rng);
         $this->runner = new GameRunner($pdo, $games, $rng);
@@ -55,6 +60,10 @@ final class LobbyService
         $pin = $private ? (is_string($pin) && trim($pin) !== '' ? Input::pin($pin) : $this->codes->pin()) : null;
 
         return $this->transaction(function () use ($definition, $game, $name, $private, $pin): array {
+            if ((int) $this->pdo->query('SELECT COUNT(*) FROM lobbies')->fetchColumn() >= $this->limits->maxLobbies) {
+                throw new ApiException(503, 'De server is druk. Probeer het over een paar minuten opnieuw.', 'server_busy');
+            }
+
             $code = $this->uniqueCode();
             $this->pdo->prepare(
                 'INSERT INTO lobbies (code, game, is_private, pin, min_players, max_players, settings)
@@ -81,40 +90,63 @@ final class LobbyService
      *
      * @return array{token: string, seatNo: int, lobby: array<string, mixed>}
      */
-    public function join(string $code, mixed $name, mixed $pin): array
+    public function join(string $code, mixed $name, mixed $pin, string $client = ''): array
     {
         $code = Input::code($code);
         $name = Input::name($name);
 
-        return $this->transaction(function () use ($code, $name, $pin): array {
-            $lobby = $this->load($code, lock: true);
-
-            if ($lobby['status'] !== 'waiting') {
-                throw new ApiException(409, 'Het spel is al gestart; je kunt niet meer meedoen.', 'game_started');
+        $wrongPinLobbyId = null;
+        try {
+            return $this->transaction(function () use ($code, $name, $pin, $client, &$wrongPinLobbyId): array {
+                return $this->doJoin($code, $name, $pin, $client, $wrongPinLobbyId);
+            });
+        } catch (ApiException $e) {
+            // De transactie is teruggedraaid; de mislukte poging moet toch blijven staan.
+            if ($wrongPinLobbyId !== null) {
+                $this->limiter->record("pin:$wrongPinLobbyId:$client", $this->limits->pinWindowSeconds);
+                $this->limiter->record("pin:$wrongPinLobbyId", $this->limits->pinWindowSeconds);
             }
-            if ((int) $lobby['is_private'] === 1) {
-                $given = is_string($pin) ? strtoupper(trim($pin)) : '';
-                if (!hash_equals((string) $lobby['pin'], $given)) {
-                    throw new ApiException(403, 'Onjuiste PIN.', 'bad_pin');
-                }
-            }
+            throw $e;
+        }
+    }
 
-            $seats = $this->seats((int) $lobby['id']);
-            foreach ($seats as $seat) {
-                if (mb_strtolower($seat['name']) === mb_strtolower($name)) {
-                    throw new ApiException(409, 'Deze naam is al in gebruik in deze lobby.', 'name_taken');
-                }
-            }
-            $free = $this->freeSeatNo($seats, (int) $lobby['max_players']);
-            if ($free === null) {
-                throw new ApiException(409, 'De lobby is vol.', 'lobby_full');
-            }
+    /**
+     * @return array{token: string, seatNo: int, lobby: array<string, mixed>}
+     */
+    private function doJoin(string $code, string $name, mixed $pin, string $client, ?int &$wrongPinLobbyId): array
+    {
+        $lobby = $this->load($code, lock: true);
 
-            $token = $this->insertSeat((int) $lobby['id'], $free, $name);
-            $this->touch((int) $lobby['id']);
+        if ($lobby['status'] !== 'waiting') {
+            throw new ApiException(409, 'Het spel is al gestart; je kunt niet meer meedoen.', 'game_started');
+        }
+        if ((int) $lobby['is_private'] === 1) {
+            // Het raden van een PIN remmen we af: per lobby én per client een grens op foute pogingen.
+            $this->limiter->assertBelow("pin:{$lobby['id']}:$client", $this->limits->pinFailuresPerClient, $this->limits->pinWindowSeconds);
+            $this->limiter->assertBelow("pin:{$lobby['id']}", $this->limits->pinFailuresPerLobby, $this->limits->pinWindowSeconds);
 
-            return ['token' => $token, 'seatNo' => $free, 'lobby' => $this->viewFor($code, $token)];
-        });
+            $given = is_string($pin) ? strtoupper(trim($pin)) : '';
+            if (!hash_equals((string) $lobby['pin'], $given)) {
+                $wrongPinLobbyId = (int) $lobby['id'];
+                throw new ApiException(403, 'Onjuiste PIN.', 'bad_pin');
+            }
+        }
+
+        $seats = $this->seats((int) $lobby['id']);
+        foreach ($seats as $seat) {
+            if (mb_strtolower($seat['name']) === mb_strtolower($name)) {
+                throw new ApiException(409, 'Deze naam is al in gebruik in deze lobby.', 'name_taken');
+            }
+        }
+        $free = $this->freeSeatNo($seats, (int) $lobby['max_players']);
+        if ($free === null) {
+            throw new ApiException(409, 'De lobby is vol.', 'lobby_full');
+        }
+
+        $token = $this->insertSeat((int) $lobby['id'], $free, $name);
+        $this->touch((int) $lobby['id']);
+
+        return ['token' => $token, 'seatNo' => $free, 'lobby' => $this->viewFor($code, $token)];
     }
 
     /** Verlaat de lobby vrijwillig; kan alleen voordat het spel start. */
@@ -624,6 +656,8 @@ final class LobbyService
             if ($me === null) {
                 throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
             }
+
+            $this->limiter->hit("chat:{$me['id']}", $this->limits->chatMessages, $this->limits->chatWindowSeconds);
 
             $this->pdo->prepare('INSERT INTO chat_messages (lobby_id, seat_id, name, body) VALUES (?, ?, ?, ?)')
                 ->execute([$lobby['id'], $me['id'], $me['name'], $body]);

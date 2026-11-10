@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dg;
 
 use Dg\Games\GameRegistry;
+use Dg\Lobbies\Cleanup;
 use Dg\Lobbies\LobbyService;
 use PDO;
 use Throwable;
@@ -14,17 +15,24 @@ final class Api
 {
     private ?PDO $pdo = null;
     private ?LobbyService $lobbies = null;
+    private ?RateLimiter $limiter = null;
 
     private function __construct(
         private readonly Config $config,
         private readonly GameRegistry $games,
         private readonly string $migrationsDir,
+        private readonly Limits $limits,
     ) {
     }
 
-    public static function register(Router $router, Config $config, string $migrationsDir, ?GameRegistry $games = null): void
-    {
-        $api = new self($config, $games ?? GameRegistry::default(), $migrationsDir);
+    public static function register(
+        Router $router,
+        Config $config,
+        string $migrationsDir,
+        ?GameRegistry $games = null,
+        ?Limits $limits = null,
+    ): void {
+        $api = new self($config, $games ?? GameRegistry::default(), $migrationsDir, $limits ?? new Limits());
 
         $router->add('GET', '/health', $api->health(...));
         $router->add('POST', '/migrate', $api->migrate(...));
@@ -80,12 +88,18 @@ final class Api
     /** @param array<string, string> $params */
     private function listLobbies(array $params, Request $request): Response
     {
+        $this->housekeeping();
+        $this->limiter()->hit('list:' . RateLimiter::client($request->ip), $this->limits->listPerMinute, 60);
+
         return Response::json(['lobbies' => $this->lobbies()->listForGame($request->query['game'] ?? '')]);
     }
 
     /** @param array<string, string> $params */
     private function createLobby(array $params, Request $request): Response
     {
+        $this->housekeeping();
+        $this->limiter()->hit('create:' . RateLimiter::client($request->ip), $this->limits->createPerHour, 3600);
+
         $result = $this->lobbies()->create(
             $request->string('game') ?? '',
             $request->body['name'] ?? null,
@@ -107,7 +121,10 @@ final class Api
     /** @param array<string, string> $params */
     private function joinLobby(array $params, Request $request): Response
     {
-        return Response::json($this->lobbies()->join($params['code'], $request->body['name'] ?? null, $request->body['pin'] ?? null));
+        $client = RateLimiter::client($request->ip);
+        $this->limiter()->hit('join:' . $client, $this->limits->joinPerMinute, 60);
+
+        return Response::json($this->lobbies()->join($params['code'], $request->body['name'] ?? null, $request->body['pin'] ?? null, $client));
     }
 
     /** @param array<string, string> $params */
@@ -223,6 +240,28 @@ final class Api
 
     private function lobbies(): LobbyService
     {
-        return $this->lobbies ??= new LobbyService($this->pdo(), $this->games);
+        return $this->lobbies ??= new LobbyService($this->pdo(), $this->games, null, LobbyService::AWAY_AFTER_SECONDS, $this->limits);
+    }
+
+    private function limiter(): RateLimiter
+    {
+        return $this->limiter ??= new RateLimiter($this->pdo());
+    }
+
+    /**
+     * Ruimt hooguit eens per minuut verlaten lobby's en oude tellers op. Er is geen cron nodig: het
+     * draait mee met een gewoon verzoek, en de eerste die er binnen een minuut is, doet het werk.
+     */
+    private function housekeeping(): void
+    {
+        try {
+            if ($this->limiter()->once('cleanup', 60)) {
+                (new Cleanup($this->pdo()))->run();
+                $this->limiter()->purge();
+            }
+        } catch (Throwable $e) {
+            // Opruimen mag een gewoon verzoek nooit laten mislukken.
+            error_log('Opruimen mislukt: ' . $e->getMessage());
+        }
     }
 }

@@ -566,6 +566,8 @@ final class LobbyServiceTest extends DbTestCase
 
     public function testChatShowsOnlyTheLastFiftyMessages(): void
     {
+        // Zonder chatgrens, anders remt de spamfilter de 55 berichten af.
+        $this->lobbies = new LobbyService($this->pdo, GameRegistry::default(), null, LobbyService::AWAY_AFTER_SECONDS, \Dg\Limits::none());
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
         $code = $created['lobby']['code'];
         for ($i = 1; $i <= 55; $i++) {

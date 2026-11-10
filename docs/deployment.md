@@ -49,6 +49,14 @@ Migraties zijn genummerde SQL-bestanden in `api/migrations/`. `POST /api/migrate
 - **Handmatig aanroepen:** `curl -X POST -H "X-Migrate-Token: <token>" https://<site>/games/api/migrate`.
 - **Token roteren:** zet een nieuwe waarde in `config.php` op de server en in `.env.deploy`.
 
+## Opruimen en misbruikbescherming
+
+- **Opruimen:** een wachtkamer of afgelopen spel waar al 30 minuten geen mens meer een heartbeat gaf, verdwijnt (inclusief plaatsen, chat en spelstaat). Een lopend spel wacht langer (24 uur) op spelers die weg zijn. Er is geen cron nodig: het draait hooguit eens per minuut mee met een gewoon verzoek (lobby aanmaken, lijst ophalen) en ruimt ook oude tellers op.
+- **Rate limiting** (tabel `rate_limits`, vaste tijdvensters, ruim afgesteld omdat collega's één IP delen): lobby's aanmaken 20 per uur per IP, joinen 30 per minuut per IP, de lijst 600 per minuut per IP, chat 8 berichten per 10 seconden per speler. Het raden van een PIN wordt afgeremd: 10 foute pogingen per client en 30 per lobby per 10 minuten, ook bij de juiste PIN daarna. Een overschrijding geeft 429. Polls zijn niet begrensd (goedkoop, en veel spelers delen een IP).
+- **Plafond:** maximaal 500 lobby's tegelijk (daarboven 503 "server druk"). Een verzoek mag maximaal 16 KB zijn (anders 413). Namen zijn 1 tot 20 tekens en chat 1 tot 300 tekens, zonder stuurtekens of onzichtbare tekens.
+- **IP-adres:** achter een CDN/proxy nemen we het laatste adres uit `X-Forwarded-For` (door de proxy zelf toegevoegd), anders `REMOTE_ADDR`. Dat is niet volledig vervalsingsbestendig; verifieer op de echte host welke header Hostinger meegeeft. Het IP staat alleen als hash in een tellernaam.
+- De grenzen staan in `api/src/Limits.php` en de opruimtijden in `api/src/Lobbies/Cleanup.php`.
+
 ## Waarom niet de standaard-deploytools van Hostinger
 
 `hosting_deploy` en de Git-deploy van Hostinger werken op het hele domein en overschrijven of klonen de site-inhoud. Dat zou de bestaande site beschadigen. Daarom uploaden we bestand voor bestand naar `games/`.
