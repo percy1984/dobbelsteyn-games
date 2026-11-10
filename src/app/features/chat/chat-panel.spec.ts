@@ -92,7 +92,7 @@ describe('ChatPanel', () => {
   it('is een log voor hulpsoftware en meldt nieuwe berichten beleefd', async () => {
     const { el } = await render([]);
 
-    const log = el.querySelector('ol')!;
+    const log = el.querySelector('.chat__log')!;
     expect(log.getAttribute('role')).toBe('log');
     expect(log.getAttribute('aria-live')).toBe('polite');
   });

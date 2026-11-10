@@ -150,7 +150,7 @@ fieldset.field {
   }
 
   &--small {
-    min-height: 2.5rem;
+    min-height: 2.75rem;
     padding: 0 0.875rem;
     font-size: 0.875rem;
   }
@@ -180,5 +180,19 @@ fieldset.field {
   &:focus-visible {
     outline: 3px solid var(--dg-focus);
     outline-offset: 1px;
+  }
+}
+
+// Beweging alleen voor wie het prettig vindt: bij "minder beweging" staat alles stil.
+@media (prefers-reduced-motion: no-preference) {
+  .card {
+    animation: card-in 260ms ease-out both;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
   }
 }

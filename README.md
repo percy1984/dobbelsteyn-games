@@ -4,6 +4,13 @@ Kaart- en bordspellen om samen te spelen, mobile first. Angular (statische singl
 
 Het ontwerp staat in [docs/superpowers/specs/2026-11-10-games-platform-design.md](docs/superpowers/specs/2026-11-10-games-platform-design.md). De backlog staat in het GitHub-project "Dobbelsteyn Games".
 
+## Wat er nu is
+
+- Overzichtspagina met tegels voor 17 games (Nederlands en Engels, per speler te wisselen); **Tic-Tac-Toe is speelbaar**, de rest staat als "Binnenkort" tot de regels en ontwerpen er zijn.
+- Lobby's per game: aanmaken (openbaar of privé met PIN), joinen met een code of via een QR-link, lijst met spelersaantal en slotje, instellingen, beheerders, bots (niveau 1 t/m 10), start met 3-2-1-aftelling, chat, delen via QR, en wegvallen/terugkomen (wachten, vervangen door een bot, beëindigen).
+- PHP-API met MySQL (alleen PHP praat met de database), live updates door pollen, rate limiting en opruimen.
+- Het ontwerp staat in [docs/superpowers/specs/2026-11-10-games-platform-design.md](docs/superpowers/specs/2026-11-10-games-platform-design.md); [docs/game-contract.md](docs/game-contract.md) beschrijft hoe een nieuwe game wordt toegevoegd en [docs/deployment.md](docs/deployment.md) de deploy naar Hostinger.
+
 ## Vereisten
 
 - Node.js 22.22.3 of hoger (of 24.15+ / 26+), dus niet de oudere 22.x-versies.

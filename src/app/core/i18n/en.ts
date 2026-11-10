@@ -8,6 +8,7 @@ export const EN = {
   'lang.nl': 'Dutch',
   'lang.en': 'English',
   'home.tagline': 'Card and board games to play together, each on your own phone.',
+  'tile.play': 'Play',
   'tile.soon': 'Coming soon',
 
   'game.mancala.name': 'Mancala',

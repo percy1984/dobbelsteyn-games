@@ -6,6 +6,7 @@ export const NL = {
   'lang.nl': 'Nederlands',
   'lang.en': 'Engels',
   'home.tagline': 'Kaart- en bordspellen om samen te spelen, ieder op de eigen telefoon.',
+  'tile.play': 'Spelen',
   'tile.soon': 'Binnenkort',
 
   'game.mancala.name': 'Mancala',

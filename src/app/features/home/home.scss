@@ -20,12 +20,17 @@
 
 // Mobile first: twee kolommen op een smalle telefoon, meer kolommen naarmate er ruimte is.
 .grid {
+  align-items: stretch;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
   gap: 0.75rem;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.grid__item {
+  display: grid;
 }
 
 // Progressive enhancement: tegels schuiven in beeld tijdens het scrollen waar de browser
