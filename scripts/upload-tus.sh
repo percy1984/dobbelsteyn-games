@@ -15,6 +15,10 @@
 
 set -euo pipefail
 
+# Lokale instellingen (token voor de migraties); staat in .gitignore.
+ENV_FILE="$(dirname "$0")/../.env.deploy"
+if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
+
 : "${DG_UPLOAD_URL:?DG_UPLOAD_URL ontbreekt}"
 : "${DG_AUTH:?DG_AUTH ontbreekt}"
 : "${DG_AUTH_REST:?DG_AUTH_REST ontbreekt}"
@@ -51,3 +55,15 @@ for f in "${ALL[@]}"; do [[ "$f" == *.htaccess || "$f" == "index.html" ]] || upl
 echo "3/3 index.html"
 upload "index.html"
 echo "Klaar: ${#ALL[@]} bestanden naar $REMOTE_DIR/."
+
+# Database-migraties: draai alles wat nog niet is uitgevoerd (het endpoint doet niets als alles al is gedraaid).
+if [ -n "${DG_MIGRATE_TOKEN:-}" ] && [ -n "${DG_SITE_URL:-}" ]; then
+  echo "Migraties uitvoeren..."
+  BODY=$(mktemp)
+  CODE=$(curl -sS -o "$BODY" -w "%{http_code}" -X POST -H "X-Migrate-Token: $DG_MIGRATE_TOKEN" "$DG_SITE_URL/api/migrate" || true)
+  cat "$BODY"; echo " [HTTP $CODE]"
+  rm -f "$BODY"
+  [ "$CODE" = "200" ] || { echo "Migratie niet gelukt (zie hierboven)." >&2; exit 1; }
+else
+  echo "Migraties overgeslagen: DG_MIGRATE_TOKEN en DG_SITE_URL ontbreken (zie .env.deploy.example)." >&2
+fi
