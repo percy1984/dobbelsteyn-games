@@ -36,6 +36,9 @@ final class Api
         $router->add('POST', '/lobbies/{code}/leave', $api->leaveLobby(...));
         $router->add('POST', '/lobbies/{code}/settings', $api->updateSettings(...));
         $router->add('POST', '/lobbies/{code}/promote', $api->promote(...));
+        $router->add('POST', '/lobbies/{code}/bots', $api->addBot(...));
+        $router->add('POST', '/lobbies/{code}/bots/level', $api->setBotLevel(...));
+        $router->add('POST', '/lobbies/{code}/bots/remove', $api->removeBot(...));
     }
 
     // --- Systeem ---------------------------------------------------------------------------
@@ -129,6 +132,33 @@ final class Api
         }
 
         return Response::json($this->lobbies()->setPromoted($params['code'], $request->seatToken(), $seatNo, ($request->body['promoted'] ?? true) === true));
+    }
+
+    /** @param array<string, string> $params */
+    private function addBot(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->addBot($params['code'], $request->seatToken(), $request->body['level'] ?? null));
+    }
+
+    /** @param array<string, string> $params */
+    private function setBotLevel(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->setBotLevel(
+            $params['code'],
+            $request->seatToken(),
+            is_int($request->body['seatNo'] ?? null) ? $request->body['seatNo'] : -1,
+            $request->body['level'] ?? null,
+        ));
+    }
+
+    /** @param array<string, string> $params */
+    private function removeBot(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->removeBot(
+            $params['code'],
+            $request->seatToken(),
+            is_int($request->body['seatNo'] ?? null) ? $request->body['seatNo'] : -1,
+        ));
     }
 
     // --- Hulpmiddelen ----------------------------------------------------------------------

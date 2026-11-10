@@ -102,5 +102,12 @@ export const EN = {
   'seat.promote': 'Make manager',
   'seat.demote': 'Remove manager',
   'lobby.promoted': 'manager',
+  'bot.label': 'bot',
+  'bot.level': 'Level {level}',
+  'bot.level.label': 'Bot level',
+  'bot.add': 'Add bot',
+  'bot.remove': 'Remove bot',
+  'error.bad_level': 'Choose a level from 1 to 10.',
+  'error.not_a_bot': 'This is not a bot.',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;

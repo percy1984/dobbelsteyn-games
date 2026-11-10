@@ -55,7 +55,7 @@ async function render(
 }
 
 const buttons = (el: HTMLElement): string[] =>
-  Array.from(el.querySelectorAll<HTMLButtonElement>('.seat__action')).map((b) =>
+  Array.from(el.querySelectorAll<HTMLButtonElement>('button.seat__action')).map((b) =>
     b.textContent!.trim(),
   );
 
@@ -113,7 +113,7 @@ describe('LobbyRoom: promoveren', () => {
     const view = lobby(0, [seat(0, 'Percy', { isCreator: true }), seat(1, 'Anna')]);
     const { el, fixture, lobbyChange } = await render(view, api);
 
-    el.querySelector<HTMLButtonElement>('.seat__action')!.click();
+    el.querySelector<HTMLButtonElement>('button.seat__action')!.click();
     await fixture.whenStable();
 
     expect(api.setPromoted).toHaveBeenCalledWith('ABCD', 1, true);
@@ -128,7 +128,7 @@ describe('LobbyRoom: promoveren', () => {
     ]);
     const { el, fixture } = await render(view, api);
 
-    el.querySelector<HTMLButtonElement>('.seat__action')!.click();
+    el.querySelector<HTMLButtonElement>('button.seat__action')!.click();
     await fixture.whenStable();
 
     expect(api.setPromoted).toHaveBeenCalledWith('ABCD', 1, false);
@@ -139,7 +139,7 @@ describe('LobbyRoom: promoveren', () => {
     const view = lobby(0, [seat(0, 'Percy', { isCreator: true }), seat(1, 'Anna')]);
     const { el, fixture, lobbyChange } = await render(view, api);
 
-    el.querySelector<HTMLButtonElement>('.seat__action')!.click();
+    el.querySelector<HTMLButtonElement>('button.seat__action')!.click();
     await fixture.whenStable();
 
     expect(el.querySelector('.alert')).not.toBeNull();

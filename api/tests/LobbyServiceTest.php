@@ -426,6 +426,96 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertApiError(409, fn () => $this->lobbies->updateSettings($created['lobby']['code'], $created['token'], ['starter' => 'first']));
     }
 
+    public function testManagerCanAddBotsWhichTakeFreeSeatsAndCountAsPlayers(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+
+        $view = $this->lobbies->addBot($code, $created['token'], 7);
+
+        $this->assertCount(2, $view['seats']);
+        $this->assertSame('bot', $view['seats'][1]['kind']);
+        $this->assertSame('Bot 1', $view['seats'][1]['name']);
+        $this->assertSame(7, $view['seats'][1]['botLevel']);
+        $this->assertSame(1, $view['seats'][1]['seatNo']);
+        $this->assertApiError(409, fn () => $this->lobbies->join($code, 'Anna', null));
+        $this->assertGreaterThan($created['lobby']['version'], $view['version']);
+    }
+
+    public function testBotsCannotExceedMaxPlayersAndGetUniqueNames(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+
+        $this->lobbies->addBot($code, $created['token'], 3);
+        $this->assertApiError(409, fn () => $this->lobbies->addBot($code, $created['token'], 3));
+
+        $this->lobbies->removeBot($code, $created['token'], 1);
+        $again = $this->lobbies->addBot($code, $created['token'], 4);
+        $this->assertSame('Bot 1', $again['seats'][1]['name']);
+    }
+
+    public function testOnlyManagersChangeBots(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+
+        $this->assertApiError(403, fn () => $this->lobbies->addBot($code, $anna['token'], 5));
+        $this->assertApiError(403, fn () => $this->lobbies->addBot($code, null, 5));
+
+        // Een gepromoveerde speler mag bots beheren (hier is de lobby al vol, dus 409 in plaats van 403).
+        $this->lobbies->setPromoted($code, $created['token'], 1, true);
+        $this->assertApiError(409, fn () => $this->lobbies->addBot($code, $anna['token'], 5));
+    }
+
+    public function testBotLevelMustBeOneToTen(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+
+        foreach ([0, 11, -1, '5', null, 5.5] as $bad) {
+            $this->assertApiError(422, fn () => $this->lobbies->addBot($code, $created['token'], $bad));
+        }
+        $this->assertCount(1, $this->lobbies->viewFor($code, $created['token'])['seats']);
+    }
+
+    public function testBotLevelCanBeChangedAndHumansAreNotBots(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->lobbies->addBot($code, $created['token'], 2);
+
+        $view = $this->lobbies->setBotLevel($code, $created['token'], 1, 9);
+
+        $this->assertSame(9, $view['seats'][1]['botLevel']);
+        $this->assertApiError(409, fn () => $this->lobbies->setBotLevel($code, $created['token'], 0, 9));
+        $this->assertApiError(409, fn () => $this->lobbies->removeBot($code, $created['token'], 0));
+        $this->assertApiError(404, fn () => $this->lobbies->removeBot($code, $created['token'], 5));
+        $this->assertApiError(422, fn () => $this->lobbies->setBotLevel($code, $created['token'], 1, 12));
+    }
+
+    public function testBotsCannotBeChangedAfterTheGameStarted(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->lobbies->addBot($code, $created['token'], 2);
+        $this->pdo->exec("UPDATE lobbies SET status = 'playing'");
+
+        $this->assertApiError(409, fn () => $this->lobbies->setBotLevel($code, $created['token'], 1, 5));
+        $this->assertApiError(409, fn () => $this->lobbies->removeBot($code, $created['token'], 1));
+    }
+
+    public function testLobbyWithOnlyBotsLeftIsRemovedWhenTheLastHumanLeaves(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $this->lobbies->addBot($created['lobby']['code'], $created['token'], 5);
+
+        $this->lobbies->leave($created['lobby']['code'], $created['token']);
+
+        $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM lobbies')->fetchColumn());
+    }
+
     public function testEveryChangeBumpsTheVersion(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
