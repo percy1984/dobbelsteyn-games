@@ -141,7 +141,7 @@ describe('LobbyPage', () => {
     const el = await render(api);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-    el.querySelector<HTMLButtonElement>('button')?.click();
+    el.querySelector<HTMLButtonElement>('.leave')?.click();
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(api.leave).toHaveBeenCalledWith('ABCD');

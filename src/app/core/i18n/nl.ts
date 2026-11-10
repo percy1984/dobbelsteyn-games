@@ -100,6 +100,13 @@ export const NL = {
   'seat.promote': 'Beheerder maken',
   'seat.demote': 'Beheerder weghalen',
   'lobby.promoted': 'beheerder',
+  'bot.label': 'bot',
+  'bot.level': 'Niveau {level}',
+  'bot.level.label': 'Botniveau',
+  'bot.add': 'Bot toevoegen',
+  'bot.remove': 'Bot verwijderen',
+  'error.bad_level': 'Kies een niveau van 1 tot en met 10.',
+  'error.not_a_bot': 'Dit is geen bot.',
   'lobby.back': 'Naar de game',
 } as const;
 

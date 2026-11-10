@@ -41,6 +41,33 @@ export class LobbyApi {
     );
   }
 
+  /** Zet een bot op de eerste vrije plaats (maker of beheerder). Niveau 1 tot en met 10. */
+  addBot(code: string, level: number): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/bots`,
+      { level },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** Wijzigt het niveau van een bot. */
+  setBotLevel(code: string, seatNo: number, level: number): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/bots/level`,
+      { seatNo, level },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** Haalt een bot weg; de plaats komt weer vrij. */
+  removeBot(code: string, seatNo: number): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/bots/remove`,
+      { seatNo },
+      this.sessions.get(code)?.token,
+    );
+  }
+
   /** Wijzigt de spelinstellingen (maker of gepromoveerde speler). */
   updateSettings(code: string, settings: Readonly<Record<string, string>>): Promise<LobbyView> {
     return this.api.post<LobbyView>(

@@ -167,3 +167,18 @@ fieldset.field {
     border-color: var(--dg-border);
   }
 }
+
+.select {
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border: 2px solid var(--dg-border);
+  border-radius: 0.5rem;
+  background: var(--dg-bg);
+  color: inherit;
+  font: inherit;
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 1px;
+  }
+}

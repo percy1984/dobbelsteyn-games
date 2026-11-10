@@ -268,6 +268,124 @@ final class LobbyService
     }
 
     /**
+     * Zet een bot op de eerste vrije plaats. Alleen de maker of een beheerder, alleen vóór de start.
+     * Niveau 1 (zwak) tot en met 10 (sterk): de invulling per niveau hoort bij de game.
+     *
+     * @return array<string, mixed>
+     */
+    public function addBot(string $code, ?string $token, mixed $level): array
+    {
+        $code = Input::code($code);
+        $level = $this->botLevel($level);
+
+        $this->transaction(function () use ($code, $token, $level): void {
+            $lobby = $this->loadForBotChange($code, $token);
+            $seats = $this->seats((int) $lobby['id']);
+
+            $free = $this->freeSeatNo($seats, (int) $lobby['max_players']);
+            if ($free === null) {
+                throw new ApiException(409, 'De lobby is vol.', 'lobby_full');
+            }
+
+            $used = array_column($seats, 'name');
+            $number = 1;
+            while (in_array('Bot ' . $number, $used, true)) {
+                $number++;
+            }
+
+            $this->pdo->prepare(
+                "INSERT INTO seats (lobby_id, seat_no, kind, name, bot_level) VALUES (?, ?, 'bot', ?, ?)"
+            )->execute([$lobby['id'], $free, 'Bot ' . $number, $level]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Wijzigt het niveau van een bot.
+     *
+     * @return array<string, mixed>
+     */
+    public function setBotLevel(string $code, ?string $token, int $seatNo, mixed $level): array
+    {
+        $code = Input::code($code);
+        $level = $this->botLevel($level);
+
+        $this->transaction(function () use ($code, $token, $seatNo, $level): void {
+            $lobby = $this->loadForBotChange($code, $token);
+            $bot = $this->botSeat((int) $lobby['id'], $seatNo);
+
+            $this->pdo->prepare('UPDATE seats SET bot_level = ? WHERE id = ?')->execute([$level, $bot['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Haalt een bot weg; de plaats komt weer vrij.
+     *
+     * @return array<string, mixed>
+     */
+    public function removeBot(string $code, ?string $token, int $seatNo): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token, $seatNo): void {
+            $lobby = $this->loadForBotChange($code, $token);
+            $bot = $this->botSeat((int) $lobby['id'], $seatNo);
+
+            $this->pdo->prepare('DELETE FROM seats WHERE id = ?')->execute([$bot['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Laadt en vergrendelt de lobby voor een wijziging aan bots: de speler moet beheerder zijn en het
+     * spel mag nog niet gestart zijn.
+     *
+     * @return array<string, mixed>
+     */
+    private function loadForBotChange(string $code, ?string $token): array
+    {
+        $lobby = $this->load($code, lock: true);
+        $this->requireManager($lobby, $token);
+        if ($lobby['status'] !== 'waiting') {
+            throw new ApiException(409, 'De plaatsen kunnen niet meer gewijzigd worden.', 'cannot_change');
+        }
+
+        return $lobby;
+    }
+
+    /** @return array<string, mixed> */
+    private function botSeat(int $lobbyId, int $seatNo): array
+    {
+        foreach ($this->seats($lobbyId) as $seat) {
+            if ((int) $seat['seat_no'] === $seatNo) {
+                if ($seat['kind'] !== 'bot') {
+                    throw new ApiException(409, 'Dit is geen bot.', 'not_a_bot');
+                }
+
+                return $seat;
+            }
+        }
+
+        throw new ApiException(404, 'Deze plaats bestaat niet.', 'seat_not_found');
+    }
+
+    private function botLevel(mixed $level): int
+    {
+        if (!is_int($level) || $level < 1 || $level > 10) {
+            throw new ApiException(422, 'Kies een niveau van 1 tot en met 10.', 'bad_level');
+        }
+
+        return $level;
+    }
+
+    /**
      * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
      * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
      *
