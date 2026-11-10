@@ -1,0 +1,54 @@
+<h2>Phone-first sketch: overview page and lobby</h2>
+<p class="subtitle">Left: the overview with game tiles (gray border = not yet playable). Right: a lobby with code, players, bots and the 3-2-1 start. Rough wireframes, not final styling.</p>
+
+<style>
+  .phone{width:300px;margin:0 auto;border:2px solid #555;border-radius:22px;padding:12px;background:#fafafa;color:#222;font-size:13px}
+  .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:700}
+  .home{border:1px solid #999;border-radius:8px;padding:3px 8px;font-size:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tile{border:2px solid #3b82f6;border-radius:12px;padding:12px 6px;text-align:center;background:#fff;font-weight:600}
+  .tile.off{border-color:#bbb;color:#999;background:#f0f0f0}
+  .tile small{display:block;font-weight:400;font-size:10px;margin-top:2px}
+  .code{font-size:30px;letter-spacing:6px;font-weight:800;text-align:center;border:2px dashed #3b82f6;border-radius:12px;padding:8px;margin:8px 0}
+  .row{display:flex;justify-content:space-between;align-items:center;border:1px solid #ddd;border-radius:10px;padding:8px 10px;margin:5px 0;background:#fff}
+  .badge{font-size:10px;border-radius:6px;padding:2px 6px;background:#dbeafe;color:#1d4ed8}
+  .badge.bot{background:#fef3c7;color:#92400e}
+  .btn{display:block;text-align:center;border-radius:12px;padding:12px;font-weight:700;margin-top:8px;background:#22c55e;color:#fff}
+  .btn.sec{background:#fff;color:#333;border:1px solid #999;font-weight:600;padding:8px}
+  .lbl{font-size:10px;text-transform:uppercase;color:#777;margin:10px 0 4px}
+</style>
+
+<div class="split">
+  <div class="phone">
+    <div class="bar"><span class="home">Home</span><span>Games</span><span></span></div>
+    <div class="grid">
+      <div class="tile">Tic-Tac-Toe<small>1-2 players</small></div>
+      <div class="tile off">Mancala<small>coming soon</small></div>
+      <div class="tile off">Nim<small>coming soon</small></div>
+      <div class="tile off">Super-Tic-Tac-Toe<small>coming soon</small></div>
+      <div class="tile off">Take-5<small>coming soon</small></div>
+      <div class="tile off">Canasta 2v2<small>coming soon</small></div>
+      <div class="tile off">Takenoko<small>coming soon</small></div>
+      <div class="tile off">... 10 more</div>
+    </div>
+    <p style="font-size:10px;color:#777;margin-top:8px">One tile is shown as playable only to illustrate the blue vs. gray border.</p>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span class="home">Back</span><span>Tic-Tac-Toe</span><span></span></div>
+    <div class="lbl">Open lobbies</div>
+    <div class="row"><span>KZ4Q &middot; Lisa's lobby</span><span class="badge">1/2 public</span></div>
+    <div class="row"><span>M7PX &middot; Friday drinks</span><span class="badge">PIN</span></div>
+    <div class="btn sec">Create lobby</div>
+
+    <div class="lbl">Inside a lobby</div>
+    <div class="code">KZ4Q</div>
+    <div class="row"><span>Percy</span><span class="badge">host</span></div>
+    <div class="row"><span>Lisa</span><span class="badge">can edit</span></div>
+    <div class="row"><span>Bot (level 7)</span><span class="badge bot">bot</span></div>
+    <div class="btn sec">+ Add bot</div>
+    <div class="btn">Start game</div>
+    <p style="text-align:center;font-size:40px;font-weight:800;margin:6px 0 0;color:#3b82f6">3</p>
+    <p style="text-align:center;font-size:10px;color:#777;margin:0">(the 3-2-1 countdown, full screen)</p>
+  </div>
+</div>

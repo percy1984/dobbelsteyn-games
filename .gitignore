@@ -44,10 +44,9 @@ pnpm-debug.log*
 Thumbs.db
 Desktop.ini
 
-# Claude Code (local-only) and brainstorm scratch
+# Claude Code (local-only)
 .claude/settings.local.json
 .claude/worktrees/
-.superpowers/
 
 # Misc
 .sass-cache/
@@ -56,3 +55,8 @@ Desktop.ini
 testem.log
 /typings
 __screenshots__/
+
+# Superpowers runtime state (session-specific, contains tokens)
+.superpowers/brainstorm/.last-port
+.superpowers/brainstorm/.last-token
+.superpowers/brainstorm/*/state/
