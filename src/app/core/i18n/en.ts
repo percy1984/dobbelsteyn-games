@@ -127,5 +127,11 @@ export const EN = {
   'error.not_your_turn': 'It is not your turn.',
   'error.invalid_move': 'This move is not allowed.',
   'error.not_finished': 'The game is not finished yet.',
+  'modal.close': 'Close',
+  'chat.title': 'Chat',
+  'chat.message': 'Message',
+  'chat.send': 'Send',
+  'chat.empty': 'No messages yet.',
+  'chat.unread': '{count} unread',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;

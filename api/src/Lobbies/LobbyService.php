@@ -20,6 +20,9 @@ final class LobbyService
     /** Een heartbeat wordt hooguit zo vaak naar de database geschreven; polling blijft zo goedkoop. */
     private const HEARTBEAT_WRITE_SECONDS = 5;
 
+    /** Zoveel chatberichten krijgt een speler mee in het overzicht. */
+    private const CHAT_HISTORY = 50;
+
     /** Zo lang duurt de aftelling (3-2-1) voordat het spel echt begint. */
     public const COUNTDOWN_SECONDS = 3;
 
@@ -488,6 +491,55 @@ final class LobbyService
     }
 
     /**
+     * Stuurt een chatbericht. Alleen spelers in de lobby; het bericht blijft bewaard zolang de lobby
+     * bestaat en is voor iedereen in de lobby zichtbaar. Lengte en tekens worden beperkt.
+     *
+     * @return array<string, mixed>
+     */
+    public function sendChat(string $code, ?string $token, mixed $body): array
+    {
+        $code = Input::code($code);
+        $body = Input::text($body, Input::CHAT_MAX);
+
+        $this->transaction(function () use ($code, $token, $body): void {
+            $lobby = $this->load($code, lock: true);
+            $me = $this->seatForToken((int) $lobby['id'], $token);
+            if ($me === null) {
+                throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
+            }
+
+            $this->pdo->prepare('INSERT INTO chat_messages (lobby_id, seat_id, name, body) VALUES (?, ?, ?, ?)')
+                ->execute([$lobby['id'], $me['id'], $me['name'], $body]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * De laatste berichten van een lobby, oudste eerst.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function chatMessages(int $lobbyId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.id, s.seat_no, c.name, c.body, UNIX_TIMESTAMP(c.created_at) AS ts
+             FROM chat_messages c LEFT JOIN seats s ON s.id = c.seat_id
+             WHERE c.lobby_id = ? ORDER BY c.id DESC LIMIT ' . self::CHAT_HISTORY
+        );
+        $stmt->execute([$lobbyId]);
+
+        return array_map(static fn (array $row): array => [
+            'id' => (int) $row['id'],
+            'seatNo' => $row['seat_no'] === null ? null : (int) $row['seat_no'],
+            'name' => $row['name'],
+            'body' => $row['body'],
+            'at' => (int) $row['ts'],
+        ], array_reverse($stmt->fetchAll()));
+    }
+
+    /**
      * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
      * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
      *
@@ -565,6 +617,7 @@ final class LobbyService
             $view['settingsSchema'] = $definition->settingsSchema();
             // Spelers in de lobby mogen de PIN zien: ze delen hem via de QR-code.
             $view['pin'] = (int) $lobby['is_private'] === 1 ? $lobby['pin'] : null;
+            $view['chat'] = $this->chatMessages((int) $lobby['id']);
             // Alleen de eigen kijk op het spel: verborgen informatie van anderen lekt nooit.
             $view += $this->runner->viewFor($lobby, (int) $me['seat_no']) ?? [];
         }

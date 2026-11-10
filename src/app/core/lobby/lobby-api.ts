@@ -41,6 +41,15 @@ export class LobbyApi {
     );
   }
 
+  /** Stuurt een chatbericht naar iedereen in de lobby. */
+  sendChat(code: string, body: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/chat`,
+      { body },
+      this.sessions.get(code)?.token,
+    );
+  }
+
   /** Start de aftelling (3-2-1); daarna begint het spel vanzelf. Alleen maker of beheerder. */
   start(code: string): Promise<LobbyView> {
     return this.api.post<LobbyView>(`lobbies/${code}/start`, {}, this.sessions.get(code)?.token);
