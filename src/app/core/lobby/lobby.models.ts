@@ -7,6 +7,8 @@ export interface SeatView {
   readonly isCreator: boolean;
   readonly isPromoted: boolean;
   readonly botLevel: number | null;
+  /** Geen recente heartbeat: de speler is tijdelijk weg. */
+  readonly isAway: boolean;
 }
 
 /** Wat de speler zelf in deze lobby is en mag. */
@@ -46,4 +48,10 @@ export interface JoinResult {
   readonly token: string;
   readonly seatNo: number;
   readonly lobby: LobbyView;
+}
+
+/** Antwoord op een poll als er niets veranderd is sinds de meegestuurde versie. */
+export interface Unchanged {
+  readonly changed: false;
+  readonly version: number;
 }

@@ -183,6 +183,114 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertApiError(409, fn () => $this->lobbies->leave($code, $created['token']));
     }
 
+    private function ageSeat(string $name, int $seconds): void
+    {
+        $this->pdo->prepare('UPDATE seats SET last_seen_at = NOW(3) - INTERVAL ' . $seconds . ' SECOND WHERE name = ?')->execute([$name]);
+    }
+
+    public function testPollAnswersTinyWhenNothingChanged(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $version = $this->lobbies->poll($code, $created['token'], null)['version'];
+
+        $this->assertSame(['changed' => false, 'version' => $version], $this->lobbies->poll($code, $created['token'], $version));
+        $this->assertSame(['changed' => false, 'version' => $version], $this->lobbies->poll($code, null, $version));
+    }
+
+    public function testPollReturnsTheFullViewAfterAChangeOrWithAnOldVersion(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $old = $created['lobby']['version'];
+
+        $this->lobbies->join($code, 'Anna', null);
+        $view = $this->lobbies->poll($code, $created['token'], $old);
+
+        $this->assertArrayHasKey('seats', $view);
+        $this->assertCount(2, $view['seats']);
+        $this->assertGreaterThan($old, $view['version']);
+        $this->assertArrayHasKey('seats', $this->lobbies->poll($code, $created['token'], 999999));
+    }
+
+    public function testPlayerWithoutHeartbeatBecomesAwayOnce(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->lobbies->join($code, 'Anna', null);
+        $version = $this->lobbies->poll($code, $created['token'], null)['version'];
+
+        $this->ageSeat('Anna', 30);
+        $view = $this->lobbies->poll($code, $created['token'], $version);
+
+        $this->assertGreaterThan($version, $view['version']);
+        $this->assertFalse($view['seats'][0]['isAway']);
+        $this->assertTrue($view['seats'][1]['isAway']);
+        // Nogmaals pollen verandert niets meer: er wordt niet steeds opnieuw "weg" gemeld.
+        $this->assertSame(
+            ['changed' => false, 'version' => $view['version']],
+            $this->lobbies->poll($code, $created['token'], $view['version']),
+        );
+    }
+
+    public function testShortSilenceDoesNotCountAsAway(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->lobbies->join($code, 'Anna', null);
+
+        $this->ageSeat('Anna', 10);
+
+        $this->assertFalse($this->lobbies->poll($code, $created['token'], null)['seats'][1]['isAway']);
+    }
+
+    public function testReturningPlayerIsNoLongerAwayAndOthersSeeIt(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $this->ageSeat('Anna', 30);
+        $away = $this->lobbies->poll($code, $created['token'], null);
+        $this->assertTrue($away['seats'][1]['isAway']);
+
+        $back = $this->lobbies->poll($code, $anna['token'], null);
+
+        $this->assertFalse($back['seats'][1]['isAway']);
+        $this->assertGreaterThan($away['version'], $back['version']);
+        $seenByPercy = $this->lobbies->poll($code, $created['token'], $away['version']);
+        $this->assertFalse($seenByPercy['seats'][1]['isAway']);
+    }
+
+    public function testHeartbeatWritesAreThrottled(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $before = $this->pdo->query('SELECT last_seen_at FROM seats')->fetchColumn();
+
+        usleep(20_000);
+        $this->lobbies->poll($code, $created['token'], null);
+
+        $this->assertSame($before, $this->pdo->query('SELECT last_seen_at FROM seats')->fetchColumn());
+    }
+
+    public function testPollWithoutTokenIsNotAHeartbeat(): void
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->ageSeat('Percy', 30);
+
+        $this->lobbies->poll($code, null, null);
+        $this->lobbies->poll($code, 'verkeerd', null);
+
+        $seat = $this->pdo->query('SELECT last_seen_at < NOW(3) - INTERVAL 20 SECOND AS old FROM seats')->fetchColumn();
+        $this->assertSame(1, (int) $seat);
+    }
+
+    public function testPollOfUnknownLobbyIs404(): void
+    {
+        $this->assertApiError(404, fn () => $this->lobbies->poll('ZZZZ', null, null));
+    }
+
     public function testEveryChangeBumpsTheVersion(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);

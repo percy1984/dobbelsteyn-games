@@ -61,6 +61,11 @@ h2 {
   font-size: 0.8125rem;
   font-weight: 700;
 
+  &--away {
+    background: var(--dg-disabled);
+    color: var(--dg-on-disabled);
+  }
+
   &--creator {
     background: transparent;
     color: var(--dg-text);

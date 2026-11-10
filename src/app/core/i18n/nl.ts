@@ -75,6 +75,8 @@ export const NL = {
   'lobby.you': 'jij',
   'lobby.creator': 'maker',
   'lobby.leave': 'Lobby verlaten',
+  'lobby.offline': 'Geen verbinding met de server. We blijven het proberen...',
+  'lobby.away': 'weg',
   'lobby.back': 'Naar de game',
 } as const;
 

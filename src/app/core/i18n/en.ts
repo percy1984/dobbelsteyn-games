@@ -77,5 +77,7 @@ export const EN = {
   'lobby.you': 'you',
   'lobby.creator': 'host',
   'lobby.leave': 'Leave lobby',
+  'lobby.offline': 'No connection to the server. We keep trying...',
+  'lobby.away': 'away',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;
