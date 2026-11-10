@@ -52,6 +52,11 @@ export class I18n {
     return this.t('error.error');
   }
 
+  /** Vertaalt een sleutel die pas tijdens het draaien bekend is (bijvoorbeeld instellingen van een game). */
+  text(key: string): string {
+    return (DICTIONARIES[this.lang()] as Record<string, string>)[key] ?? key;
+  }
+
   /** Vertaalde naam van een game. */
   gameName(slug: string): string {
     const key = `game.${slug}.name` as TranslationKey;

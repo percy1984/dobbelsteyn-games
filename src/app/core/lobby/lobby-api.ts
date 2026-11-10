@@ -41,6 +41,24 @@ export class LobbyApi {
     );
   }
 
+  /** Wijzigt de spelinstellingen (maker of gepromoveerde speler). */
+  updateSettings(code: string, settings: Readonly<Record<string, string>>): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/settings`,
+      { settings },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** Maakt een speler beheerder of haalt dat weer weg (alleen de maker). */
+  setPromoted(code: string, seatNo: number, promoted: boolean): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/promote`,
+      { seatNo, promoted },
+      this.sessions.get(code)?.token,
+    );
+  }
+
   /** Alle lopende lobbies van een game (openbaar en privé). */
   async list(game: string): Promise<readonly LobbyListEntry[]> {
     const result = await this.api.get<{ lobbies: LobbyListEntry[] }>('lobbies', null, { game });

@@ -149,6 +149,18 @@ fieldset.field {
     cursor: not-allowed;
   }
 
+  &--small {
+    min-height: 2.5rem;
+    padding: 0 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  &--small {
+    min-height: 2.5rem;
+    padding: 0 0.875rem;
+    font-size: 0.875rem;
+  }
+
   &--secondary {
     background: transparent;
     color: var(--dg-text);

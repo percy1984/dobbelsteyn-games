@@ -36,7 +36,11 @@ type PageState = 'loading' | 'join' | 'room' | 'error';
           />
         }
         @case ('room') {
-          <dg-lobby-room [lobby]="poller.lobby()!" (leave)="leave()" />
+          <dg-lobby-room
+            [lobby]="poller.lobby()!"
+            (leave)="leave()"
+            (lobbyChange)="poller.apply($event)"
+          />
         }
         @case ('error') {
           <section class="card">

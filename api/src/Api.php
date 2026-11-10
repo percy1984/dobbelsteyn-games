@@ -34,6 +34,8 @@ final class Api
         $router->add('GET', '/lobbies/{code}', $api->showLobby(...));
         $router->add('POST', '/lobbies/{code}/join', $api->joinLobby(...));
         $router->add('POST', '/lobbies/{code}/leave', $api->leaveLobby(...));
+        $router->add('POST', '/lobbies/{code}/settings', $api->updateSettings(...));
+        $router->add('POST', '/lobbies/{code}/promote', $api->promote(...));
     }
 
     // --- Systeem ---------------------------------------------------------------------------
@@ -105,6 +107,28 @@ final class Api
         $this->lobbies()->leave($params['code'], $request->seatToken());
 
         return Response::json(['status' => 'ok']);
+    }
+
+    /** @param array<string, string> $params */
+    private function updateSettings(array $params, Request $request): Response
+    {
+        $settings = $request->body['settings'] ?? null;
+        if (!is_array($settings)) {
+            throw new ApiException(422, 'Ongeldige instelling.', 'bad_settings');
+        }
+
+        return Response::json($this->lobbies()->updateSettings($params['code'], $request->seatToken(), $settings));
+    }
+
+    /** @param array<string, string> $params */
+    private function promote(array $params, Request $request): Response
+    {
+        $seatNo = $request->body['seatNo'] ?? null;
+        if (!is_int($seatNo)) {
+            throw new ApiException(422, 'Deze plaats bestaat niet.', 'seat_not_found');
+        }
+
+        return Response::json($this->lobbies()->setPromoted($params['code'], $request->seatToken(), $seatNo, ($request->body['promoted'] ?? true) === true));
     }
 
     // --- Hulpmiddelen ----------------------------------------------------------------------
