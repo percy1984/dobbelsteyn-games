@@ -5,13 +5,14 @@ import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
 import { ChatPanel } from '../chat/chat-panel';
 import { Countdown } from './countdown';
 import { LobbySettings } from './lobby-settings';
+import { QrShare } from './qr-share';
 
 /** Botniveaus: 1 (zwak) tot en met 10 (sterk). */
 const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [ChatPanel, Countdown, LobbySettings],
+  imports: [ChatPanel, Countdown, LobbySettings, QrShare],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -23,6 +24,9 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         <strong class="room__value">{{ lobby().code }}</strong>
         @if (lobby().isPrivate) {
           <span class="room__pin">{{ i18n.t('lobby.pin', { pin: lobby().pin ?? '' }) }}</span>
+        }
+        @if (waiting()) {
+          <dg-qr-share [lobby]="lobby()" />
         }
       </p>
 
