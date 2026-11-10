@@ -1,0 +1,28 @@
+# Beveiliging en routing voor de PHP-API (LiteSpeed op Hostinger leest dit net als Apache).
+
+# Geen mappenlijsten, geen automatische bestandsnaam-gokken.
+Options -Indexes -MultiViews
+
+# Gevoelige en niet-publieke bestanden zijn nooit rechtstreeks bereikbaar.
+<FilesMatch "^(config(\..+)?\.php|composer\.(json|lock)|phpunit\.xml(\.dist)?|\.htaccess|\.gitignore|.*\.(sql|md|ini|log|sh|bak|dist))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
+
+# Alles wat geen bestaand bestand is, gaat naar de front controller.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>

@@ -1,0 +1,25 @@
+{
+  "name": "dobbelsteyn/games-api",
+  "description": "PHP-API van het Dobbelsteyn Games-platform (geen runtime-afhankelijkheden).",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Dg\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dg\\Tests\\": "tests/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
