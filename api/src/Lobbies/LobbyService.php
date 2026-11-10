@@ -143,6 +143,40 @@ final class LobbyService
     }
 
     /**
+     * Alle lobby's van een game die nog lopen (afgelopen spellen niet), nieuwste eerst. Openbare en
+     * privélobby's staan er allebei in; privé is herkenbaar aan `isPrivate` en vraagt een PIN.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listForGame(string $game): array
+    {
+        if (!$this->games->has($game)) {
+            throw new ApiException(404, 'Onbekende game.', 'unknown_game');
+        }
+
+        $stmt = $this->pdo->prepare(
+            "SELECT l.code, l.status, l.is_private, l.max_players,
+                    (SELECT COUNT(*) FROM seats s WHERE s.lobby_id = l.id) AS players,
+                    (SELECT s.name FROM seats s WHERE s.lobby_id = l.id AND s.is_creator = 1 LIMIT 1) AS host
+             FROM lobbies l
+             WHERE l.game = ? AND l.status IN ('waiting', 'countdown', 'playing')
+             ORDER BY l.created_at DESC, l.id DESC
+             LIMIT 50"
+        );
+        $stmt->execute([$game]);
+
+        return array_map(static fn (array $row): array => [
+            'code' => $row['code'],
+            'status' => $row['status'],
+            'isPrivate' => (int) $row['is_private'] === 1,
+            'host' => $row['host'],
+            'playerCount' => (int) $row['players'],
+            'maxPlayers' => (int) $row['max_players'],
+            'joinable' => $row['status'] === 'waiting' && (int) $row['players'] < (int) $row['max_players'],
+        ], $stmt->fetchAll());
+    }
+
+    /**
      * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
      * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
      *

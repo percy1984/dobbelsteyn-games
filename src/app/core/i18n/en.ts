@@ -79,5 +79,13 @@ export const EN = {
   'lobby.leave': 'Leave lobby',
   'lobby.offline': 'No connection to the server. We keep trying...',
   'lobby.away': 'away',
+  'list.title': 'Lobbies right now',
+  'list.empty': 'There are no lobbies right now. Create one yourself!',
+  'list.players': '{count}/{max} players',
+  'list.host': 'by {name}',
+  'list.private': 'Private: you need the PIN',
+  'list.playing': 'In progress',
+  'list.full': 'Full',
+  'list.offline': 'The list cannot be refreshed. We keep trying...',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;

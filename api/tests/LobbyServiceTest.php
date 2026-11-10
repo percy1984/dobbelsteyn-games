@@ -291,6 +291,61 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertApiError(404, fn () => $this->lobbies->poll('ZZZZ', null, null));
     }
 
+    public function testListShowsRunningLobbiesWithCountsLockAndHost(): void
+    {
+        $open = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $full = $this->lobbies->create('tic-tac-toe', 'Anna', true, 'K7P2');
+        $this->lobbies->join($full['lobby']['code'], 'Piet', 'K7P2');
+
+        $list = $this->lobbies->listForGame('tic-tac-toe');
+
+        $this->assertCount(2, $list);
+        $byCode = array_column($list, null, 'code');
+        $this->assertSame(
+            ['code' => $open['lobby']['code'], 'status' => 'waiting', 'isPrivate' => false, 'host' => 'Percy', 'playerCount' => 1, 'maxPlayers' => 2, 'joinable' => true],
+            $byCode[$open['lobby']['code']],
+        );
+        $this->assertTrue($byCode[$full['lobby']['code']]['isPrivate']);
+        $this->assertSame(2, $byCode[$full['lobby']['code']]['playerCount']);
+        $this->assertFalse($byCode[$full['lobby']['code']]['joinable'], 'Een volle lobby is niet joinbaar.');
+        $this->assertArrayNotHasKey('pin', $byCode[$full['lobby']['code']], 'De PIN lekt niet via de lijst.');
+    }
+
+    public function testListHidesFinishedLobbiesAndMarksRunningOnesNotJoinable(): void
+    {
+        $a = $this->lobbies->create('tic-tac-toe', 'A', false, null);
+        $b = $this->lobbies->create('tic-tac-toe', 'B', false, null);
+        $c = $this->lobbies->create('tic-tac-toe', 'C', false, null);
+        $this->pdo->prepare("UPDATE lobbies SET status = 'playing' WHERE code = ?")->execute([$a['lobby']['code']]);
+        $this->pdo->prepare("UPDATE lobbies SET status = 'finished' WHERE code = ?")->execute([$b['lobby']['code']]);
+
+        $byCode = array_column($this->lobbies->listForGame('tic-tac-toe'), null, 'code');
+
+        $this->assertCount(2, $byCode);
+        $this->assertArrayNotHasKey($b['lobby']['code'], $byCode);
+        $this->assertFalse($byCode[$a['lobby']['code']]['joinable']);
+        $this->assertTrue($byCode[$c['lobby']['code']]['joinable']);
+    }
+
+    public function testListIsNewestFirstAndEmptyWhenThereAreNoLobbies(): void
+    {
+        $this->assertSame([], $this->lobbies->listForGame('tic-tac-toe'));
+
+        $first = $this->lobbies->create('tic-tac-toe', 'Eerste', false, null);
+        $second = $this->lobbies->create('tic-tac-toe', 'Tweede', false, null);
+
+        $this->assertSame(
+            [$second['lobby']['code'], $first['lobby']['code']],
+            array_column($this->lobbies->listForGame('tic-tac-toe'), 'code'),
+        );
+    }
+
+    public function testListRejectsAnUnknownGame(): void
+    {
+        $this->assertApiError(404, fn () => $this->lobbies->listForGame('mancala'));
+        $this->assertApiError(404, fn () => $this->lobbies->listForGame(''));
+    }
+
     public function testEveryChangeBumpsTheVersion(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);

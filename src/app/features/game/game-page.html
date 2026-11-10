@@ -1,6 +1,8 @@
 <main class="page">
   <h1>{{ i18n.gameName(slug()) }}</h1>
 
+  <dg-lobby-list class="list" [game]="slug()" />
+
   <div class="columns">
     <section class="card" aria-labelledby="create-title">
       <h2 id="create-title">{{ i18n.t('create.title') }}</h2>

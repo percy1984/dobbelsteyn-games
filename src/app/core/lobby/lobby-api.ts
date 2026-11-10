@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { ApiClient } from '../api/api-client';
-import { JoinResult, LobbyView, Unchanged } from './lobby.models';
+import { JoinResult, LobbyListEntry, LobbyView, Unchanged } from './lobby.models';
 import { SeatSessions } from './seat-sessions';
 
 /** Alle aanroepen rond lobby's. Bewaart het plaats-token zodra je in een lobby komt. */
@@ -39,6 +39,12 @@ export class LobbyApi {
       this.sessions.get(code)?.token,
       since === undefined ? undefined : { since: String(since) },
     );
+  }
+
+  /** Alle lopende lobbies van een game (openbaar en privé). */
+  async list(game: string): Promise<readonly LobbyListEntry[]> {
+    const result = await this.api.get<{ lobbies: LobbyListEntry[] }>('lobbies', null, { game });
+    return result.lobbies;
   }
 
   private remember(result: JoinResult): LobbyView {
