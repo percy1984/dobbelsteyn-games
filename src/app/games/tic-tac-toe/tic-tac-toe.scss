@@ -1,0 +1,120 @@
+.ttt {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+}
+
+.ttt__players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ttt__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+
+  &--me {
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+}
+
+.ttt__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--dg-accent);
+  color: var(--dg-on-accent);
+  font-weight: 800;
+
+  &[data-mark='O'] {
+    background: var(--dg-text);
+    color: var(--dg-bg);
+  }
+}
+
+// Bord: vierkant, past altijd op een telefoon (kleiner dan de viewport, nooit scrollen).
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0.5rem;
+  width: min(100%, 22rem, 70dvh);
+  aspect-ratio: 1;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid var(--dg-border);
+  border-radius: 0.75rem;
+  background: var(--dg-surface);
+  color: var(--dg-text);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 100ms ease;
+
+  &:enabled:hover {
+    border-color: var(--dg-accent);
+    background: color-mix(in srgb, var(--dg-accent) 12%, var(--dg-surface));
+  }
+
+  &:enabled:active {
+    transform: scale(0.96);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  // Een volle cel is niet "uitgeschakeld" in kleur: de tekens blijven goed leesbaar.
+  &[data-mark='X'] {
+    color: var(--dg-accent);
+  }
+
+  &--win {
+    border-color: var(--dg-accent);
+    background: color-mix(in srgb, var(--dg-accent) 22%, var(--dg-surface));
+  }
+}
+
+.cell__mark {
+  font-size: clamp(2rem, 12vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  animation: place 220ms ease-out;
+}
+
+@keyframes place {
+  from {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell,
+  .cell__mark {
+    transition: none;
+    animation: none;
+  }
+}

@@ -37,7 +37,7 @@ import { LobbyView } from '../../core/lobby/lobby.models';
             </div>
           } @else {
             <p class="readonly">
-              <span>{{ label }}:</span>
+              <span class="readonly__label">{{ label }}</span>
               <strong>{{
                 i18n.text('game.' + lobby().game + '.setting.' + field.key + '.' + current)
               }}</strong>

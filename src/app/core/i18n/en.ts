@@ -157,5 +157,10 @@ export const EN = {
   'error.rate_limited': 'Too many requests. Please try again in a little while.',
   'error.server_busy': 'The server is busy. Please try again in a few minutes.',
   'error.too_large': 'The request is too large.',
+  'game.tic-tac-toe.board': 'Tic-Tac-Toe board',
+  'game.tic-tac-toe.cell': 'Row {row}, column {col}: {state}',
+  'game.tic-tac-toe.cell.empty': 'empty',
+  'game.tic-tac-toe.cell.x': 'cross (X)',
+  'game.tic-tac-toe.cell.o': 'circle (O)',
   'lobby.back': 'Back to the game',
 } as const satisfies Record<TranslationKey, string>;
