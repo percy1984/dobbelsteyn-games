@@ -1,0 +1,12 @@
+@if (game().playable) {
+  <a class="tile tile--playable" [routerLink]="['games', game().slug]">
+    <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
+    <span class="tile__name">{{ game().name }}</span>
+  </a>
+} @else {
+  <div class="tile tile--soon" aria-disabled="true">
+    <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
+    <span class="tile__name">{{ game().name }}</span>
+    <span class="tile__status">Binnenkort</span>
+  </div>
+}
