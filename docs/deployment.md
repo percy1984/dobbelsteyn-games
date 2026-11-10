@@ -49,6 +49,16 @@ Migraties zijn genummerde SQL-bestanden in `api/migrations/`. `POST /api/migrate
 - **Handmatig aanroepen:** `curl -X POST -H "X-Migrate-Token: <token>" https://<site>/games/api/migrate`.
 - **Token roteren:** zet een nieuwe waarde in `config.php` op de server en in `.env.deploy`.
 
+## Rooktest na een deploy
+
+`scripts/e2e-smoke.cjs` laat twee spelers in twee echte browsers (mobiel formaat) een heel spel spelen: lobby maken, joinen via de link, starten met aftelling, spelen, chat, uitslag, rematch. Het faalt bij elke console- of paginafout.
+
+```bash
+npm install --no-save puppeteer-core
+node scripts/e2e-smoke.cjs https://www.dobbelsteyn.nl/games/
+SHOTS_DIR=screenshots node scripts/e2e-smoke.cjs http://localhost:4200/   # met screenshots, tegen npm start
+```
+
 ## Opruimen en misbruikbescherming
 
 - **Opruimen:** een wachtkamer of afgelopen spel waar al 30 minuten geen mens meer een heartbeat gaf, verdwijnt (inclusief plaatsen, chat en spelstaat). Een lopend spel wacht langer (24 uur) op spelers die weg zijn. Er is geen cron nodig: het draait hooguit eens per minuut mee met een gewoon verzoek (lobby aanmaken, lijst ophalen) en ruimt ook oude tellers op.

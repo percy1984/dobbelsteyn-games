@@ -155,6 +155,11 @@ export const NL = {
   'error.rate_limited': 'Te veel verzoeken. Probeer het over een poosje opnieuw.',
   'error.server_busy': 'De server is druk. Probeer het over een paar minuten opnieuw.',
   'error.too_large': 'Het verzoek is te groot.',
+  'game.tic-tac-toe.board': 'Tic-Tac-Toe-bord',
+  'game.tic-tac-toe.cell': 'Rij {row}, kolom {col}: {state}',
+  'game.tic-tac-toe.cell.empty': 'leeg',
+  'game.tic-tac-toe.cell.x': 'kruisje (X)',
+  'game.tic-tac-toe.cell.o': 'rondje (O)',
   'lobby.back': 'Naar de game',
 } as const;
 

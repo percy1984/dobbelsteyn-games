@@ -13,7 +13,7 @@ export interface GameInfo {
 export const GAMES: readonly GameInfo[] = [
   { slug: 'mancala', playable: false },
   { slug: 'nim', playable: false },
-  { slug: 'tic-tac-toe', playable: false },
+  { slug: 'tic-tac-toe', playable: true },
   { slug: 'super-tic-tac-toe', playable: false },
   { slug: 'take-5', playable: false },
   { slug: '31-en', playable: false },

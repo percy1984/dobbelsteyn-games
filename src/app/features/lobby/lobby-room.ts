@@ -119,9 +119,6 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
       <dg-lobby-settings [lobby]="lobby()" (changed)="lobbyChange.emit($event)" />
 
-      <h2>{{ i18n.t('chat.title') }}</h2>
-      <dg-chat-panel [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
-
       @if (waiting() && lobby().me?.canManage) {
         <div class="start">
           <button class="button" type="button" [disabled]="!enoughPlayers()" (click)="start()">
@@ -138,6 +135,9 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       @if (lobby().status === 'countdown' && countdownEndsAt() !== null) {
         <dg-countdown [endsAt]="countdownEndsAt()!" />
       }
+
+      <h2>{{ i18n.t('chat.title') }}</h2>
+      <dg-chat-panel [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
 
       @if (waiting()) {
         <button class="button button--secondary leave" type="button" (click)="leave.emit()">

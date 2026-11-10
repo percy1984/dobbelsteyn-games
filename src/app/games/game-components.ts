@@ -24,4 +24,6 @@ export interface GameComponentInputs {
  * De frontend-component per game, lazy geladen uit `games/<slug>/`. Een game komt hier pas in
  * zodra hij gebouwd is (zie docs/game-contract.md).
  */
-export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {};
+export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
+  'tic-tac-toe': () => import('./tic-tac-toe/tic-tac-toe').then((m) => m.TicTacToe),
+};
