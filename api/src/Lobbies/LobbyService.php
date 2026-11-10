@@ -269,11 +269,47 @@ final class LobbyService
         if ($me === null) {
             throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
         }
-        if ((int) $me['is_creator'] !== 1 && (int) $me['is_promoted'] !== 1) {
+
+        // Wie een verzoek doet, is er per definitie: zijn `weg`-vlag mag niet in de weg zitten.
+        if ((int) $me['is_away'] === 1) {
+            $this->pdo->prepare('UPDATE seats SET is_away = 0, last_seen_at = NOW(3) WHERE id = ?')->execute([$me['id']]);
+            $me['is_away'] = 0;
+        }
+
+        if (!in_array((int) $me['id'], $this->managerSeatIds($this->seats((int) $lobby['id'])), true)) {
             throw new ApiException(403, 'Alleen de maker of een gepromoveerde speler mag dit.', 'not_allowed');
         }
 
         return $me;
+    }
+
+    /**
+     * Plaatsen (id's) die de lobby nu mogen beheren. Normaal zijn dat de maker en gepromoveerde
+     * spelers. Is niemand van hen aanwezig (alle beheerders zijn weg), dan krijgt de eerste aanwezige
+     * speler in de rij het beheer, zodat een weggevallen spel altijd door iemand beslist kan worden.
+     *
+     * @param list<array<string, mixed>> $seats
+     * @return list<int>
+     */
+    private function managerSeatIds(array $seats): array
+    {
+        $present = static fn (array $seat): bool => $seat['kind'] === 'human' && (int) $seat['is_away'] === 0;
+
+        $managers = array_values(array_filter(
+            $seats,
+            static fn (array $seat): bool => $present($seat) && ((int) $seat['is_creator'] === 1 || (int) $seat['is_promoted'] === 1),
+        ));
+        if ($managers !== []) {
+            return array_map(static fn (array $seat): int => (int) $seat['id'], $managers);
+        }
+
+        foreach ($seats as $seat) {
+            if ($present($seat)) {
+                return [(int) $seat['id']];
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -491,6 +527,87 @@ final class LobbyService
     }
 
     /**
+     * Vervangt een speler die weg is door een bot. De bot neemt de plaats en de hand over; het
+     * niveau kiest degene die vervangt. Alleen een beheerder (zie `managerSeatIds`) en alleen voor een
+     * speler die nu echt weg is: de eerste actie wint, een tweede beheerder krijgt een nette melding.
+     *
+     * @return array<string, mixed>
+     */
+    public function replaceWithBot(string $code, ?string $token, int $seatNo, mixed $level): array
+    {
+        $code = Input::code($code);
+        $level = $this->botLevel($level);
+
+        $this->transaction(function () use ($code, $token, $seatNo, $level): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+            if (!in_array($lobby['status'], ['waiting', 'countdown', 'playing'], true)) {
+                throw new ApiException(409, 'Er is geen spel meer om iemand in te vervangen.', 'cannot_change');
+            }
+
+            $seats = $this->seats((int) $lobby['id']);
+            $target = null;
+            foreach ($seats as $seat) {
+                if ((int) $seat['seat_no'] === $seatNo) {
+                    $target = $seat;
+                }
+            }
+            if ($target === null) {
+                throw new ApiException(404, 'Deze plaats bestaat niet.', 'seat_not_found');
+            }
+            if ($target['kind'] !== 'human' || (int) $target['is_away'] !== 1) {
+                throw new ApiException(409, 'Deze speler is niet (meer) weg.', 'not_away');
+            }
+
+            // Token weg: de oude telefoon heeft geen toegang meer. De naam blijft herkenbaar.
+            $this->pdo->prepare(
+                "UPDATE seats SET kind = 'bot', bot_level = ?, name = ?, token_hash = NULL,
+                        is_creator = 0, is_promoted = 0, is_away = 0, last_seen_at = NULL
+                 WHERE id = ?"
+            )->execute([$level, mb_substr($target['name'], 0, 20) . ' (bot)', $target['id']]);
+
+            if ((int) $target['is_creator'] === 1) {
+                // De maker-rol gaat naar de eerste mens in de rij; die is er zeker (de beheerder zelf).
+                foreach ($this->seats((int) $lobby['id']) as $seat) {
+                    if ($seat['kind'] === 'human') {
+                        $this->pdo->prepare('UPDATE seats SET is_creator = 1 WHERE id = ?')->execute([$seat['id']]);
+                        break;
+                    }
+                }
+            }
+
+            $this->runner->resume($lobby, $this->seats((int) $lobby['id']));
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * Beëindigt een lopend spel (of een aftelling), bijvoorbeeld als een speler niet meer terugkomt.
+     * Alleen een beheerder. Daarna kan de maker met een rematch opnieuw beginnen.
+     *
+     * @return array<string, mixed>
+     */
+    public function endGame(string $code, ?string $token): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+            if (!in_array($lobby['status'], ['countdown', 'playing'], true)) {
+                throw new ApiException(409, 'Er is geen spel bezig.', 'not_playing');
+            }
+
+            $this->pdo->prepare("UPDATE lobbies SET status = 'ended', countdown_ends_at = NULL WHERE id = ?")->execute([$lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
      * Stuurt een chatbericht. Alleen spelers in de lobby; het bericht blijft bewaard zolang de lobby
      * bestaat en is voor iedereen in de lobby zichtbaar. Lengte en tekens worden beperkt.
      *
@@ -611,7 +728,7 @@ final class LobbyService
                 'seatNo' => (int) $me['seat_no'],
                 'isCreator' => $isCreator,
                 'isPromoted' => $isPromoted,
-                'canManage' => $isCreator || $isPromoted,
+                'canManage' => in_array((int) $me['id'], $this->managerSeatIds($seats), true),
             ];
             $view['settings'] = json_decode((string) $lobby['settings'], true, 512, JSON_THROW_ON_ERROR);
             $view['settingsSchema'] = $definition->settingsSchema();

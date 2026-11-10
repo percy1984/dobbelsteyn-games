@@ -87,7 +87,7 @@ export class LobbyPage {
       if (!lobby.me) {
         return 'join';
       }
-      return lobby.status === 'playing' || lobby.status === 'finished' ? 'game' : 'room';
+      return ['playing', 'finished', 'ended'].includes(lobby.status) ? 'game' : 'room';
     }
     return this.poller.status() === 'error' ? 'error' : 'loading';
   });

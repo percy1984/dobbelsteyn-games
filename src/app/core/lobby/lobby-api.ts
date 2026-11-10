@@ -41,6 +41,20 @@ export class LobbyApi {
     );
   }
 
+  /** Vervangt een weggevallen speler door een bot van het gekozen niveau (maker of beheerder). */
+  replaceWithBot(code: string, seatNo: number, level: number): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/replace`,
+      { seatNo, level },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** Beëindigt het lopende spel voor iedereen (maker of beheerder). */
+  endGame(code: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(`lobbies/${code}/end`, {}, this.sessions.get(code)?.token);
+  }
+
   /** Stuurt een chatbericht naar iedereen in de lobby. */
   sendChat(code: string, body: string): Promise<LobbyView> {
     return this.api.post<LobbyView>(

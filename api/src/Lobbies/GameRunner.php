@@ -54,6 +54,25 @@ final class GameRunner
     }
 
     /**
+     * Laat bots doorspelen zonder zelf een zet te doen. Nodig als een weggevallen speler door een bot
+     * vervangen is die nu aan de beurt is.
+     *
+     * @param array<string, mixed> $lobby
+     * @param list<array<string, mixed>> $seats
+     */
+    public function resume(array $lobby, array $seats): void
+    {
+        if ($lobby['status'] !== 'playing') {
+            return;
+        }
+
+        $game = $this->games->get($lobby['game']);
+        [$state, $turnNo] = $this->loadState((int) $lobby['id']);
+
+        $this->continueAfterChange($lobby, $seats, $game, $state, $turnNo);
+    }
+
+    /**
      * Voert de zet van een speler uit (na validatie door de game) en laat daarna de bots spelen.
      *
      * @param array<string, mixed> $lobby

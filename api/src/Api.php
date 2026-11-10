@@ -37,6 +37,8 @@ final class Api
         $router->add('POST', '/lobbies/{code}/settings', $api->updateSettings(...));
         $router->add('POST', '/lobbies/{code}/promote', $api->promote(...));
         $router->add('POST', '/lobbies/{code}/chat', $api->chat(...));
+        $router->add('POST', '/lobbies/{code}/replace', $api->replace(...));
+        $router->add('POST', '/lobbies/{code}/end', $api->endGame(...));
         $router->add('POST', '/lobbies/{code}/start', $api->startGame(...));
         $router->add('POST', '/lobbies/{code}/move', $api->move(...));
         $router->add('POST', '/lobbies/{code}/rematch', $api->rematch(...));
@@ -192,6 +194,23 @@ final class Api
     private function chat(array $params, Request $request): Response
     {
         return Response::json($this->lobbies()->sendChat($params['code'], $request->seatToken(), $request->body['body'] ?? null));
+    }
+
+    /** @param array<string, string> $params */
+    private function replace(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->replaceWithBot(
+            $params['code'],
+            $request->seatToken(),
+            is_int($request->body['seatNo'] ?? null) ? $request->body['seatNo'] : -1,
+            $request->body['level'] ?? null,
+        ));
+    }
+
+    /** @param array<string, string> $params */
+    private function endGame(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->endGame($params['code'], $request->seatToken()));
     }
 
     // --- Hulpmiddelen ----------------------------------------------------------------------
