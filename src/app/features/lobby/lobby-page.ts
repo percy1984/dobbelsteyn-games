@@ -1,7 +1,8 @@
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
+import { LobbyPoller } from '../../core/lobby/lobby-poller';
 import { LobbyView } from '../../core/lobby/lobby.models';
 import { SeatSessions } from '../../core/lobby/seat-sessions';
 import { LobbyJoinForm } from './lobby-join-form';
@@ -12,25 +13,30 @@ type PageState = 'loading' | 'join' | 'room' | 'error';
 /**
  * Pagina `lobby/:code`. Heb je een bewaard plaats-token voor deze lobby, dan kom je terug op je
  * plaats; anders zie je het joinscherm (een gescande link kan de PIN meegeven in `#p=XXXX`).
+ * De pagina blijft de lobby volgen door te pollen.
  */
 @Component({
   imports: [LobbyJoinForm, LobbyRoom, RouterLink],
+  providers: [LobbyPoller],
   selector: 'dg-lobby-page',
   template: `
     <main class="page narrow">
+      @if (poller.offline() && state() !== 'error') {
+        <p class="alert" role="status">{{ i18n.t('lobby.offline') }}</p>
+      }
       @switch (state()) {
         @case ('loading') {
           <p role="status">{{ i18n.t('lobby.loading') }}</p>
         }
         @case ('join') {
           <dg-lobby-join-form
-            [lobby]="lobby()!"
+            [lobby]="poller.lobby()!"
             [pinFromLink]="pinFromLink"
             (joined)="onJoined($event)"
           />
         }
         @case ('room') {
-          <dg-lobby-room [lobby]="lobby()!" (leave)="leave()" />
+          <dg-lobby-room [lobby]="poller.lobby()!" (leave)="leave()" />
         }
         @case ('error') {
           <section class="card">
@@ -49,6 +55,7 @@ type PageState = 'loading' | 'join' | 'room' | 'error';
 })
 export class LobbyPage {
   protected readonly i18n = inject(I18n);
+  protected readonly poller = inject(LobbyPoller);
   private readonly lobbyApi = inject(LobbyApi);
   private readonly sessions = inject(SeatSessions);
   private readonly router = inject(Router);
@@ -56,28 +63,42 @@ export class LobbyPage {
   /** Komt uit de route (`lobby/:code`). */
   readonly code = input.required<string>();
 
-  protected readonly state = signal<PageState>('loading');
-  protected readonly lobby = signal<LobbyView | null>(null);
-  protected readonly errorText = signal('');
   /** PIN uit de URL-fragmentvorm `#p=ABCD`; het fragment komt nooit in serverlogs. */
   protected readonly pinFromLink = this.readPinFromFragment(
     inject(ActivatedRoute).snapshot.fragment,
   );
 
+  protected readonly state = computed<PageState>(() => {
+    const lobby = this.poller.lobby();
+    if (lobby) {
+      return lobby.me ? 'room' : 'join';
+    }
+    return this.poller.status() === 'error' ? 'error' : 'loading';
+  });
+
+  protected readonly errorText = computed(() => this.i18n.errorMessage(this.poller.error()));
+
   constructor() {
     effect(() => {
       const code = this.code();
-      untracked(() => void this.load(code));
+      untracked(() => this.poller.start(code));
+    });
+    // Een oud token dat niet meer klopt (plaats weg of lobby opnieuw gemaakt) ruimen we op.
+    effect(() => {
+      const lobby = this.poller.lobby();
+      if (lobby && !lobby.me) {
+        untracked(() => this.sessions.clear(lobby.code));
+      }
     });
   }
 
   protected onJoined(lobby: LobbyView): void {
-    this.lobby.set(lobby);
-    this.state.set('room');
+    this.poller.apply(lobby);
   }
 
   protected async leave(): Promise<void> {
-    const game = this.lobby()?.game ?? '';
+    const game = this.poller.lobby()?.game ?? '';
+    this.poller.stop();
     try {
       await this.lobbyApi.leave(this.code());
     } catch {
@@ -85,24 +106,6 @@ export class LobbyPage {
       this.sessions.clear(this.code());
     }
     await this.router.navigate(['/games', game]);
-  }
-
-  private async load(code: string): Promise<void> {
-    this.state.set('loading');
-    try {
-      const lobby = await this.lobbyApi.view(code);
-      this.lobby.set(lobby);
-      if (lobby.me) {
-        this.state.set('room');
-        return;
-      }
-      // Een oud token dat niet meer klopt (plaats weg of lobby opnieuw gemaakt) ruimen we op.
-      this.sessions.clear(code);
-      this.state.set('join');
-    } catch (error) {
-      this.errorText.set(this.i18n.errorMessage(error));
-      this.state.set('error');
-    }
   }
 
   private readPinFromFragment(fragment: string | null): string {

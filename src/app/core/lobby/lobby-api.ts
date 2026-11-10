@@ -1,6 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { ApiClient } from '../api/api-client';
-import { JoinResult, LobbyView } from './lobby.models';
+import { JoinResult, LobbyView, Unchanged } from './lobby.models';
 import { SeatSessions } from './seat-sessions';
 
 /** Alle aanroepen rond lobby's. Bewaart het plaats-token zodra je in een lobby komt. */
@@ -29,9 +29,16 @@ export class LobbyApi {
     this.sessions.clear(code);
   }
 
-  /** Het overzicht van een lobby; met een bewaard token krijg je het volledige overzicht. */
-  view(code: string): Promise<LobbyView> {
-    return this.api.get<LobbyView>(`lobbies/${code}`, this.sessions.get(code)?.token);
+  /**
+   * Haalt de lobby op (en telt als heartbeat). Met `since` volgt een piepklein antwoord als er niets
+   * veranderd is; met een bewaard token krijg je het volledige overzicht.
+   */
+  poll(code: string, since?: number): Promise<LobbyView | Unchanged> {
+    return this.api.get<LobbyView | Unchanged>(
+      `lobbies/${code}`,
+      this.sessions.get(code)?.token,
+      since === undefined ? undefined : { since: String(since) },
+    );
   }
 
   private remember(result: JoinResult): LobbyView {

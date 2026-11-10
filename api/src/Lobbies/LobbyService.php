@@ -14,12 +14,18 @@ use Throwable;
 /** Bedrijfslogica rond lobby's: aanmaken, joinen, verlaten en het overzicht per speler. */
 final class LobbyService
 {
+    /** Na zoveel seconden zonder heartbeat telt een speler als weg (instelbaar). */
+    public const AWAY_AFTER_SECONDS = 15;
+    /** Een heartbeat wordt hooguit zo vaak naar de database geschreven; polling blijft zo goedkoop. */
+    private const HEARTBEAT_WRITE_SECONDS = 5;
+
     private readonly CodeGenerator $codes;
 
     public function __construct(
         private readonly PDO $pdo,
         private readonly GameRegistry $games,
         ?Rng $rng = null,
+        private readonly int $awayAfterSeconds = self::AWAY_AFTER_SECONDS,
     ) {
         $this->codes = new CodeGenerator($rng ?? new Rng());
     }
@@ -137,6 +143,38 @@ final class LobbyService
     }
 
     /**
+     * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
+     * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
+     *
+     * @return array<string, mixed>
+     */
+    public function poll(string $code, ?string $token, ?int $since): array
+    {
+        $code = Input::code($code);
+        $lobby = $this->load($code);
+        $lobbyId = (int) $lobby['id'];
+        $me = $this->seatForToken($lobbyId, $token);
+
+        $changed = false;
+        if ($me !== null) {
+            $changed = $this->heartbeat($me);
+        }
+        if (in_array($lobby['status'], ['waiting', 'countdown', 'playing'], true)) {
+            $changed = $this->markAbsentPlayers($lobbyId) || $changed;
+        }
+        if ($changed) {
+            $this->touchVersionOnly($lobbyId);
+        }
+
+        $version = (int) $this->pdo->query('SELECT version FROM lobbies WHERE id = ' . $lobbyId)->fetchColumn();
+        if ($since !== null && $since === $version) {
+            return ['changed' => false, 'version' => $version];
+        }
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
      * Het overzicht van een lobby. Met een geldig plaats-token krijgt de speler het volledige
      * overzicht; zonder token alleen wat nodig is om te kunnen joinen.
      *
@@ -191,6 +229,7 @@ final class LobbyService
             'isCreator' => (int) $seat['is_creator'] === 1,
             'isPromoted' => (int) $seat['is_promoted'] === 1,
             'botLevel' => $seat['bot_level'] === null ? null : (int) $seat['bot_level'],
+            'isAway' => (int) $seat['is_away'] === 1,
         ];
     }
 
@@ -266,6 +305,43 @@ final class LobbyService
         }
 
         throw new ApiException(503, 'Er is nu geen vrije lobbycode. Probeer het zo opnieuw.', 'no_code');
+    }
+
+    /**
+     * Verwerkt de heartbeat van een speler. Geeft true als de speler terug is van "weg" (dat is een
+     * zichtbare wijziging voor de anderen).
+     *
+     * @param array<string, mixed> $seat
+     */
+    private function heartbeat(array $seat): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE seats SET last_seen_at = NOW(3), is_away = 0
+             WHERE id = ? AND (is_away = 1 OR last_seen_at IS NULL
+                OR last_seen_at < NOW(3) - INTERVAL ' . self::HEARTBEAT_WRITE_SECONDS . ' SECOND)'
+        );
+        $stmt->execute([$seat['id']]);
+
+        return (int) $seat['is_away'] === 1 && $stmt->rowCount() > 0;
+    }
+
+    /** Zet mensen zonder recente heartbeat op "weg". Geeft true als er iemand bijkwam. */
+    private function markAbsentPlayers(int $lobbyId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            "UPDATE seats SET is_away = 1
+             WHERE lobby_id = ? AND kind = 'human' AND is_away = 0
+               AND last_seen_at < NOW(3) - INTERVAL {$this->awayAfterSeconds} SECOND"
+        );
+        $stmt->execute([$lobbyId]);
+
+        return $stmt->rowCount() > 0;
+    }
+
+    /** Hoogt de versie op zonder het te tellen als spelersactiviteit (dat is een poll niet). */
+    private function touchVersionOnly(int $lobbyId): void
+    {
+        $this->pdo->prepare('UPDATE lobbies SET version = version + 1 WHERE id = ?')->execute([$lobbyId]);
     }
 
     /** Verhoogt de versie (polling ziet de wijziging) en markeert activiteit. */

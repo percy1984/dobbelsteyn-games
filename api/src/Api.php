@@ -81,7 +81,9 @@ final class Api
     /** @param array<string, string> $params */
     private function showLobby(array $params, Request $request): Response
     {
-        return Response::json($this->lobbies()->viewFor($params['code'], $request->seatToken()));
+        $since = isset($request->query['since']) && ctype_digit($request->query['since']) ? (int) $request->query['since'] : null;
+
+        return Response::json($this->lobbies()->poll($params['code'], $request->seatToken(), $since));
     }
 
     /** @param array<string, string> $params */

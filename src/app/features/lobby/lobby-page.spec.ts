@@ -7,7 +7,15 @@ import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
 import { LobbyPage } from './lobby-page';
 
 function seat(seatNo: number, name: string, isCreator = false): SeatView {
-  return { seatNo, kind: 'human', name, isCreator, isPromoted: false, botLevel: null };
+  return {
+    seatNo,
+    kind: 'human',
+    name,
+    isCreator,
+    isPromoted: false,
+    botLevel: null,
+    isAway: false,
+  };
 }
 
 function lobby(overrides: Partial<LobbyView> = {}): LobbyView {
@@ -32,13 +40,13 @@ const member = lobby({
 });
 
 interface FakeApi {
-  view: ReturnType<typeof vi.fn>;
+  poll: ReturnType<typeof vi.fn>;
   join: ReturnType<typeof vi.fn>;
   leave: ReturnType<typeof vi.fn>;
 }
 
-function fakeApi(view: ReturnType<typeof vi.fn>): FakeApi {
-  return { view, join: vi.fn(), leave: vi.fn().mockResolvedValue(undefined) };
+function fakeApi(poll: ReturnType<typeof vi.fn>): FakeApi {
+  return { poll, join: vi.fn(), leave: vi.fn().mockResolvedValue(undefined) };
 }
 
 async function render(

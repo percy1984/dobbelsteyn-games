@@ -28,6 +28,9 @@ import { LobbyView } from '../../core/lobby/lobby.models';
             @if (seat.seatNo === lobby().me?.seatNo) {
               <span class="badge">{{ i18n.t('lobby.you') }}</span>
             }
+            @if (seat.isAway) {
+              <span class="badge badge--away">{{ i18n.t('lobby.away') }}</span>
+            }
             @if (seat.isCreator) {
               <span class="badge badge--creator">{{ i18n.t('lobby.creator') }}</span>
             }
