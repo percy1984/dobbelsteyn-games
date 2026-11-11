@@ -5,6 +5,7 @@ import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyPoller } from '../../core/lobby/lobby-poller';
 import { LobbyView } from '../../core/lobby/lobby.models';
 import { SeatSessions } from '../../core/lobby/seat-sessions';
+import { WIDE_GAMES } from '../../games/game-components';
 import { GameStage } from './game-stage';
 import { LobbyJoinForm } from './lobby-join-form';
 import { LobbyRoom } from './lobby-room';
@@ -21,7 +22,7 @@ type PageState = 'loading' | 'join' | 'room' | 'game' | 'error';
   providers: [LobbyPoller],
   selector: 'dg-lobby-page',
   template: `
-    <main class="page narrow">
+    <main class="page" [class.narrow]="!wide()">
       @if (poller.offline() && state() !== 'error') {
         <p class="alert" role="status">{{ i18n.t('lobby.offline') }}</p>
       }
@@ -69,6 +70,11 @@ type PageState = 'loading' | 'join' | 'room' | 'game' | 'error';
 export class LobbyPage {
   protected readonly i18n = inject(I18n);
   protected readonly poller = inject(LobbyPoller);
+  /** Tijdens het spel krijgt een game die dat vraagt (zie `WIDE_GAMES`) de volle breedte, bijvoorbeeld voor een ronde tafel. */
+  protected readonly wide = computed(() => {
+    const lobby = this.poller.lobby();
+    return !!lobby && ['playing', 'finished'].includes(lobby.status) && WIDE_GAMES.has(lobby.game);
+  });
   private readonly lobbyApi = inject(LobbyApi);
   private readonly sessions = inject(SeatSessions);
   private readonly router = inject(Router);
