@@ -919,4 +919,76 @@ final class ThirtyOneTest extends GameContractTestCase
     {
         $this->assertTrue(GameRegistry::default()->has('31-en'));
     }
+
+    // --- openbare kennis voor de bots ----------------------------------------------------------
+
+    public function testNothingIsKnownAboutOtherHandsAfterDealing(): void
+    {
+        $state = $this->table();
+
+        $this->assertSame([null, null, null], $state['known'][1]);
+        $this->assertSame([null, null, null], $state['known'][2]);
+        $this->assertSame([null, null, null], $state['known'][0]);
+    }
+
+    public function testASwapMakesTheTakenCardKnownOnThatPositionOnly(): void
+    {
+        $state = $this->rigged();
+
+        $state = $this->act($state, 1, ['type' => 'swap', 'handCard' => 'H8', 'potCard' => 'HA'])->state;
+
+        $this->assertSame([null, 'HA', null], $state['known'][1]);
+        $this->assertSame([null, null, null], $state['known'][2]);
+        $this->assertSame(1, $state['actionNo']);
+
+        // De volgende speler wisselt later (actie 1): zijn kennis krijgt dat tijdstip.
+        $state = $this->act($state, 2, ['type' => 'swap', 'handCard' => 'D7', 'potCard' => 'S8'])->state;
+        $this->assertSame([null, null, 'S8'], $state['known'][2]);
+        $this->assertSame([0, 0, 1], $state['knownAt'][2]);
+        $this->assertSame([null, 'HA', null], $state['known'][1]);
+    }
+
+    public function testSwapAllMakesTheWholeHandKnown(): void
+    {
+        $state = $this->rigged();
+
+        $state = $this->act($state, 1, ['type' => 'swapAll'])->state;
+
+        $this->assertSame(['DA', 'HA', 'S8'], $state['known'][1]);
+    }
+
+    public function testMovingCardsMovesWhatIsKnownAlong(): void
+    {
+        $state = $this->rigged();
+        $state = $this->act($state, 1, ['type' => 'swap', 'handCard' => 'S7', 'potCard' => 'DA'])->state;
+        $this->assertSame(['DA', null, null], $state['known'][1]);
+
+        $state = $this->act($state, 1, ['type' => 'move', 'cards' => ['DA', 'D9']], 10_000)->state;
+
+        $this->assertSame([null, null, 'DA'], $state['known'][1]);
+        $this->assertSame([0, 0, 0], $state['knownAt'][1]);
+    }
+
+    public function testWhatIsKnownIsForgottenInTheNextRound(): void
+    {
+        $state = $this->rigged();
+        $state = $this->act($state, 1, ['type' => 'swapAll'])->state;
+        $this->assertNotSame([null, null, null], $state['known'][1]);
+
+        foreach ([2, 0] as $seat) {
+            $state = $this->act($state, $seat, ['type' => 'pass'])->state;
+        }
+
+        $this->assertSame(2, $state['round']);
+        $this->assertSame([null, null, null], $state['known'][1]);
+    }
+
+    public function testTheViewNeverExposesWhatIsKnown(): void
+    {
+        $state = $this->rigged();
+        $state = $this->act($state, 1, ['type' => 'swap', 'handCard' => 'H8', 'potCard' => 'HA'])->state;
+
+        $this->assertStringNotContainsString('known', json_encode($this->thirty()->view($state, 2), JSON_THROW_ON_ERROR));
+    }
+
 }
