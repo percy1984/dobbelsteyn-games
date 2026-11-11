@@ -104,3 +104,26 @@ export function rankLabel(rank: Rank, letters: LetterSetId = DEFAULT_LETTER_SET)
   }
   return rank;
 }
+
+/**
+ * Een thema voor de achterkant van de kaarten, beschreven in `public/cards/backs/<id>/manifest.json`
+ * (gemaakt door `scripts/generate-card-backs.mjs`). Een thema toevoegen is een map met een `back.svg`
+ * (viewBox 0 0 250 350, bij voorkeur puntsymmetrisch) en een manifest, plus de id in `index.json`.
+ */
+export interface CardBackManifest {
+  readonly id: string;
+  /** De naam per taal. */
+  readonly name: Readonly<Record<'nl' | 'en', string>>;
+  readonly credit: string;
+  readonly license: string;
+  /** Bestandsnaam van de achterkant in de map van het thema. */
+  readonly file: string;
+}
+
+/** Inhoud van `public/cards/backs/index.json`. */
+export interface CardBackIndex {
+  readonly themes: readonly string[];
+}
+
+/** Standaard achterkant: de dobbelstenen. */
+export const DEFAULT_CARD_BACK = 'dice';
