@@ -15,6 +15,7 @@ export class GameTile {
   readonly game = input.required<GameInfo>();
 
   protected readonly name = computed(() => this.i18n.gameName(this.game().slug));
+  protected readonly subtitle = computed(() => this.i18n.gameSubtitle(this.game().slug));
 
   /** Eerste letters als tijdelijke illustratie, tot er echte tegelontwerpen zijn. */
   protected readonly initials = computed(() =>

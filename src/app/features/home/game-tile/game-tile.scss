@@ -38,6 +38,12 @@
   overflow-wrap: anywhere;
 }
 
+.tile__subtitle {
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--dg-muted);
+}
+
 .tile__status {
   font-size: 0.8125rem;
   color: var(--dg-muted);

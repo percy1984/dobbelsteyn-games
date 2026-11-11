@@ -1,5 +1,5 @@
 import { Type } from '@angular/core';
-import { GameResult, SeatView } from '../core/lobby/lobby.models';
+import { GameEvent, GameResult, SeatView } from '../core/lobby/lobby.models';
 
 /**
  * Wat het platform aan de component van een game meegeeft. Een game-component declareert voor elk
@@ -14,6 +14,8 @@ export interface GameComponentInputs {
   readonly activeSeats: readonly number[];
   /** Null zolang het spel loopt. */
   readonly result: GameResult | null;
+  /** De zetlog: de laatste publieke gebeurtenissen. Speel ze af met `GameEventFeed`. Leeg bij games zonder zetlog. */
+  readonly events: readonly GameEvent[];
   /** True zolang een zet onderweg is of het spel afgelopen is. */
   readonly disabled: boolean;
   /** Stuurt een zet naar de server; de server valideert en antwoordt met de nieuwe staat. */
@@ -27,3 +29,10 @@ export interface GameComponentInputs {
 export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
   'tic-tac-toe': () => import('./tic-tac-toe/tic-tac-toe').then((m) => m.TicTacToe),
 };
+
+/**
+ * Optionele voorkeurencomponent per game, getoond in de lobby (zie `GamePreferences`). Voor
+ * voorkeuren die elke speler voor zichzelf kiest, zoals de achterkant van de kaarten. De component
+ * heeft geen inputs en bewaart de keuze zelf, bijvoorbeeld in localStorage.
+ */
+export const GAME_PREFERENCES: Readonly<Record<string, () => Promise<Type<unknown>>>> = {};

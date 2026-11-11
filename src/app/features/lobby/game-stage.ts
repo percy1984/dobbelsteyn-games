@@ -79,6 +79,7 @@ export class GameStage {
       mySeatNo: lobby.me?.seatNo ?? -1,
       activeSeats: lobby.activeSeats ?? [],
       result: lobby.result ?? null,
+      events: lobby.events ?? [],
       disabled: this.busy() || !!lobby.result,
       submit: this.submit,
     };

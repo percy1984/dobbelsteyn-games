@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { I18n } from '../../core/i18n/i18n';
-import { GameResult, SeatView } from '../../core/lobby/lobby.models';
+import { GameEvent, GameResult, SeatView } from '../../core/lobby/lobby.models';
 
 /** Jouw kijk op het spel, zoals `TicTacToe::view()` op de server hem geeft. */
 interface TicTacToeView {
@@ -60,12 +60,14 @@ interface TicTacToeView {
 export class TicTacToe {
   protected readonly i18n = inject(I18n);
 
-  // De zeven inputs van het spelcontract (zie `GameComponentInputs`).
+  // De inputs van het spelcontract (zie `GameComponentInputs`).
   readonly view = input<unknown>();
   readonly seats = input<readonly SeatView[]>([]);
   readonly mySeatNo = input(-1);
   readonly activeSeats = input<readonly number[]>([]);
   readonly result = input<GameResult | null>(null);
+  /** Tic-Tac-Toe heeft geen zetlog nodig; de input hoort bij het contract. */
+  readonly events = input<readonly GameEvent[]>([]);
   readonly disabled = input(false);
   readonly submit = input.required<(move: unknown) => Promise<void>>();
 

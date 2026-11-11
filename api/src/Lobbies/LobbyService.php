@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Dg\Lobbies;
 
+use Closure;
 use Dg\ApiException;
 use Dg\Games\GameRegistry;
 use Dg\Games\Rng;
@@ -38,11 +39,13 @@ final class LobbyService
         ?Rng $rng = null,
         private readonly int $awayAfterSeconds = self::AWAY_AFTER_SECONDS,
         private readonly Limits $limits = new Limits(),
+        ?Closure $clock = null,
     ) {
         $this->limiter = new RateLimiter($pdo);
         $rng ??= new Rng();
         $this->codes = new CodeGenerator($rng);
-        $this->runner = new GameRunner($pdo, $games, $rng);
+        // De klok (servertijd in ms) is alleen voor games met een rate limit; tests geven er een vaste mee.
+        $this->runner = new GameRunner($pdo, $games, $rng, $clock);
     }
 
     /**
@@ -554,6 +557,7 @@ final class LobbyService
             }
 
             $this->pdo->prepare('DELETE FROM game_states WHERE lobby_id = ?')->execute([$lobby['id']]);
+            $this->pdo->prepare('DELETE FROM game_events WHERE lobby_id = ?')->execute([$lobby['id']]);
             $this->pdo->prepare("UPDATE lobbies SET status = 'waiting', ready_check = 0, countdown_ends_at = NULL WHERE id = ?")->execute([$lobby['id']]);
             $this->pdo->prepare('UPDATE seats SET is_ready = 0 WHERE lobby_id = ?')->execute([$lobby['id']]);
             $this->touch((int) $lobby['id']);

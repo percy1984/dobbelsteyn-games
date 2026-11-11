@@ -13,7 +13,8 @@ import { GameStage } from './game-stage';
   template: `<button class="play" [disabled]="disabled()" (click)="submit()({ cell: 4 })">
       zet
     </button>
-    <span class="view">{{ view() }}</span>`,
+    <span class="view">{{ view() }}</span>
+    <span class="events">{{ events().length }}</span>`,
 })
 class FakeGame {
   readonly view = input<unknown>();
@@ -21,6 +22,7 @@ class FakeGame {
   readonly mySeatNo = input<number>();
   readonly activeSeats = input<unknown>();
   readonly result = input<unknown>();
+  readonly events = input<readonly unknown[]>([]);
   readonly disabled = input(false);
   readonly submit = input.required<(move: unknown) => Promise<void>>();
 }
@@ -88,6 +90,13 @@ describe('GameStage', () => {
 
     expect(el.querySelector('.view')?.textContent).toBe('bord');
     expect(el.querySelector('.stage__status')?.textContent).toBe('Jouw beurt');
+  });
+
+  it('geeft de zetlog door aan de game', async () => {
+    const events = [{ seq: 1, type: 'started' }, { seq: 2, type: 'added' }];
+    const { el } = await render(lobby({ events }));
+
+    expect(el.querySelector('.events')?.textContent).toBe('2');
   });
 
   it('meldt dat de game nog niet gespeeld kan worden als er geen component is', async () => {
