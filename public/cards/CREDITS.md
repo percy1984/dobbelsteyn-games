@@ -14,3 +14,9 @@ Wijzigingen ten opzichte van de originelen (gedaan door `scripts/import-cards.mj
 - `austingabriel`: de kleurtekens zijn omgekleurd naar het vierkleurendeck (schoppen zwart, harten rood, klaveren groen, ruiten blauw). De illustraties van de plaatjes zijn niet gewijzigd.
 
 Elke map bevat het licentiebestand van de bron (`LICENSE.txt`).
+
+## Achterkanten
+
+De achterkanten staan in `public/cards/backs/`. Vier zijn eigen ontwerpen, gegenereerd door `scripts/generate-card-backs.mjs` (dobbelstenen, chaos fractals met de drakenkromme van Heighway, Maastricht met de Helpoort, de Sint-Servaasbrug en de Sint-Janskerk, en scouting). Het scoutingthema bevat geen bestaande logo's en kan worden vervangen door aangeleverd beeld (zet een ander `back.svg` in die map).
+
+Het vijfde thema, `traditional`, is de blauwe achterkant van AustinGabriel (CC0, zelfde bron en commit als hierboven), alleen geoptimaliseerd met SVGO.

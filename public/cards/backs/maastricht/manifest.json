@@ -1,0 +1,10 @@
+{
+  "id": "maastricht",
+  "name": {
+    "nl": "Maastricht",
+    "en": "Maastricht"
+  },
+  "credit": "Eigen ontwerp (Helpoort, Sint-Servaasbrug, Sint-Janskerk)",
+  "license": "Eigen ontwerp",
+  "file": "back.svg"
+}

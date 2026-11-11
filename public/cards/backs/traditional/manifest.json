@@ -1,0 +1,10 @@
+{
+  "id": "traditional",
+  "name": {
+    "nl": "Traditioneel",
+    "en": "Traditional"
+  },
+  "credit": "AustinGabriel, Public Domain and CC0 Playing Cards (blauwe achterkant)",
+  "license": "CC0-1.0",
+  "file": "back.svg"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "dice",
+  "name": {
+    "nl": "Dobbelstenen",
+    "en": "Dice"
+  },
+  "credit": "Eigen ontwerp",
+  "license": "Eigen ontwerp",
+  "file": "back.svg"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "chaos-fractals",
+  "name": {
+    "nl": "Chaos fractals",
+    "en": "Chaos fractals"
+  },
+  "credit": "Eigen ontwerp (drakenkromme van Heighway)",
+  "license": "Eigen ontwerp",
+  "file": "back.svg"
+}

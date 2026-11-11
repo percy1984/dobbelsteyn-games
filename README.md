@@ -79,6 +79,16 @@ Het script hernoemt de kaarten, haalt de rangletters uit de hoeken weg (de app t
 
 **Een nieuwe set toevoegen:** maak `public/cards/sets/<id>/` met 52 SVG's en een `manifest.json` (zie het type `CardSetManifest` in `src/app/games/cards/card.models.ts`) en voeg de naam toe aan `index.json`.
 
+## Achterkanten
+
+De achterkanten staan in `public/cards/backs/<thema>/back.svg` (viewBox 0 0 250 350) met een `manifest.json` (de naam in het Nederlands en Engels) en `public/cards/backs/index.json`. De app leest ze in met `CardBacks`. Elk ontwerp is puntsymmetrisch, zodat de stand van een kaart niets verraadt.
+
+```bash
+node scripts/generate-card-backs.mjs [--austingabriel <map met de repo>]
+```
+
+Het script tekent de vier eigen thema's (dobbelstenen, chaos fractals, Maastricht, scouting) en importeert met `--austingabriel` de traditionele achterkant. **Een thema toevoegen** of het scoutingthema vervangen door aangeleverd beeld: zet een `back.svg` met een `manifest.json` in een eigen map en voeg de id toe aan `index.json`.
+
 ## Structuur
 
 ```

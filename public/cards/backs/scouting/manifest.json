@@ -1,0 +1,10 @@
+{
+  "id": "scouting",
+  "name": {
+    "nl": "Scouting Fons Olterdissen Maastricht",
+    "en": "Scouting Fons Olterdissen Maastricht"
+  },
+  "credit": "Eigen ontwerp, te vervangen door aangeleverd beeld (zet een ander back.svg in deze map)",
+  "license": "Eigen ontwerp",
+  "file": "back.svg"
+}
