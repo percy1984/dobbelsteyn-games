@@ -18,7 +18,7 @@ export const GAMES: readonly GameInfo[] = [
   { slug: 'tic-tac-toe', playable: true },
   { slug: 'super-tic-tac-toe', playable: false },
   { slug: 'take-5', playable: false },
-  { slug: '31-en', playable: false, image: 'images/games/31-en.webp' },
+  { slug: '31-en', playable: true, image: 'images/games/31-en.webp' },
   { slug: 'blufpoker', playable: false },
   { slug: 'klein-hartenjagen', playable: false },
   { slug: 'canasta-1v1', playable: false },
