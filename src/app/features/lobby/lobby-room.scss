@@ -112,3 +112,13 @@ h2 {
   color: var(--dg-muted);
   font-size: 0.875rem;
 }
+
+.ready {
+  margin-bottom: 1rem;
+}
+
+.badge--wait {
+  background: transparent;
+  color: var(--dg-muted);
+  border: 1px solid var(--dg-border);
+}

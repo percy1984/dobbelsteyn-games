@@ -34,6 +34,7 @@ function seat(seatNo: number, name: string): SeatView {
     isPromoted: false,
     botLevel: null,
     isAway: false,
+    isReady: true,
   };
 }
 
@@ -176,7 +177,9 @@ describe('GameStage', () => {
   });
 
   it('toont de wegvalmelding op het speelscherm', async () => {
-    const away = lobby({ seats: [{ ...seat(0, 'Percy') }, { ...seat(1, 'Anna'), isAway: true }] });
+    const away = lobby({
+      seats: [{ ...seat(0, 'Percy') }, { ...seat(1, 'Anna'), isAway: true, isReady: true }],
+    });
 
     const { el } = await render(away);
 

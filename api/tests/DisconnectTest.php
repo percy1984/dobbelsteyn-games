@@ -20,6 +20,14 @@ final class DisconnectTest extends DbTestCase
         $this->lobbies = new LobbyService($this->pdo, GameRegistry::default(), new Rng(static fn (int $min, int $max): int => $min));
     }
 
+    /** Start het spel nadat iedereen zich ready gemeld heeft (de ready-regels zelf testen we in ReadyCheckTest). */
+    private function startReady(string $code, ?string $token): array
+    {
+        $this->pdo->exec('UPDATE seats SET is_ready = 1');
+
+        return $this->lobbies->start($code, $token);
+    }
+
     private function assertApiError(int $status, string $code, callable $fn): void
     {
         try {
@@ -45,7 +53,7 @@ final class DisconnectTest extends DbTestCase
         $code = $created['lobby']['code'];
         $anna = $this->lobbies->join($code, 'Anna', null);
         $this->lobbies->updateSettings($code, $created['token'], ['starter' => 'second']);
-        $this->lobbies->start($code, $created['token']);
+        $this->startReady($code, $created['token']);
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
         $this->lobbies->poll($code, $created['token'], null);
 
@@ -214,7 +222,7 @@ final class DisconnectTest extends DbTestCase
         $this->assertApiError(409, 'not_playing', fn () => $this->lobbies->endGame($code, $created['token']));
 
         $this->lobbies->addBot($code, $created['token'], 3);
-        $this->lobbies->start($code, $created['token']);
+        $this->startReady($code, $created['token']);
         $this->assertSame('ended', $this->lobbies->endGame($code, $created['token'])['status']);
     }
 

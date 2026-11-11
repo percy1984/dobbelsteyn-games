@@ -9,6 +9,8 @@ export interface SeatView {
   readonly botLevel: number | null;
   /** Geen recente heartbeat: de speler is tijdelijk weg. */
   readonly isAway: boolean;
+  /** Ready om te starten; bots zijn altijd ready. */
+  readonly isReady: boolean;
 }
 
 /** Wat de speler zelf in deze lobby is en mag. */
@@ -51,6 +53,10 @@ export interface LobbyView {
   /** Null zolang het spel loopt. */
   readonly result?: GameResult | null;
   readonly turnNo?: number;
+  /** Is elke mens ready? Dan kan de beheerder starten. */
+  readonly allReady?: boolean;
+  /** De beheerder heeft een ready-check gedaan en nog niet iedereen is ready. */
+  readonly readyCheck?: boolean;
   /** De laatste chatberichten, oudste eerst (alleen voor spelers in de lobby). */
   readonly chat?: readonly ChatMessage[];
 }

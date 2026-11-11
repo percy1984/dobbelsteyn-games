@@ -19,6 +19,7 @@ function seat(
     isPromoted: false,
     botLevel: kind === 'bot' ? 5 : null,
     isAway: away,
+    isReady: true,
   };
 }
 

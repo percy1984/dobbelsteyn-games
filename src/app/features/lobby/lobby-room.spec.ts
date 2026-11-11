@@ -14,6 +14,7 @@ function seat(seatNo: number, name: string, overrides: Partial<SeatView> = {}): 
     isPromoted: false,
     botLevel: null,
     isAway: false,
+    isReady: true,
     ...overrides,
   };
 }

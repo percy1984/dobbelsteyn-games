@@ -5,6 +5,7 @@ import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
 import { ChatPanel } from '../chat/chat-panel';
 import { AwayNotice } from './away-notice';
 import { Countdown } from './countdown';
+import { ReadyCheckDialog } from './ready-check-dialog';
 import { LobbySettings } from './lobby-settings';
 import { QrShare } from './qr-share';
 
@@ -13,7 +14,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [AwayNotice, ChatPanel, Countdown, LobbySettings, QrShare],
+  imports: [AwayNotice, ChatPanel, Countdown, LobbySettings, QrShare, ReadyCheckDialog],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -43,6 +44,12 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             }
             @if (seat.kind === 'bot') {
               <span class="badge badge--creator">{{ i18n.t('bot.label') }}</span>
+            }
+            @if (seat.kind === 'human') {
+              <span class="badge" [class.badge--wait]="!seat.isReady">
+                <span aria-hidden="true">{{ seat.isReady ? '✓' : '…' }}</span>
+                {{ i18n.t(seat.isReady ? 'ready.yes' : 'ready.no') }}
+              </span>
             }
             @if (seat.isAway) {
               <span class="badge badge--away">{{ i18n.t('lobby.away') }}</span>
@@ -91,6 +98,20 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         }
       </ul>
 
+      @if (waiting()) {
+        <div class="ready">
+          <button
+            class="button"
+            [class.button--secondary]="meReady()"
+            type="button"
+            [attr.aria-pressed]="meReady()"
+            (click)="toggleReady()"
+          >
+            {{ i18n.t(meReady() ? 'ready.me.undo' : 'ready.me') }}
+          </button>
+        </div>
+      }
+
       @if (canAddBot()) {
         <div class="add-bot">
           <label for="new-bot-level">{{ i18n.t('bot.level.label') }}</label>
@@ -121,15 +142,30 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
       @if (waiting() && lobby().me?.canManage) {
         <div class="start">
-          <button class="button" type="button" [disabled]="!enoughPlayers()" (click)="start()">
+          <button class="button" type="button" [disabled]="!canStart()" (click)="start()">
             {{ i18n.t('start.button') }}
           </button>
           @if (!enoughPlayers()) {
             <p class="hint">{{ i18n.t('start.need', { min: lobby().minPlayers }) }}</p>
+          } @else if (!allReady()) {
+            <p class="hint">{{ i18n.t('ready.waiting') }}</p>
+            @if (lobby().readyCheck) {
+              <button class="button button--secondary" type="button" (click)="cancelReadyCheck()">
+                {{ i18n.t('ready.check.cancel') }}
+              </button>
+            } @else {
+              <button class="button button--secondary" type="button" (click)="startReadyCheck()">
+                {{ i18n.t('ready.check') }}
+              </button>
+            }
           }
         </div>
       } @else if (waiting()) {
         <p class="hint">{{ i18n.t('start.waiting') }}</p>
+      }
+
+      @if (waiting()) {
+        <dg-ready-check-dialog [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
       }
 
       @if (lobby().status === 'countdown' && countdownEndsAt() !== null) {
@@ -172,6 +208,25 @@ export class LobbyRoom {
       !!this.lobby().me?.canManage &&
       this.lobby().seats.length < this.lobby().maxPlayers,
   );
+
+  protected readonly allReady = computed(() => this.lobby().allReady ?? true);
+  protected readonly canStart = computed(() => this.enoughPlayers() && this.allReady());
+  protected readonly meReady = computed(() => {
+    const me = this.lobby().me?.seatNo;
+    return this.lobby().seats.some((seat) => seat.seatNo === me && seat.isReady);
+  });
+
+  protected toggleReady(): Promise<void> {
+    return this.run(() => this.lobbyApi.setReady(this.lobby().code, !this.meReady()));
+  }
+
+  protected startReadyCheck(): Promise<void> {
+    return this.run(() => this.lobbyApi.startReadyCheck(this.lobby().code));
+  }
+
+  protected cancelReadyCheck(): Promise<void> {
+    return this.run(() => this.lobbyApi.cancelReadyCheck(this.lobby().code));
+  }
 
   protected start(): Promise<void> {
     return this.run(() => this.lobbyApi.start(this.lobby().code));

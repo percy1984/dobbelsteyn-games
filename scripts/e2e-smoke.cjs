@@ -102,6 +102,21 @@ async function type(page, selector, value) {
     await sleep(500);
     await shot(percy, '04-wachtkamer');
 
+    // Ready-check: de beheerder vraagt het, beide spelers melden zich ready in de popup.
+    await clickButton(percy, 'Ready-check starten');
+    await anna.waitForSelector('dg-ready-check-dialog dialog[open]', { timeout: 15000 });
+    await sleep(500);
+    await shot(anna, '04b-ready-check-anna');
+    for (const page of [anna, percy]) {
+      await page.waitForSelector('dg-ready-check-dialog dialog[open]', { timeout: 15000 });
+      await page.evaluate(() => {
+        const button = [...document.querySelectorAll('dg-ready-check-dialog button')].find((b) => b.textContent.includes('Ik ben ready'));
+        button.click();
+      });
+    }
+    await percy.waitForSelector('dg-ready-check-dialog dialog[open]', { hidden: true, timeout: 15000 });
+    await percy.waitForFunction(() => ![...document.querySelectorAll('button')].find((b) => b.textContent.includes('Spel starten'))?.disabled, { timeout: 15000 });
+
     await clickButton(percy, 'Spel starten');
     await percy.waitForSelector('dg-countdown');
     await sleep(900);
