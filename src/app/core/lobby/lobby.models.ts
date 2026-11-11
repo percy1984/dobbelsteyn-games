@@ -53,6 +53,8 @@ export interface LobbyView {
   /** Null zolang het spel loopt. */
   readonly result?: GameResult | null;
   readonly turnNo?: number;
+  /** De zetlog: de laatste publieke gebeurtenissen van het spel, oplopend op `seq` (leeg bij games zonder zetlog). */
+  readonly events?: readonly GameEvent[];
   /** Is elke mens ready? Dan kan de beheerder starten. */
   readonly allReady?: boolean;
   /** De beheerder heeft een ready-check gedaan en nog niet iedereen is ready. */
@@ -69,6 +71,16 @@ export interface ChatMessage {
   readonly body: string;
   /** Tijdstip in seconden sinds 1970. */
   readonly at: number;
+}
+
+/**
+ * Eén publieke gebeurtenis uit de zetlog van een game (bijvoorbeeld "kaart gewisseld"). De server
+ * geeft elk een oplopend volgnummer `seq`; de rest van de velden hangt van de game af.
+ */
+export interface GameEvent {
+  readonly seq: number;
+  readonly type: string;
+  readonly [key: string]: unknown;
 }
 
 /** Uitkomst van een spel: de winnende plaatsen (leeg bij gelijkspel). */
