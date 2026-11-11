@@ -35,4 +35,6 @@ export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown
  * voorkeuren die elke speler voor zichzelf kiest, zoals de achterkant van de kaarten. De component
  * heeft geen inputs en bewaart de keuze zelf, bijvoorbeeld in localStorage.
  */
-export const GAME_PREFERENCES: Readonly<Record<string, () => Promise<Type<unknown>>>> = {};
+export const GAME_PREFERENCES: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
+  '31-en': () => import('./cards/card-preferences-panel').then((m) => m.CardPreferencesPanel),
+};
