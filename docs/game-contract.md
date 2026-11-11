@@ -27,6 +27,25 @@ Elke game implementeert `Dg\Games\Game` (`api/src/Games/Game.php`). Het platform
 
 Toeval komt uit `Dg\Games\Rng` zodat tests een vaste reeks kunnen gebruiken.
 
+## Zetlog, vrije zetten en klok (optioneel: `EventedGame`)
+
+Een game die spelers elkaars zetten laat zien (bijvoorbeeld welke kaart er gewisseld is), of acties buiten de beurt toestaat, implementeert `Dg\Games\EventedGame` (`api/src/Games/EventedGame.php`) in plaats van alleen `Game`. Bestaande games zoals Tic-Tac-Toe hoeven niets te veranderen.
+
+| Methode | Doel |
+| --- | --- |
+| `startStep($seatNos, $settings, $rng, $nowMs)` | Zoals `start()`, plus de gebeurtenissen van het delen of de opstelling (`GameStep`) |
+| `applyStep($state, $seatNo, $move, $rng, $nowMs)` | Zoals `apply()`, plus de gebeurtenissen van deze zet (`GameStep`) |
+| `isFreeMove($state, $move)` | Is dit een **vrije zet**: niet aan de beurt gebonden? |
+
+`start()` en `apply()` blijven verplicht: geef daar het `->state` van de stap terug.
+
+- **Zetlog.** Elke stap levert gebeurtenissen: arrays van JSON-waarden met een `type`. Het platform bewaart ze in `game_events` met een oplopend volgnummer `seq` per lobby, en stuurt de laatste 100 mee in de lobbyview als `events` (oudere dan de laatste 500 worden opgeruimd). Een rematch begint met een lege log. Bots spelen op de server direct door; hun zetten staan in volgorde in de log, en de client speelt ze met een pauze af (zie `GameEventFeed`).
+- **Alleen publiek.** Iedere speler krijgt de hele log. Zet er dus nooit informatie in die een speler niet mag zien (dichte kaarten van anderen, de trekstapel). Wat alleen jij mag zien, hoort in `view()`.
+- **Vrije zetten.** Is `isFreeMove()` waar, dan controleert het platform niet of de speler aan de beurt is (`activeSeats()` blijft over de gewone beurt gaan). De game valideert zelf wie dat mag en hoe vaak, en gooit `InvalidMove` bij een ongeldige zet. Na afloop (lobby niet meer `playing`) wijst het platform elke zet af.
+- **Klok.** `$nowMs` is de servertijd in milliseconden (Unix-tijd). Bewaar een tijdstempel in de staat om een rate limit te bewaken; `applyStep()` blijft daarmee zuiver. Tests geven `LobbyService` een eigen klok mee (laatste parameter).
+
+`api/tests/Games/CounterGame.php` is een minimale voorbeeldgame, en `api/tests/EventLogTest.php` laat zien hoe je dit test.
+
 ## Instellingen en vertalingen
 
 Elk veld in `settingsSchema()` is `['key', 'type' => 'choice', 'default', 'choices']`. De frontend toont het veld met de vertaalsleutels `game.<slug>.setting.<key>` en `game.<slug>.setting.<key>.<keuze>`.
@@ -42,6 +61,7 @@ De component van een game staat in `src/app/games/<slug>/` en wordt lazy geladen
 | `mySeatNo` | Jouw plaatsnummer |
 | `activeSeats` | Plaatsen die nu mogen zetten (voor "jouw beurt") |
 | `result` | Null tijdens het spel, daarna `{ winners: [...] }` |
+| `events` | De zetlog (`GameEvent[]`, oplopend op `seq`); leeg bij games zonder zetlog. Speel ze af met `GameEventFeed` (`core/games/game-event-feed.ts`) |
 | `disabled` | True terwijl een zet onderweg is of het spel afgelopen is |
 | `submit` | `(move) => Promise<void>`: stuurt een zet; de server valideert en antwoordt met de nieuwe staat |
 
@@ -69,5 +89,11 @@ De stage toont zelf de beurtmelding, de uitslag en "nog een keer"; de game-compo
 1. Maak `api/src/Games/<Naam>.php` die `Game` implementeert en voeg hem toe aan `GameRegistry::default()`.
 2. Maak een testklasse die `GameContractTestCase` uitbreidt (alleen `game()` is verplicht) en voeg regeltests toe. De contracttest speelt voor elk botniveau een heel spel met alleen geldige zetten.
 3. Maak de frontend in `src/app/games/<slug>/`, registreer hem in `GAME_COMPONENTS` en zet `playable: true` in `core/games/game-catalog.ts`. Voeg de vertalingen toe: `game.<slug>.setting.*` voor instellingen.
+
+Optioneel per game:
+
+- **Ondertitel op de tegel:** voeg `game.<slug>.subtitle` toe aan beide vertaalbestanden (bijvoorbeeld `31-en` met "Eenendertigen").
+- **Voorkeuren per speler in de lobby:** registreer een component zonder inputs in `GAME_PREFERENCES` (`games/game-components.ts`). De lobby toont hem onder de instellingen. De component bewaart de keuze zelf (localStorage); er gaat niets naar de server.
+- **Zetlog en vrije zetten:** zie hierboven (`EventedGame`).
 
 Tic-Tac-Toe (`TicTacToe.php`) is de referentie-implementatie.
