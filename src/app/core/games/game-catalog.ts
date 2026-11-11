@@ -4,6 +4,8 @@ export interface GameInfo {
   readonly slug: string;
   /** Alleen speelbare games zijn klikbaar op het overzicht. */
   readonly playable: boolean;
+  /** Afbeelding voor de tegel, relatief aan de app (bijvoorbeeld `images/games/31-en.webp`). Zonder: de initialen. */
+  readonly image?: string;
 }
 
 /**
@@ -16,7 +18,7 @@ export const GAMES: readonly GameInfo[] = [
   { slug: 'tic-tac-toe', playable: true },
   { slug: 'super-tic-tac-toe', playable: false },
   { slug: 'take-5', playable: false },
-  { slug: '31-en', playable: false },
+  { slug: '31-en', playable: false, image: 'images/games/31-en.webp' },
   { slug: 'blufpoker', playable: false },
   { slug: 'klein-hartenjagen', playable: false },
   { slug: 'canasta-1v1', playable: false },

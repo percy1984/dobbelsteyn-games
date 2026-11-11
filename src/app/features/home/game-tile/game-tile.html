@@ -1,6 +1,6 @@
 @if (game().playable) {
   <a class="tile tile--playable" [routerLink]="['games', game().slug]">
-    <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
+    <ng-container *ngTemplateOutlet="art" />
     <span class="tile__name">{{ name() }}</span>
     @if (subtitle(); as subtitle) {
       <span class="tile__subtitle">{{ subtitle }}</span>
@@ -9,7 +9,7 @@
   </a>
 } @else {
   <div class="tile tile--soon" aria-disabled="true">
-    <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
+    <ng-container *ngTemplateOutlet="art" />
     <span class="tile__name">{{ name() }}</span>
     @if (subtitle(); as subtitle) {
       <span class="tile__subtitle">{{ subtitle }}</span>
@@ -17,3 +17,13 @@
     <span class="tile__status">{{ i18n.t('tile.soon') }}</span>
   </div>
 }
+
+<ng-template #art>
+  @if (game().image; as image) {
+    <span class="tile__art tile__art--image" aria-hidden="true">
+      <img [ngSrc]="image" width="150" height="150" alt="" />
+    </span>
+  } @else {
+    <span class="tile__art" aria-hidden="true">{{ initials() }}</span>
+  }
+</ng-template>

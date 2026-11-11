@@ -1,3 +1,4 @@
+import { NgOptimizedImage, NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { GameInfo } from '../../../core/games/game-catalog';
@@ -5,7 +6,7 @@ import { I18n } from '../../../core/i18n/i18n';
 
 /** Tegel van één game: klikbaar als de game speelbaar is, anders grijs en niet klikbaar. */
 @Component({
-  imports: [RouterLink],
+  imports: [NgOptimizedImage, NgTemplateOutlet, RouterLink],
   selector: 'dg-game-tile',
   styleUrl: './game-tile.scss',
   templateUrl: './game-tile.html',

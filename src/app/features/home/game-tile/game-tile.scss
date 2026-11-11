@@ -33,6 +33,16 @@
   font-weight: 700;
 }
 
+.tile__art--image {
+  overflow: hidden;
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+}
+
 .tile__name {
   font-weight: 600;
   overflow-wrap: anywhere;
