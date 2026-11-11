@@ -1,0 +1,26 @@
+:host {
+  position: relative;
+  display: block;
+  aspect-ratio: 5 / 7;
+  /* De kaart schaalt mee met de breedte die de omgeving geeft. */
+  inline-size: 100%;
+}
+
+img,
+.pcard__index {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+img {
+  /* De SVG's van de sets hebben bijna dezelfde verhouding; vullen is dan onzichtbaar. */
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.pcard__index {
+  pointer-events: none;
+}
