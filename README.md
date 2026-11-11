@@ -65,6 +65,20 @@ In Git Bash op Windows wordt `/games/` anders omgezet naar een Windows-pad. Gebr
 
 Deep links (bijvoorbeeld een lobby-URL) overleven een refresh alleen met een rewrite-regel op de server. Die komt met het deployment-item.
 
+## Kaartsets
+
+De voorkanten van de speelkaarten staan in `public/cards/sets/<set>/` (52 SVG's, `<kleur><rang>.svg`, bijvoorbeeld `HT.svg`) met een `manifest.json` en een licentiebestand. `public/cards/sets/index.json` somt de sets op; de app leest die in (`CardSets`). Credits en licenties staan in `public/cards/CREDITS.md`.
+
+De sets worden gemaakt met een herhaalbaar script, zodat de originele bestanden ongewijzigd blijven:
+
+```bash
+node scripts/import-cards.mjs --heratexx <map met de uitgepakte zip> --austingabriel <map met de repo>
+```
+
+Het script hernoemt de kaarten, haalt de rangletters uit de hoeken weg (de app tekent die zelf, in de gekozen letterset), kleurt bij austingabriel de kleurtekens om naar het vierkleurendeck, en optimaliseert met SVGO.
+
+**Een nieuwe set toevoegen:** maak `public/cards/sets/<id>/` met 52 SVG's en een `manifest.json` (zie het type `CardSetManifest` in `src/app/games/cards/card.models.ts`) en voeg de naam toe aan `index.json`.
+
 ## Structuur
 
 ```

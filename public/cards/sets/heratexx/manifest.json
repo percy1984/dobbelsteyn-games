@@ -1,0 +1,25 @@
+{
+  "id": "heratexx",
+  "name": "4-color deck (heratexx)",
+  "credit": "heratexx, OpenGameArt.org",
+  "source": {
+    "url": "https://opengameart.org/sites/default/files/4color_deck_by_heratexx.zip"
+  },
+  "colors": {
+    "S": "#111111",
+    "H": "#cc0000",
+    "D": "#0000cc",
+    "C": "#007000"
+  },
+  "license": "CC0-1.0",
+  "index": {
+    "viewBox": [
+      240,
+      334
+    ],
+    "centerX": 0.08125,
+    "top": 0.03161676646706588,
+    "height": 0.10742514970059878
+  },
+  "cardFile": "{card}.svg"
+}
