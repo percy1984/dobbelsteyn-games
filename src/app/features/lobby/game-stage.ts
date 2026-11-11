@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView } from '../../core/lobby/lobby.models';
-import { GAME_COMPONENTS, GameComponentInputs } from '../../games/game-components';
+import { GAME_COMPONENTS, GameComponentInputs, WIDE_GAMES } from '../../games/game-components';
 import { ChatLauncher } from '../chat/chat-launcher';
 import { AwayNotice } from './away-notice';
 
@@ -17,7 +17,7 @@ import { AwayNotice } from './away-notice';
   selector: 'dg-game-stage',
   styleUrl: './game-stage.scss',
   template: `
-    <section class="card stage" aria-labelledby="stage-title">
+    <section class="card stage" [class.stage--compact]="compact()" aria-labelledby="stage-title">
       <h1 id="stage-title">{{ i18n.gameName(lobby().game) }}</h1>
       <p class="stage__status" role="status" aria-live="polite">{{ statusText() }}</p>
 
@@ -67,6 +67,14 @@ export class GameStage {
   readonly leave = output<void>();
 
   protected readonly component = signal<Type<unknown> | null>(null);
+  /**
+   * Een brede game toont zijn eigen beurtmelding; de titel en de melding van het platform blijven
+   * dan alleen voor schermlezers staan, tot er een uitslag is.
+   */
+  protected readonly compact = computed(
+    () =>
+      WIDE_GAMES.has(this.lobby().game) && !this.lobby().result && this.lobby().status !== 'ended',
+  );
   protected readonly unavailable = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');

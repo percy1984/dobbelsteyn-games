@@ -1,0 +1,163 @@
+:host {
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.seat__head {
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(10 35 20 / 0.8);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.125rem 0.5rem;
+  max-inline-size: 100%;
+  font-weight: 600;
+  color: var(--dg-felt-text);
+}
+
+.seat__name {
+  overflow-wrap: anywhere;
+}
+
+.hearts {
+  color: var(--dg-heart);
+  letter-spacing: 0.05em;
+}
+
+/* Passen de hartjes niet (smal scherm), dan één hartje met het aantal. */
+.hearts__count {
+  display: none;
+}
+
+@container (max-width: 40rem) {
+  .hearts__list {
+    display: none;
+  }
+
+  .hearts__count {
+    display: inline;
+  }
+}
+
+.seat__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  min-block-size: 1.25rem;
+}
+
+.badge {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--dg-felt-badge);
+  color: var(--dg-felt-badge-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+
+  &--passed {
+    background: #f0c24b;
+    color: #2b2100;
+  }
+
+  &--lost,
+  &--out {
+    background: #b3261e;
+    color: #fff;
+  }
+}
+
+/* Smal: de drie kaarten delen de breedte van de plek. */
+.seat__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  inline-size: 100%;
+  max-inline-size: var(--cards-max, 10rem);
+}
+
+@container (min-width: 40rem) {
+  /* Breed: een vaste kaartmaat, want de plekken staan rond de tafel. */
+  .seat__cards {
+    grid-template-columns: repeat(3, var(--card-width, 3rem));
+    inline-size: auto;
+    max-inline-size: none;
+  }
+}
+
+.slot {
+  border-radius: 0.375rem;
+  transition: outline-color 150ms ease;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+
+  &--marked {
+    outline-color: #ffd34d;
+  }
+}
+
+.cardbtn {
+  display: block;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus-on-felt);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &--selected {
+    transform: translateY(-0.5rem);
+    outline: 3px solid #ffd34d;
+    outline-offset: 2px;
+  }
+}
+
+.seat__score {
+  margin: 0;
+  padding: 0 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(10 35 20 / 0.8);
+  color: var(--dg-felt-text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+:host(.seat--turn) .seat__head {
+  text-decoration: underline;
+  text-decoration-color: #ffd34d;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.25em;
+}
+
+:host(.seat--turn) .seat__cards {
+  filter: drop-shadow(0 0 0.5rem #ffd34d);
+}
+
+:host(.seat--out) {
+  opacity: 0.6;
+}
+
+:host(.seat--locked:not(.seat--out)) .seat__cards {
+  opacity: 0.85;
+}
+
+:host(.seat--me) {
+  --card-width: 4.25rem;
+  --cards-max: 16rem;
+}
