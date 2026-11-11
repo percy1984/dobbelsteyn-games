@@ -126,6 +126,10 @@ final class ThirtyOne implements EventedGame
             'final' => false,
             'toPlay' => [],
             'skipStreak' => 0,
+            // Openbare kennis over de dichte kaarten van spelers (zie rememberTaken); alleen uit publieke gebeurtenissen.
+            'known' => [],
+            'knownAt' => [],
+            'actionNo' => 0,
             'lastMoveMs' => [],
             'finished' => false,
             'winners' => [],
@@ -220,38 +224,13 @@ final class ThirtyOne implements EventedGame
     }
 
     /**
-     * Voorlopige bot, voor alle niveaus gelijk: wisselt als dat de score verbetert, past anders
-     * zodra dat mag, en slaat anders over of wisselt de beste kaart. De echte botniveaus 1 tot en met
-     * 10 komen in een latere stap (zie issue #23); deze zet is altijd geldig.
+     * Een zet van een bot, niveau 1 (zwakst) tot en met 10 (sterkst). De bot gebruikt alleen wat een
+     * mens ook weet: zijn eigen hand, de pot en wat openbaar bekend is (zie `known`). De niveaus staan
+     * in `ThirtyOneBot::PROFILES` en in docs/31-en.md. De zet is altijd geldig.
      */
     public function botMove(array $state, int $seatNo, int $level, Rng $rng): array
     {
-        $hand = $state['hands'][$seatNo];
-        $current = $this->score($hand);
-        $best = null;
-        $bestScore = -1.0;
-        foreach ($hand as $handCard) {
-            foreach ($state['pot'] as $potCard) {
-                $score = $this->score($this->replace($hand, $handCard, $potCard));
-                if ($score > $bestScore) {
-                    $bestScore = $score;
-                    $best = ['type' => 'swap', 'handCard' => $handCard, 'potCard' => $potCard];
-                }
-            }
-        }
-
-        $allowed = $this->allowed($state, $seatNo);
-        if ($best !== null && $bestScore > $current) {
-            return $best;
-        }
-        if ($allowed['pass']) {
-            return ['type' => 'pass'];
-        }
-        if ($allowed['skip']) {
-            return ['type' => 'skip'];
-        }
-
-        return $best ?? ['type' => 'pass'];
+        return (new ThirtyOneBot($this))->move($state, $seatNo, $level, $rng);
     }
 
     /**
@@ -277,7 +256,7 @@ final class ThirtyOne implements EventedGame
     }
 
     /** @return array{swap: bool, swapAll: bool, pass: bool, skip: bool} wat de speler aan de beurt nu mag */
-    private function allowed(array $state, int $seatNo): array
+    public function allowed(array $state, int $seatNo): array
     {
         $settings = $state['settings'];
         $swapAll = match ($settings['swapAll']) {
@@ -315,6 +294,8 @@ final class ThirtyOne implements EventedGame
         $state['hands'][$seat][$handPos] = $potCard;
         $state['pot'][$potPos] = $handCard;
         $state['skipStreak'] = 0;
+        $state['known'][$seat][$handPos] = $potCard;
+        $state['knownAt'][$seat][$handPos] = $state['actionNo'];
         $events[] = ['type' => 'swap', 'seat' => $seat, 'handPos' => $handPos, 'potPos' => $potPos, 'taken' => $potCard, 'given' => $handCard];
 
         return $this->after($state, $seat, false, $rng, $events);
@@ -332,6 +313,8 @@ final class ThirtyOne implements EventedGame
         $state['hands'][$seat] = $taken;
         $state['pot'] = $given;
         $state['skipStreak'] = 0;
+        $state['known'][$seat] = array_values($taken);
+        $state['knownAt'][$seat] = [$state['actionNo'], $state['actionNo'], $state['actionNo']];
         $events[] = ['type' => 'swapAll', 'seat' => $seat, 'taken' => $taken, 'given' => $given];
 
         // Alles ruilen is ook een Pas.
@@ -393,6 +376,8 @@ final class ThirtyOne implements EventedGame
 
         [$state['hands'][$seat][$a], $state['hands'][$seat][$b]] = [$cards[1], $cards[0]];
         $state['lastMoveMs'][$seat] = $nowMs;
+        [$state['known'][$seat][$a], $state['known'][$seat][$b]] = [$state['known'][$seat][$b], $state['known'][$seat][$a]];
+        [$state['knownAt'][$seat][$a], $state['knownAt'][$seat][$b]] = [$state['knownAt'][$seat][$b], $state['knownAt'][$seat][$a]];
         // Alleen de posities zijn publiek; de kaarten blijven dicht.
         $events[] = ['type' => 'moved', 'seat' => $seat, 'a' => $a, 'b' => $b];
 
@@ -407,6 +392,8 @@ final class ThirtyOne implements EventedGame
      */
     private function after(array $state, int $seat, bool $locks, Rng $rng, array &$events): array
     {
+        $state['actionNo']++;
+
         // Stop 31 is verplicht: na een wissel (of alles ruilen) naar 31 stopt de ronde meteen.
         if ($this->score($state['hands'][$seat]) === 31.0) {
             $events[] = ['type' => 'stop31', 'seat' => $seat];
@@ -632,6 +619,13 @@ final class ThirtyOne implements EventedGame
         $state['final'] = false;
         $state['toPlay'] = [];
         $state['skipStreak'] = 0;
+        // Bij een nieuwe ronde is van niemand iets bekend.
+        $state['known'] = [];
+        $state['knownAt'] = [];
+        foreach ($order as $seat) {
+            $state['known'][$seat] = [null, null, null];
+            $state['knownAt'][$seat] = [0, 0, 0];
+        }
 
         return $this->beginTurn($state, $rng, $events);
     }
@@ -672,15 +666,6 @@ final class ThirtyOne implements EventedGame
             'T', 'J', 'Q', 'K' => 10,
             default => (int) $card[1],
         };
-    }
-
-    /**
-     * @param list<string> $hand
-     * @return list<string>
-     */
-    private function replace(array $hand, string $out, string $in): array
-    {
-        return array_map(static fn (string $card): string => $card === $out ? $in : $card, $hand);
     }
 
     /** @return list<array{seat: int, lives: int}> */
