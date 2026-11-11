@@ -184,6 +184,15 @@ describe('applyEvent', () => {
     expect(next.players.every((p) => !p.locked)).toBe(true);
   });
 
+  it('delen: markeert dat er gedeeld wordt, zodat de kaarten er in kunnen glijden', () => {
+    const next = applyEvent(
+      start(),
+      event('dealt', { round: 2, dealer: 1, order: [2, 0, 1], pot: ['C9', 'CT', 'CJ'] }),
+    );
+
+    expect(next.highlight).toEqual({ seat: 1, kind: 'dealt', handPositions: [], potPositions: [] });
+  });
+
   it('afrekenen: toont de open handen en de nieuwe levens, niemand is aan de beurt', () => {
     const next = applyEvent(
       start(),
@@ -244,6 +253,14 @@ describe('applyEvent', () => {
 });
 
 describe('eventDuration', () => {
+  it('geeft een verplaatsing door een ander net genoeg tijd voor zijn korte vlucht', () => {
+    expect(eventDuration(event('moved'))).toBe(450);
+  });
+
+  it('geeft het delen tijd om de kaarten na elkaar te laten glijden', () => {
+    expect(eventDuration(event('dealt'))).toBeGreaterThanOrEqual(1000);
+  });
+
   it('laat een wissel minstens een seconde staan', () => {
     expect(eventDuration(event('swap'))).toBeGreaterThanOrEqual(1000);
   });

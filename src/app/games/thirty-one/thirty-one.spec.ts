@@ -554,4 +554,249 @@ describe('ThirtyOne', () => {
       expect(el().querySelector('.game31__score')).toBeNull();
     });
   });
+
+  describe('kaarten verplaatsen', () => {
+    const key = (name: string): KeyboardEvent =>
+      new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true });
+    const myCards = (): HTMLButtonElement[] => [
+      ...el().querySelectorAll<HTMLButtonElement>('dg-thirty-one-seat button.cardbtn'),
+    ];
+
+    it('verstuurt een verplaatsing met de twee kaarten, ook als je niet aan de beurt bent', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      myCards()[0].dispatchEvent(key('ArrowRight'));
+
+      expect(submit).toHaveBeenCalledWith({ type: 'move', cards: ['S7', 'H8'] });
+    });
+
+    it('toont daarna hoe lang het nog duurt en laat na de wachttijd weer verplaatsen', async () => {
+      await render(view());
+      vi.useFakeTimers();
+
+      myCards()[0].dispatchEvent(key('ArrowRight'));
+      fixture.detectChanges();
+      expect(text('.game31__move')).toBe('Je kunt je kaarten over 5 s weer verplaatsen.');
+
+      // Binnen de wachttijd gebeurt er niets.
+      myCards()[1].dispatchEvent(key('ArrowRight'));
+      expect(submit).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(2000);
+      fixture.detectChanges();
+      expect(text('.game31__move')).toBe('Je kunt je kaarten over 3 s weer verplaatsen.');
+
+      await vi.advanceTimersByTimeAsync(3000);
+      fixture.detectChanges();
+      expect(text('.game31__move')).toContain('Sleep een kaart');
+      myCards()[1].dispatchEvent(key('ArrowRight'));
+      expect(submit).toHaveBeenCalledTimes(2);
+    });
+
+    it('volgt de wachttijd die de server opgeeft', async () => {
+      await render(view({ moveIntervalMs: 2000 }));
+      vi.useFakeTimers();
+
+      myCards()[0].dispatchEvent(key('ArrowRight'));
+      fixture.detectChanges();
+
+      expect(text('.game31__move')).toBe('Je kunt je kaarten over 2 s weer verplaatsen.');
+    });
+
+    it('legt uit hoe je kaarten verplaatst zolang dat mag', async () => {
+      await render(view());
+
+      expect(text('.game31__move')).toContain('Sleep een kaart');
+    });
+
+    it('verplaatst niet meer na afloop of als je af bent', async () => {
+      await render(view({ turn: null, allowed: null }));
+      await update(view({ turn: null, allowed: null }), [], { winners: [0] });
+
+      myCards()[0].dispatchEvent(key('ArrowRight'));
+
+      expect(submit).not.toHaveBeenCalled();
+    });
+
+    it('blokkeert het verplaatsen als het platform de invoer blokkeert', async () => {
+      await render(view(), { disabled: true });
+
+      myCards()[0].dispatchEvent(key('ArrowRight'));
+
+      expect(submit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('kaartvoorkeuren in het spel', () => {
+    const open = (): HTMLDialogElement => el().querySelector('dialog')!;
+    const gear = (): HTMLButtonElement | undefined =>
+      buttons().find((b) => b.textContent?.includes('Kaartvoorkeuren') && !open().contains(b));
+
+    it('opent en sluit het venster met de voorkeuren via het tandwiel', async () => {
+      await render(view());
+      expect(open().hasAttribute('open')).toBe(false);
+
+      gear()!.click();
+      expect(open().hasAttribute('open')).toBe(true);
+      expect(open().querySelector('dg-card-preferences')).not.toBeNull();
+
+      button('Sluiten')!.click();
+      expect(open().hasAttribute('open')).toBe(false);
+    });
+
+    it('sluit het venster bij een klik op de achtergrond, maar niet bij een klik erin', async () => {
+      await render(view());
+      gear()!.click();
+
+      open()
+        .querySelector('select')!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(open().hasAttribute('open')).toBe(true);
+
+      open().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(open().hasAttribute('open')).toBe(false);
+    });
+
+    it('is ook bereikbaar als je niet aan de beurt bent', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      expect(gear()).toBeDefined();
+    });
+  });
+
+  describe('animaties', () => {
+    let animate: ReturnType<typeof vi.fn>;
+    const flown = (): HTMLElement[] => animate.mock.contexts as HTMLElement[];
+    const keyframes = (call: number): string => JSON.stringify(animate.mock.calls[call][0]);
+
+    beforeEach(() => {
+      animate = vi.fn().mockReturnValue({ finished: Promise.resolve() });
+      Object.defineProperty(HTMLElement.prototype, 'animate', {
+        value: animate,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      Reflect.deleteProperty(HTMLElement.prototype, 'animate');
+    });
+
+    const potAlt = (position: number): string | null =>
+      el().querySelectorAll('.pot img')[position].getAttribute('alt');
+
+    it('laat bij een wissel van een ander de handkaart en de potkaart vliegen, vóór de stand verandert', async () => {
+      await render(view({ turn: 1, allowed: null }));
+      const seenWhileFlying: (string | null)[] = [];
+      animate.mockImplementation(() => {
+        seenWhileFlying.push(potAlt(1));
+        return { finished: Promise.resolve() };
+      });
+
+      await update(view({ turn: 2, allowed: null, pot: ['DA', 'C7', 'S8'] }), [
+        ev(1, 'swap', { seat: 1, handPos: 2, potPos: 1, taken: 'HA', given: 'C7' }),
+      ]);
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      expect(animate).toHaveBeenCalledTimes(2);
+      expect(flown().map((e) => [e.dataset['seat'], e.dataset['pos'], e.dataset['pot']])).toEqual([
+        ['1', '2', undefined],
+        [undefined, undefined, '1'],
+      ]);
+      // Tijdens de vlucht ligt de oude potkaart er nog; daarna is hij vervangen.
+      expect(seenWhileFlying).toEqual(['harten aas', 'harten aas']);
+      expect(potAlt(1)).toBe('klaveren 7');
+    });
+
+    it('gebruikt bij opeenvolgende wissels steeds een andere vluchtvariant', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      await update(view({ turn: 0, allowed: ALL, pot: ['C7', 'HA', 'S8'] }), [
+        ev(1, 'swap', { seat: 1, handPos: 0, potPos: 0, taken: 'DA', given: 'C7' }),
+        ev(2, 'swap', { seat: 2, handPos: 1, potPos: 1, taken: 'HA', given: 'D8' }),
+        ev(3, 'swap', { seat: 1, handPos: 2, potPos: 2, taken: 'S8', given: 'H7' }),
+      ]);
+      await vi.advanceTimersByTimeAsync(10000);
+      fixture.detectChanges();
+
+      expect(animate).toHaveBeenCalledTimes(6);
+      // Twee vluchten per wissel (hand en pot) met dezelfde variant; de volgende wissel anders.
+      expect(keyframes(0)).toBe(keyframes(1));
+      expect(keyframes(0)).not.toBe(keyframes(2));
+      expect(keyframes(2)).not.toBe(keyframes(4));
+    });
+
+    it('laat bij alles ruilen drie kaartparen tegelijk vliegen', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      await update(view({ turn: 2, allowed: null }), [
+        ev(1, 'swapAll', { seat: 1, taken: ['DA', 'HA', 'S8'], given: ['S7', 'H8', 'D9'] }),
+      ]);
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      expect(animate).toHaveBeenCalledTimes(6);
+      expect(
+        new Set(
+          flown()
+            .map((e) => e.dataset['pot'])
+            .filter(Boolean),
+        ),
+      ).toEqual(new Set(['0', '1', '2']));
+    });
+
+    it('laat je eigen hand tot na de vlucht op de oude stand staan', async () => {
+      await render(view());
+      const mine: (string | null)[] = [];
+      animate.mockImplementation(() => {
+        mine.push(
+          el()
+            .querySelectorAll('dg-thirty-one-seat')[0]
+            .querySelectorAll('img')[1]
+            .getAttribute('alt'),
+        );
+        return { finished: Promise.resolve() };
+      });
+
+      // Je wisselde je tweede kaart (harten 8) tegen de harten aas; de server heeft de nieuwe hand al.
+      await update(
+        view({ turn: 1, allowed: null, hand: ['S7', 'HA', 'D9'], pot: ['DA', 'H8', 'S8'] }),
+        [ev(1, 'swap', { seat: 0, handPos: 1, potPos: 1, taken: 'HA', given: 'H8' })],
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      expect(mine).toEqual(['harten 8', 'harten 8']);
+      const handNow = el().querySelectorAll('dg-thirty-one-seat')[0].querySelectorAll('img')[1];
+      expect(handNow.getAttribute('alt')).toBe('harten aas');
+    });
+
+    it('laat een verplaatsing door een ander vliegen, maar je eigen verplaatsing niet', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      await update(view({ turn: 1, allowed: null }), [ev(1, 'moved', { seat: 2, a: 0, b: 2 })]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(animate).toHaveBeenCalledTimes(2);
+      expect(flown().map((e) => e.dataset['seat'])).toEqual(['2', '2']);
+
+      animate.mockClear();
+      await update(view({ turn: 1, allowed: null }), [
+        ev(1, 'moved', { seat: 2, a: 0, b: 2 }),
+        ev(2, 'moved', { seat: 0, a: 0, b: 1 }),
+      ]);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(animate).not.toHaveBeenCalled();
+    });
+
+    it('laat niets vliegen bij een pas, een afrekening of een gebeurtenis zonder kaarten', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      await update(view({ turn: 2, allowed: null }), [ev(1, 'pass', { seat: 1 })]);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(animate).not.toHaveBeenCalled();
+    });
+  });
 });

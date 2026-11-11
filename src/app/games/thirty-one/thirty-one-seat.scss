@@ -161,3 +161,75 @@
   --card-width: 4.25rem;
   --cards-max: 16rem;
 }
+
+.cardbtn--movable {
+  cursor: grab;
+  /* Slepen met een vinger mag de pagina niet laten scrollen. */
+  touch-action: none;
+}
+
+.cardbtn--dragging {
+  position: relative;
+  z-index: 20;
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.4);
+}
+
+.seat__cards {
+  perspective: 40rem;
+}
+
+/* Beweging alleen voor wie het prettig vindt (bij "minder beweging" staat alles stil). */
+@media (prefers-reduced-motion: no-preference) {
+  /* Delen: de kaarten glijden na elkaar op hun plek. */
+  :host(.seat--dealing) .slot {
+    animation: deal-in 450ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 120ms);
+  }
+
+  /* Afrekening: de kaarten draaien open. */
+  :host(.seat--revealing) .slot {
+    animation: reveal 600ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 150ms);
+  }
+
+  /* Een leven kwijt: de hartjes schudden. */
+  :host(.seat--lost) .hearts {
+    display: inline-block;
+    animation: shake 450ms ease-in-out 2;
+  }
+
+  /* Wie aan de beurt is, pulseert zacht. */
+  :host(.seat--turn) .seat__head {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2.5rem) scale(0.6) rotate(-12deg);
+  }
+}
+
+@keyframes reveal {
+  from {
+    transform: rotateY(90deg);
+  }
+}
+
+@keyframes shake {
+  25% {
+    translate: -0.25rem 0;
+  }
+  75% {
+    translate: 0.25rem 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.8;
+  }
+}

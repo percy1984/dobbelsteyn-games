@@ -55,7 +55,15 @@ export interface Reveal {
 export interface Highlight {
   readonly seat: number;
   readonly kind:
-    'swap' | 'swapAll' | 'pass' | 'skip' | 'stop31' | 'moved' | 'lastRound' | 'dirtyLaundry';
+    | 'dealt'
+    | 'swap'
+    | 'swapAll'
+    | 'pass'
+    | 'skip'
+    | 'stop31'
+    | 'moved'
+    | 'lastRound'
+    | 'dirtyLaundry';
   /** Posities in de hand en de pot van de gewisselde kaarten (alleen bij wisselen). */
   readonly handPositions: readonly number[];
   readonly potPositions: readonly number[];
@@ -125,10 +133,10 @@ export function scoreOf(hand: readonly string[]): number {
 export function eventDuration(event: GameEvent): number {
   switch (event.type) {
     case 'swap':
-      // De gewisselde kaarten blijven een seconde zichtbaar met een rand, plus een korte pauze.
-      return 1400;
+      // Na de vlucht blijven de gewisselde kaarten een seconde zichtbaar met een rand.
+      return 1100;
     case 'swapAll':
-      return 1600;
+      return 1200;
     case 'pass':
     case 'skip':
     case 'stop31':
@@ -139,9 +147,9 @@ export function eventDuration(event: GameEvent): number {
     case 'settled':
       return 4000;
     case 'dealt':
-      return 900;
+      return 1200;
     case 'moved':
-      return 300;
+      return 450;
     case 'finished':
       return 600;
     default:
@@ -254,7 +262,12 @@ export function applyEvent(display: Display, event: GameEvent): Display {
         finalRound: false,
         lastRoundPending: false,
         toPlay: [],
-        highlight: null,
+        highlight: {
+          seat: event['dealer'] as number,
+          kind: 'dealt',
+          handPositions: [],
+          potPositions: [],
+        },
       };
     }
     case 'settled': {

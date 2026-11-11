@@ -199,3 +199,30 @@
     inline-size: clamp(3.5rem, 8cqi, 5rem);
   }
 }
+
+.game31__move {
+  margin: 0;
+  color: var(--dg-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.button--small {
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+}
+
+/* Het venster met de kaartvoorkeuren. */
+.prefs {
+  inline-size: min(26rem, calc(100% - 2rem));
+  padding: 1rem;
+  border: 1px solid var(--dg-border);
+  border-radius: 1rem;
+  background: var(--dg-surface);
+  color: var(--dg-text);
+
+  &::backdrop {
+    background: rgb(0 0 0 / 0.5);
+  }
+}
