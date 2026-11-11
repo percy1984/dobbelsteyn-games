@@ -41,6 +41,19 @@ describe('GameTile', () => {
     expect(el.textContent).toContain('Spelen');
   });
 
+  it('toont de ondertitel als de game er een heeft', async () => {
+    const el = await render({ slug: '31-en', playable: false });
+
+    expect(el.querySelector('.tile__name')?.textContent).toBe('31-en');
+    expect(el.querySelector('.tile__subtitle')?.textContent).toBe('Eenendertigen');
+  });
+
+  it('toont geen ondertitel als de game er geen heeft', async () => {
+    const el = await render({ slug: 'nim', playable: false });
+
+    expect(el.querySelector('.tile__subtitle')).toBeNull();
+  });
+
   it('maakt initialen van de naam als tijdelijke illustratie', async () => {
     const el = await render({ slug: 'klein-hartenjagen', playable: false });
 

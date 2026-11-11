@@ -15,6 +15,7 @@ export const NL = {
   'game.super-tic-tac-toe.name': 'Super-Tic-Tac-Toe',
   'game.take-5.name': 'Take-5',
   'game.31-en.name': '31-en',
+  'game.31-en.subtitle': 'Eenendertigen',
   'game.blufpoker.name': 'Blufpoker',
   'game.klein-hartenjagen.name': 'Klein Hartenjagen',
   'game.canasta-1v1.name': 'Canasta 1v1',

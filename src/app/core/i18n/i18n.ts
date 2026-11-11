@@ -63,6 +63,12 @@ export class I18n {
     return key in NL ? this.t(key) : slug;
   }
 
+  /** Optionele ondertitel van een game (bijvoorbeeld "Eenendertigen"), of null als er geen is. */
+  gameSubtitle(slug: string): string | null {
+    const key = `game.${slug}.subtitle` as TranslationKey;
+    return key in NL ? this.t(key) : null;
+  }
+
   private initialLang(): Lang {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
