@@ -25,6 +25,7 @@ final class GameRegistry
     {
         return new self([
             new TicTacToe(),
+            new ThirtyOne(),
         ]);
     }
 

@@ -152,7 +152,7 @@ final class TicTacToeTest extends GameContractTestCase
         $this->assertTrue($registry->has('tic-tac-toe'));
         $this->assertFalse($registry->has('mancala'));
         $this->assertSame('tic-tac-toe', $registry->get('tic-tac-toe')->slug());
-        $this->assertSame(['tic-tac-toe'], $registry->slugs());
+        $this->assertSame(['tic-tac-toe', '31-en'], $registry->slugs());
     }
 
     public function testRegistryRejectsUnknownGame(): void
