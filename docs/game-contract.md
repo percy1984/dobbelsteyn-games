@@ -49,6 +49,7 @@ De stage toont zelf de beurtmelding, de uitslag en "nog een keer"; de game-compo
 
 ## Spelverloop op het platform
 
+0. **Ready:** elke mens meldt zich ready (bots zijn altijd ready), ook de beheerder. Een beheerder kan een **ready-check** doen: iedereen krijgt een popup met wie wel en niet ready is, en wie nog niet ready is kan zich daar ready melden. Zijn alle mensen ready, dan is een ready-check niet meer mogelijk en kan de beheerder starten. Starten zonder dat iedereen ready is geeft `not_ready`. Na een rematch begint iedereen weer als niet ready.
 1. De maker of een beheerder start met `POST /lobbies/{code}/start` (genoeg spelers, bots tellen mee). De lobby gaat op `countdown` (3 seconden).
 2. De eerstvolgende poll na afloop zet het spel in gang: `Game::start()`, en bots die als eerste aan de beurt zijn spelen meteen. Zo blijft het werken als een telefoon slaapt.
 3. Een speler zet met `POST /lobbies/{code}/move`. De game valideert (`InvalidMove` geeft 422), daarna spelen bots op de server tot een mens aan de beurt is.

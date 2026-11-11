@@ -14,6 +14,7 @@ function seat(seatNo: number, name: string): SeatView {
     isPromoted: false,
     botLevel: null,
     isAway: false,
+    isReady: true,
   };
 }
 

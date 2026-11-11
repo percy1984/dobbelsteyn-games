@@ -21,6 +21,14 @@ final class GameFlowTest extends DbTestCase
         $this->lobbies = new LobbyService($this->pdo, GameRegistry::default(), new Rng(static fn (int $min, int $max): int => $min));
     }
 
+    /** Start het spel nadat iedereen zich ready gemeld heeft (de ready-regels zelf testen we in ReadyCheckTest). */
+    private function startReady(string $code, ?string $token): array
+    {
+        $this->pdo->exec('UPDATE seats SET is_ready = 1');
+
+        return $this->lobbies->start($code, $token);
+    }
+
     private function assertApiError(int $status, string $code, callable $fn): void
     {
         try {
@@ -55,11 +63,11 @@ final class GameFlowTest extends DbTestCase
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
         $code = $created['lobby']['code'];
-        $this->assertApiError(409, 'not_enough_players', fn () => $this->lobbies->start($code, $created['token']));
+        $this->assertApiError(409, 'not_enough_players', fn () => $this->startReady($code, $created['token']));
 
         $guest = $this->lobbies->join($code, 'Anna', null);
-        $this->assertApiError(403, 'not_allowed', fn () => $this->lobbies->start($code, $guest['token']));
-        $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->start($code, null));
+        $this->assertApiError(403, 'not_allowed', fn () => $this->startReady($code, $guest['token']));
+        $this->assertApiError(403, 'not_in_lobby', fn () => $this->startReady($code, null));
     }
 
     public function testBotsCountTowardsTheRequiredPlayers(): void
@@ -68,7 +76,7 @@ final class GameFlowTest extends DbTestCase
         $code = $created['lobby']['code'];
         $this->lobbies->addBot($code, $created['token'], 5);
 
-        $view = $this->lobbies->start($code, $created['token']);
+        $view = $this->startReady($code, $created['token']);
 
         $this->assertSame('countdown', $view['status']);
     }
@@ -77,13 +85,13 @@ final class GameFlowTest extends DbTestCase
     {
         $lobby = $this->twoHumans();
 
-        $view = $this->lobbies->start($lobby['code'], $lobby['host']);
+        $view = $this->startReady($lobby['code'], $lobby['host']);
 
         $this->assertSame('countdown', $view['status']);
         $this->assertGreaterThan(1500, $view['countdownMs']);
         $this->assertLessThanOrEqual(3000, $view['countdownMs']);
         $this->assertArrayNotHasKey('gameView', $view, 'Tijdens de aftelling is er nog geen spel.');
-        $this->assertApiError(409, 'cannot_change', fn () => $this->lobbies->start($lobby['code'], $lobby['host']));
+        $this->assertApiError(409, 'cannot_change', fn () => $this->startReady($lobby['code'], $lobby['host']));
         $this->assertApiError(409, 'cannot_change', fn () => $this->lobbies->updateSettings($lobby['code'], $lobby['host'], ['starter' => 'second']));
         $this->assertApiError(409, 'not_playing', fn () => $this->lobbies->move($lobby['code'], $lobby['host'], ['cell' => 0]));
     }
@@ -91,7 +99,7 @@ final class GameFlowTest extends DbTestCase
     public function testGameBeginsWhenTheCountdownIsOverAndEveryoneGetsTheirOwnView(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
 
         $stillCounting = $this->lobbies->poll($lobby['code'], $lobby['host'], null);
         $this->assertSame('countdown', $stillCounting['status']);
@@ -112,7 +120,7 @@ final class GameFlowTest extends DbTestCase
     public function testStartingTheGameTwiceViaAdvanceIsHarmless(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
 
         $this->lobbies->advance($lobby['code']);
@@ -127,7 +135,7 @@ final class GameFlowTest extends DbTestCase
     public function testMovesAreValidatedOnTheServer(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $this->finishCountdown($lobby['code'], $lobby['host']);
 
         $this->assertApiError(409, 'not_your_turn', fn () => $this->lobbies->move($lobby['code'], $lobby['guest'], ['cell' => 4]));
@@ -146,7 +154,7 @@ final class GameFlowTest extends DbTestCase
     public function testEveryMoveBumpsTheVersionSoOthersSeeIt(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $playing = $this->finishCountdown($lobby['code'], $lobby['host']);
 
         $this->lobbies->move($lobby['code'], $lobby['host'], ['cell' => 0]);
@@ -160,7 +168,7 @@ final class GameFlowTest extends DbTestCase
     public function testWinningEndsTheGameAndNoMoreMovesAreAccepted(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $this->finishCountdown($lobby['code'], $lobby['host']);
 
         foreach ([[0, 'host'], [3, 'guest'], [1, 'host'], [4, 'guest']] as [$cell, $who]) {
@@ -181,7 +189,7 @@ final class GameFlowTest extends DbTestCase
         $code = $created['lobby']['code'];
         $this->lobbies->addBot($code, $created['token'], 10);
         $this->lobbies->updateSettings($code, $created['token'], ['starter' => 'second']);
-        $this->lobbies->start($code, $created['token']);
+        $this->startReady($code, $created['token']);
 
         $view = $this->finishCountdown($code, $created['token']);
 
@@ -208,7 +216,7 @@ final class GameFlowTest extends DbTestCase
         $code = $created['lobby']['code'];
         $this->lobbies->addBot($code, $created['token'], 1);
         $this->lobbies->updateSettings($code, $created['token'], ['starter' => 'second']);
-        $this->lobbies->start($code, $created['token']);
+        $this->startReady($code, $created['token']);
 
         $view = $this->finishCountdown($code, $created['token']);
 
@@ -220,7 +228,7 @@ final class GameFlowTest extends DbTestCase
     {
         $lobby = $this->twoHumans();
         $this->assertApiError(409, 'not_finished', fn () => $this->lobbies->rematch($lobby['code'], $lobby['host']));
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $this->finishCountdown($lobby['code'], $lobby['host']);
         foreach ([[0, 'host'], [3, 'guest'], [1, 'host'], [4, 'guest'], [2, 'host']] as [$cell, $who]) {
             $this->lobbies->move($lobby['code'], $lobby[$who], ['cell' => $cell]);
@@ -234,14 +242,14 @@ final class GameFlowTest extends DbTestCase
         $this->assertArrayNotHasKey('gameView', $view);
         $this->assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM game_states')->fetchColumn());
 
-        $again = $this->lobbies->start($lobby['code'], $lobby['host']);
+        $again = $this->startReady($lobby['code'], $lobby['host']);
         $this->assertSame('countdown', $again['status']);
     }
 
     public function testCannotLeaveOrJoinOnceTheCountdownStarted(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
 
         $this->assertApiError(409, 'cannot_leave', fn () => $this->lobbies->leave($lobby['code'], $lobby['guest']));
         $this->assertApiError(409, 'game_started', fn () => $this->lobbies->join($lobby['code'], 'Piet', null));
@@ -250,7 +258,7 @@ final class GameFlowTest extends DbTestCase
     public function testFinishedLobbiesAreNotListed(): void
     {
         $lobby = $this->twoHumans();
-        $this->lobbies->start($lobby['code'], $lobby['host']);
+        $this->startReady($lobby['code'], $lobby['host']);
         $this->finishCountdown($lobby['code'], $lobby['host']);
         $this->assertCount(1, $this->lobbies->listForGame('tic-tac-toe'));
 

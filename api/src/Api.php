@@ -47,6 +47,9 @@ final class Api
         $router->add('POST', '/lobbies/{code}/chat', $api->chat(...));
         $router->add('POST', '/lobbies/{code}/replace', $api->replace(...));
         $router->add('POST', '/lobbies/{code}/end', $api->endGame(...));
+        $router->add('POST', '/lobbies/{code}/ready', $api->ready(...));
+        $router->add('POST', '/lobbies/{code}/ready-check', $api->readyCheck(...));
+        $router->add('POST', '/lobbies/{code}/ready-check/cancel', $api->cancelReadyCheck(...));
         $router->add('POST', '/lobbies/{code}/start', $api->startGame(...));
         $router->add('POST', '/lobbies/{code}/move', $api->move(...));
         $router->add('POST', '/lobbies/{code}/rematch', $api->rematch(...));
@@ -228,6 +231,24 @@ final class Api
     private function endGame(array $params, Request $request): Response
     {
         return Response::json($this->lobbies()->endGame($params['code'], $request->seatToken()));
+    }
+
+    /** @param array<string, string> $params */
+    private function ready(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->setReady($params['code'], $request->seatToken(), ($request->body['ready'] ?? true) === true));
+    }
+
+    /** @param array<string, string> $params */
+    private function readyCheck(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->startReadyCheck($params['code'], $request->seatToken()));
+    }
+
+    /** @param array<string, string> $params */
+    private function cancelReadyCheck(array $params, Request $request): Response
+    {
+        return Response::json($this->lobbies()->cancelReadyCheck($params['code'], $request->seatToken()));
     }
 
     // --- Hulpmiddelen ----------------------------------------------------------------------

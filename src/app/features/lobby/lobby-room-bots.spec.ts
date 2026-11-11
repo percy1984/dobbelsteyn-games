@@ -14,6 +14,7 @@ function human(seatNo: number, name: string, isCreator = false): SeatView {
     isPromoted: false,
     botLevel: null,
     isAway: false,
+    isReady: true,
   };
 }
 
@@ -26,6 +27,7 @@ function bot(seatNo: number, level: number): SeatView {
     isPromoted: false,
     botLevel: level,
     isAway: false,
+    isReady: true,
   };
 }
 

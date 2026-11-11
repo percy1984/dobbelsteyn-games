@@ -64,6 +64,33 @@ export class LobbyApi {
     );
   }
 
+  /** Meldt jezelf ready (of weer niet ready). Kan zolang we in de wachtkamer zijn. */
+  setReady(code: string, ready: boolean): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/ready`,
+      { ready },
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** De beheerder vraagt iedereen om ready te zijn (popup bij alle spelers). */
+  startReadyCheck(code: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/ready-check`,
+      {},
+      this.sessions.get(code)?.token,
+    );
+  }
+
+  /** De beheerder stopt de ready-check. */
+  cancelReadyCheck(code: string): Promise<LobbyView> {
+    return this.api.post<LobbyView>(
+      `lobbies/${code}/ready-check/cancel`,
+      {},
+      this.sessions.get(code)?.token,
+    );
+  }
+
   /** Start de aftelling (3-2-1); daarna begint het spel vanzelf. Alleen maker of beheerder. */
   start(code: string): Promise<LobbyView> {
     return this.api.post<LobbyView>(`lobbies/${code}/start`, {}, this.sessions.get(code)?.token);

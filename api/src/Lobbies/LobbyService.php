@@ -481,9 +481,12 @@ final class LobbyService
             if (count($this->seats((int) $lobby['id'])) < (int) $lobby['min_players']) {
                 throw new ApiException(409, 'Er zijn nog niet genoeg spelers om te starten.', 'not_enough_players');
             }
+            if (!$this->allReady($this->seats((int) $lobby['id']))) {
+                throw new ApiException(409, 'Niet iedereen is ready.', 'not_ready');
+            }
 
             $this->pdo->prepare(
-                "UPDATE lobbies SET status = 'countdown', countdown_ends_at = NOW(3) + INTERVAL " . self::COUNTDOWN_SECONDS . ' SECOND WHERE id = ?'
+                "UPDATE lobbies SET status = 'countdown', ready_check = 0, countdown_ends_at = NOW(3) + INTERVAL " . self::COUNTDOWN_SECONDS . ' SECOND WHERE id = ?'
             )->execute([$lobby['id']]);
             $this->touch((int) $lobby['id']);
         });
@@ -551,7 +554,8 @@ final class LobbyService
             }
 
             $this->pdo->prepare('DELETE FROM game_states WHERE lobby_id = ?')->execute([$lobby['id']]);
-            $this->pdo->prepare("UPDATE lobbies SET status = 'waiting', countdown_ends_at = NULL WHERE id = ?")->execute([$lobby['id']]);
+            $this->pdo->prepare("UPDATE lobbies SET status = 'waiting', ready_check = 0, countdown_ends_at = NULL WHERE id = ?")->execute([$lobby['id']]);
+            $this->pdo->prepare('UPDATE seats SET is_ready = 0 WHERE lobby_id = ?')->execute([$lobby['id']]);
             $this->touch((int) $lobby['id']);
         });
 
@@ -691,6 +695,81 @@ final class LobbyService
     }
 
     /**
+     * Een speler meldt zich ready of weer niet-ready. Kan zolang we in de wachtkamer zijn; ook de
+     * beheerder doet mee.
+     *
+     * @return array<string, mixed>
+     */
+    public function setReady(string $code, ?string $token, bool $ready): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token, $ready): void {
+            $lobby = $this->load($code, lock: true);
+            $me = $this->seatForToken((int) $lobby['id'], $token);
+            if ($me === null) {
+                throw new ApiException(403, 'Je zit niet in deze lobby.', 'not_in_lobby');
+            }
+            if ($lobby['status'] !== 'waiting') {
+                throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
+            }
+
+            $this->pdo->prepare('UPDATE seats SET is_ready = ? WHERE id = ?')->execute([$ready ? 1 : 0, $me['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * De beheerder vraagt iedereen om ready te zijn: alle spelers krijgen een overzicht te zien en wie
+     * nog niet ready is, kan zich daar ready melden. Heeft geen zin als iedereen al ready is.
+     *
+     * @return array<string, mixed>
+     */
+    public function startReadyCheck(string $code, ?string $token): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+            if ($lobby['status'] !== 'waiting') {
+                throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
+            }
+            $seats = $this->seats((int) $lobby['id']);
+            if ($this->allReady($seats)) {
+                throw new ApiException(409, 'Iedereen is al ready: je kunt gewoon starten.', 'all_ready');
+            }
+
+            $this->pdo->prepare('UPDATE lobbies SET ready_check = 1 WHERE id = ?')->execute([$lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
+     * De beheerder stopt de ready-check zonder te starten.
+     *
+     * @return array<string, mixed>
+     */
+    public function cancelReadyCheck(string $code, ?string $token): array
+    {
+        $code = Input::code($code);
+
+        $this->transaction(function () use ($code, $token): void {
+            $lobby = $this->load($code, lock: true);
+            $this->requireManager($lobby, $token);
+
+            $this->pdo->prepare('UPDATE lobbies SET ready_check = 0 WHERE id = ?')->execute([$lobby['id']]);
+            $this->touch((int) $lobby['id']);
+        });
+
+        return $this->viewFor($code, $token);
+    }
+
+    /**
      * Poll van een speler: telt als heartbeat, zet vertrokken spelers op "weg" en geeft de nieuwe
      * staat. Is de versie sinds `$since` niet veranderd, dan volgt een piepklein antwoord.
      *
@@ -750,6 +829,9 @@ final class LobbyService
             'seats' => array_map(fn (array $seat): array => $this->seatView($seat), $seats),
             // Resterende milliseconden van de aftelling op het moment van dit antwoord.
             'countdownMs' => $lobby['status'] === 'countdown' ? (int) $lobby['countdown_ms'] : null,
+            'allReady' => $this->allReady($seats),
+            // Alleen "actief" zolang er nog mensen niet ready zijn en we nog wachten.
+            'readyCheck' => (int) $lobby['ready_check'] === 1 && $lobby['status'] === 'waiting' && !$this->allReady($seats),
             'me' => null,
         ];
 
@@ -787,6 +869,7 @@ final class LobbyService
             'isPromoted' => (int) $seat['is_promoted'] === 1,
             'botLevel' => $seat['bot_level'] === null ? null : (int) $seat['bot_level'],
             'isAway' => (int) $seat['is_away'] === 1,
+            'isReady' => $seat['kind'] === 'bot' || (int) $seat['is_ready'] === 1,
         ];
     }
 
@@ -911,6 +994,29 @@ final class LobbyService
     {
         $this->pdo->prepare('UPDATE lobbies SET version = version + 1, last_activity_at = NOW(3) WHERE id = ?')
             ->execute([$lobbyId]);
+
+        // Is iedereen ready (of is de laatste niet-ready speler weg), dan is de ready-check klaar.
+        $this->pdo->prepare(
+            "UPDATE lobbies SET ready_check = 0
+             WHERE id = ? AND ready_check = 1
+               AND NOT EXISTS (SELECT 1 FROM seats WHERE lobby_id = ? AND kind = 'human' AND is_ready = 0)"
+        )->execute([$lobbyId, $lobbyId]);
+    }
+
+    /**
+     * Is elke mens ready? Bots tellen altijd mee.
+     *
+     * @param list<array<string, mixed>> $seats
+     */
+    private function allReady(array $seats): bool
+    {
+        foreach ($seats as $seat) {
+            if ($seat['kind'] === 'human' && (int) $seat['is_ready'] !== 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
