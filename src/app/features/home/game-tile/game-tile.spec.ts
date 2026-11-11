@@ -54,6 +54,15 @@ describe('GameTile', () => {
     expect(el.querySelector('.tile__subtitle')).toBeNull();
   });
 
+  it('toont de afbeelding van de game in plaats van de initialen als die er is', async () => {
+    const el = await render({ slug: '31-en', playable: false, image: 'images/games/31-en.webp' });
+
+    const img = el.querySelector('.tile__art img');
+    expect(img?.getAttribute('src')).toContain('images/games/31-en.webp');
+    expect(img?.getAttribute('alt')).toBe('');
+    expect(el.querySelector('.tile__art')?.textContent?.trim()).toBe('');
+  });
+
   it('maakt initialen van de naam als tijdelijke illustratie', async () => {
     const el = await render({ slug: 'klein-hartenjagen', playable: false });
 
