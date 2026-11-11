@@ -5,6 +5,7 @@ import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
 import { ChatPanel } from '../chat/chat-panel';
 import { AwayNotice } from './away-notice';
 import { Countdown } from './countdown';
+import { GamePreferences } from './game-preferences';
 import { ReadyCheckDialog } from './ready-check-dialog';
 import { LobbySettings } from './lobby-settings';
 import { QrShare } from './qr-share';
@@ -14,7 +15,15 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 /** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
 @Component({
-  imports: [AwayNotice, ChatPanel, Countdown, LobbySettings, QrShare, ReadyCheckDialog],
+  imports: [
+    AwayNotice,
+    ChatPanel,
+    Countdown,
+    GamePreferences,
+    LobbySettings,
+    QrShare,
+    ReadyCheckDialog,
+  ],
   selector: 'dg-lobby-room',
   styleUrl: './lobby-room.scss',
   template: `
@@ -139,6 +148,8 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       }
 
       <dg-lobby-settings [lobby]="lobby()" (changed)="lobbyChange.emit($event)" />
+
+      <dg-game-preferences [game]="lobby().game" />
 
       @if (waiting() && lobby().me?.canManage) {
         <div class="start">

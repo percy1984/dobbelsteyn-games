@@ -29,3 +29,10 @@ export interface GameComponentInputs {
 export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
   'tic-tac-toe': () => import('./tic-tac-toe/tic-tac-toe').then((m) => m.TicTacToe),
 };
+
+/**
+ * Optionele voorkeurencomponent per game, getoond in de lobby (zie `GamePreferences`). Voor
+ * voorkeuren die elke speler voor zichzelf kiest, zoals de achterkant van de kaarten. De component
+ * heeft geen inputs en bewaart de keuze zelf, bijvoorbeeld in localStorage.
+ */
+export const GAME_PREFERENCES: Readonly<Record<string, () => Promise<Type<unknown>>>> = {};
