@@ -1,0 +1,26 @@
+{
+  "id": "austingabriel",
+  "name": "Classic faces, four colours (AustinGabriel)",
+  "credit": "AustinGabriel, Public Domain and CC0 Playing Cards",
+  "source": {
+    "url": "https://github.com/AustinGabriel/Public-Domain-and-CC0-Playing-Cards",
+    "commit": "3765067c32fcef42a30e87022332db729658e7cd"
+  },
+  "colors": {
+    "S": "#111111",
+    "H": "#cc0000",
+    "D": "#1c3fb7",
+    "C": "#1b7a2b"
+  },
+  "license": "CC0-1.0",
+  "index": {
+    "viewBox": [
+      1500,
+      2100
+    ],
+    "centerX": 0.08538600166666667,
+    "top": 0.028570238095238176,
+    "height": 0.10012499999999981
+  },
+  "cardFile": "{card}.svg"
+}
