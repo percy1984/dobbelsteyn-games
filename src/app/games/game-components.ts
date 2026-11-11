@@ -28,6 +28,7 @@ export interface GameComponentInputs {
  */
 export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
   'tic-tac-toe': () => import('./tic-tac-toe/tic-tac-toe').then((m) => m.TicTacToe),
+  '31-en': () => import('./thirty-one/thirty-one').then((m) => m.ThirtyOne),
 };
 
 /**
@@ -38,3 +39,9 @@ export const GAME_COMPONENTS: Readonly<Record<string, () => Promise<Type<unknown
 export const GAME_PREFERENCES: Readonly<Record<string, () => Promise<Type<unknown>>>> = {
   '31-en': () => import('./cards/card-preferences-panel').then((m) => m.CardPreferencesPanel),
 };
+
+/**
+ * Games die tijdens het spel de volle paginabreedte willen hebben (bijvoorbeeld voor een ronde tafel
+ * op een groot scherm). Alle andere games staan in de smalle kolom.
+ */
+export const WIDE_GAMES: ReadonlySet<string> = new Set(['31-en']);

@@ -1,0 +1,201 @@
+:host {
+  display: block;
+  inline-size: 100%;
+  /* De tafel past zijn indeling aan de breedte van dit onderdeel aan, niet aan het scherm. */
+  container-type: inline-size;
+
+  --dg-felt: #1f6b3a;
+  --dg-felt-dark: #154d29;
+  --dg-felt-text: #ffffff;
+  --dg-felt-badge: rgb(255 255 255 / 0.2);
+  --dg-felt-badge-text: #ffffff;
+  --dg-heart: #ff9a9a;
+  --dg-focus-on-felt: #ffffff;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.game31 {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+}
+
+.game31__meta,
+.game31__hint,
+.game31__score {
+  margin: 0;
+  color: var(--dg-muted);
+  font-size: 0.875rem;
+}
+
+.game31__score {
+  color: var(--dg-text);
+  font-weight: 700;
+}
+
+.game31__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 1rem;
+}
+
+.game31__banner {
+  margin: 0;
+  padding: 0.375rem 1rem;
+  border-radius: 999px;
+  background: var(--dg-surface);
+  border: 2px solid var(--dg-border);
+  font-weight: 700;
+  text-align: center;
+
+  &--me {
+    border-color: #c98a00;
+    background: #ffd34d;
+    color: #2b2100;
+  }
+}
+
+.game31__last {
+  margin: 0;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f0c24b;
+  color: #2b2100;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Smal: de tegenstanders in een rij, daaronder de pot en onderaan jijzelf. */
+.table {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+  justify-items: center;
+  inline-size: 100%;
+  padding: 0.75rem 0.5rem;
+  border-radius: 1rem;
+  background: radial-gradient(circle at 50% 40%, var(--dg-felt), var(--dg-felt-dark));
+}
+
+.table__felt {
+  display: none;
+}
+
+.table__seat {
+  order: 0;
+  inline-size: 100%;
+  --card-width: clamp(2.25rem, 12cqi, 3.25rem);
+
+  &--me {
+    grid-column: 1 / -1;
+    max-inline-size: 18rem;
+  }
+}
+
+.pot {
+  order: 1;
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.pot__slot {
+  inline-size: clamp(3.25rem, 18cqi, 4.5rem);
+  border-radius: 0.375rem;
+  outline: 3px solid transparent;
+  outline-offset: 2px;
+
+  &--marked {
+    outline-color: #ffd34d;
+  }
+}
+
+.cardbtn {
+  display: block;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus-on-felt);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &--selected {
+    transform: translateY(-0.5rem);
+    outline: 3px solid #ffd34d;
+    outline-offset: 2px;
+  }
+}
+
+/* Breed: een ronde tafel met jou onderaan en de anderen gelijkmatig eromheen. */
+@container (min-width: 40rem) {
+  .table {
+    display: block;
+    /* Liggend vlak, en niet hoger dan het scherm toelaat (koptekst, melding en knoppen eronder). */
+    aspect-ratio: 9 / 5;
+    inline-size: min(100%, max(38rem, calc((100dvh - 20rem) * 1.8)));
+    margin-inline: auto;
+    /* Jouw kaarten steken iets onder het laken uit. */
+    margin-block-end: 2.5rem;
+    padding: 0;
+    background: none;
+  }
+
+  .table__felt {
+    display: block;
+    position: absolute;
+    inset: 9% 4%;
+    border-radius: 50%;
+    border: 0.5rem solid #6b4a2b;
+    background: radial-gradient(circle at 50% 45%, var(--dg-felt), var(--dg-felt-dark));
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
+  }
+
+  .table__seat,
+  .table__seat--me {
+    inline-size: auto;
+    max-inline-size: none;
+    position: absolute;
+    left: calc(50% + 40% * sin(var(--a)));
+    top: calc(50% + 37% * cos(var(--a)));
+    translate: -50% -50%;
+    --card-width: clamp(2.5rem, 6.5cqi, 3.75rem);
+  }
+
+  .pot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    flex: none;
+  }
+
+  .pot__slot {
+    inline-size: clamp(3.5rem, 8cqi, 5rem);
+  }
+}
