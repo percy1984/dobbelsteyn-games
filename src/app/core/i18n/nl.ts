@@ -38,6 +38,7 @@ export const NL = {
   'cards.label': '{suit} {rank}',
   'cards.faceDown': 'Kaart met de achterkant boven',
   'game.31-en.table': 'De tafel',
+  'game.31-en.nextRound': 'Ronde {round} begint over',
   'game.31-en.round': 'Ronde {round}',
   'game.31-en.yourTurn': 'Jij bent aan de beurt',
   'game.31-en.turnOf': '{name} is aan de beurt',

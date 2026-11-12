@@ -90,6 +90,9 @@ export interface Display {
   readonly highlight: Highlight | null;
 }
 
+/** Zo lang blijft de afrekening (open handen, scores, wie een leven verliest) in beeld. */
+export const SETTLED_MS = 15000;
+
 export function displayFromView(view: ThirtyOneView): Display {
   return {
     round: view.round,
@@ -145,7 +148,8 @@ export function eventDuration(event: GameEvent): number {
     case 'dirtyLaundry':
       return 1800;
     case 'settled':
-      return 4000;
+      // De afrekening blijft lang staan, zodat iedereen alle handen en scores kan bekijken.
+      return SETTLED_MS;
     case 'dealt':
       return 1200;
     case 'moved':

@@ -30,6 +30,9 @@ import {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** De aftelling (3-2-1) waarmee een nieuwe ronde na de afrekening begint. */
+const ROUND_COUNTDOWN: readonly number[] = [3, 2, 1];
+
 /** Zo lang blijft een gewisselde kaart herkenbaar (open bij de speler, met een rand, ook in de pot). */
 export const SWAP_MARK_MS = 5000;
 
@@ -68,6 +71,9 @@ interface SwapMark {
  * daar direct door, hier komt elke gebeurtenis (wissel, pas, afrekening) één voor één in beeld, met
  * een korte pauze. Invoer is tijdens het afspelen geblokkeerd. Aan het eind staat de weergave weer
  * precies gelijk aan de view van de server.
+ *
+ * De afrekening blijft 15 seconden staan (`SETTLED_MS`); daarna telt de tafel af (3-2-1) en pas dan
+ * worden de kaarten van de nieuwe ronde gedeeld, zodat iedereen ziet dat er een nieuwe ronde begint.
  *
  * Een wissel blijft daarna nog even herkenbaar (`SWAP_MARK_MS`): de kaart die de speler uit de pot nam
  * ligt open in zijn hand (die was toch al openbaar) en heeft dezelfde gekleurde rand als de kaart die
@@ -132,6 +138,18 @@ interface SwapMark {
               </div>
             }
           </div>
+
+          @if (roundCountdown(); as count) {
+            <div class="table__countdown" role="status" aria-live="assertive">
+              <p class="table__countdown-label">
+                {{ i18n.t('game.31-en.nextRound', { round: count.round }) }}
+              </p>
+              <!-- Elke waarde is een nieuw element, zodat de animatie opnieuw begint. -->
+              @for (value of [count.value]; track value) {
+                <p class="table__countdown-number">{{ value }}</p>
+              }
+            </div>
+          }
 
           @for (p of ring(); track p.seat) {
             <dg-thirty-one-seat
@@ -245,6 +263,9 @@ export class ThirtyOne {
   private lastVariant: FlightVariant | null = null;
   /** Tijdens een vlucht van een eigen kaart: je hand zoals hij was, vóór de wissel. */
   private readonly handOverride = signal<readonly string[] | null>(null);
+
+  /** De aftelling naar een nieuwe ronde (na de afrekening), of null. */
+  protected readonly roundCountdown = signal<{ round: number; value: number } | null>(null);
 
   /** Recente wissels die nog herkenbaar in beeld staan. */
   private readonly marks = signal<readonly SwapMark[]>([]);
@@ -673,11 +694,30 @@ export class ThirtyOne {
     this.markTimers.add(timer);
   }
 
+  /** Telt 3-2-1 af over de tafel; de afrekening blijft er intussen onder staan. */
+  private async countDown(round: number): Promise<void> {
+    for (const value of ROUND_COUNTDOWN) {
+      this.roundCountdown.set({ round, value });
+      await sleep(1000);
+      if (this.destroyed) {
+        return;
+      }
+    }
+    this.roundCountdown.set(null);
+  }
+
   private async play(): Promise<void> {
     this.playing.set(true);
     try {
       for (let event = this.feed.take(); event; event = this.feed.take()) {
         const current = this.display() ?? displayFromView(this.state()!);
+        if (event.type === 'dealt' && current.reveal) {
+          // Na de afrekening: eerst aftellen, dan pas de nieuwe ronde delen.
+          await this.countDown(event['round'] as number);
+          if (this.destroyed) {
+            return;
+          }
+        }
         await this.animate(event);
         if (this.destroyed) {
           return;
@@ -691,6 +731,7 @@ export class ThirtyOne {
         }
       }
     } finally {
+      this.roundCountdown.set(null);
       this.playing.set(false);
       const view = this.state();
       if (view && !this.destroyed) {

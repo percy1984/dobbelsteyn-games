@@ -257,6 +257,10 @@ describe('eventDuration', () => {
     expect(eventDuration(event('moved'))).toBe(450);
   });
 
+  it('laat de afrekening 15 seconden staan', () => {
+    expect(eventDuration(event('settled'))).toBe(15000);
+  });
+
   it('geeft het delen tijd om de kaarten na elkaar te laten glijden', () => {
     expect(eventDuration(event('dealt'))).toBeGreaterThanOrEqual(1000);
   });
