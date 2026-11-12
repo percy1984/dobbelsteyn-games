@@ -40,6 +40,7 @@ export const EN = {
   'cards.label': '{rank} of {suit}',
   'cards.faceDown': 'Face-down card',
   'game.31-en.table': 'The table',
+  'game.31-en.nextRound': 'Round {round} starts in',
   'game.31-en.round': 'Round {round}',
   'game.31-en.yourTurn': 'It is your turn',
   'game.31-en.turnOf': "It is {name}'s turn",

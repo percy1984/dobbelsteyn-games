@@ -561,8 +561,31 @@ describe('ThirtyOne', () => {
       // Tijdens de afrekening zijn er geen speelknoppen.
       expect(el().querySelector('dg-thirty-one-actions')).toBeNull();
 
-      await vi.advanceTimersByTimeAsync(6000);
+      // De afrekening blijft 15 seconden staan, zonder aftelling.
+      await vi.advanceTimersByTimeAsync(14900);
       fixture.detectChanges();
+      expect(text('.game31__banner')).toBe('Afrekening: De laatste ronde is voorbij');
+      expect(el().querySelector('.seat__score')).not.toBeNull();
+      expect(el().querySelector('.table__countdown')).toBeNull();
+
+      // Dan telt de tafel af van 3 naar 1; de nieuwe ronde is nog niet gedeeld.
+      const count = (): string => text('.table__countdown-number');
+      await vi.advanceTimersByTimeAsync(200);
+      fixture.detectChanges();
+      expect(text('.table__countdown-label')).toBe('Ronde 2 begint over');
+      expect(count()).toBe('3');
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+      expect(count()).toBe('2');
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+      expect(count()).toBe('1');
+      expect(text('.game31__meta')).toContain('Ronde 1');
+
+      // Na de aftelling begint de nieuwe ronde.
+      await vi.advanceTimersByTimeAsync(1000);
+      fixture.detectChanges();
+      expect(el().querySelector('.table__countdown')).toBeNull();
       expect(text('.game31__meta')).toContain('Ronde 2');
       expect(el().querySelector('.seat__score')).toBeNull();
     });
@@ -576,6 +599,11 @@ describe('ThirtyOne', () => {
         ev(1, 'started', { seats: [0, 1, 2] }),
         ev(2, 'dealt', { round: 1, dealer: 2, order: [0, 1, 2], pot: ['DA', 'HA', 'S8'] }),
       ]);
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      // Zonder afrekening ervoor (een nieuw spel) wordt er niet afgeteld.
+      expect(el().querySelector('.table__countdown')).toBeNull();
+
       await vi.advanceTimersByTimeAsync(2000);
       fixture.detectChanges();
 
