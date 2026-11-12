@@ -9,7 +9,7 @@ export interface SeatView {
   readonly botLevel: number | null;
   /** Geen recente heartbeat: de speler is tijdelijk weg. */
   readonly isAway: boolean;
-  /** Ready om te starten; bots zijn altijd ready. */
+  /** Ready gemeld in de lopende ready-check; bots zijn altijd ready. */
   readonly isReady: boolean;
 }
 
@@ -55,9 +55,9 @@ export interface LobbyView {
   readonly turnNo?: number;
   /** De zetlog: de laatste publieke gebeurtenissen van het spel, oplopend op `seq` (leeg bij games zonder zetlog). */
   readonly events?: readonly GameEvent[];
-  /** Is elke mens ready? Dan kan de beheerder starten. */
+  /** Is elke mens ready? */
   readonly allReady?: boolean;
-  /** De beheerder heeft een ready-check gedaan en nog niet iedereen is ready. */
+  /** De beheerder heeft op Start gedrukt en nog niet iedereen is ready. */
   readonly readyCheck?: boolean;
   /** De laatste chatberichten, oudste eerst (alleen voor spelers in de lobby). */
   readonly chat?: readonly ChatMessage[];

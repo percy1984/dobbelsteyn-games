@@ -13,6 +13,20 @@
   --dg-focus: #1a3d99;
   --dg-danger: #b3261e;
   --dg-border: #c9cdd8;
+
+  /* Hoogte van de bovenbalk (zie Shell); het schermvullende speelscherm begint daaronder. */
+  --dg-bar-height: 3.5rem;
+}
+
+/* Laag scherm (telefoon op zijn kant) tijdens een schermvullend spel: de bovenbalk maakt plaats. */
+@media (max-height: 30rem) {
+  :root:has(.page--immersive) {
+    --dg-bar-height: 0rem;
+
+    dg-shell > .bar {
+      display: none;
+    }
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,6 +49,12 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  /* Mobiele browsers vergroten tekst anders op eigen houtje, en dan ziet elk toestel er anders uit. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {

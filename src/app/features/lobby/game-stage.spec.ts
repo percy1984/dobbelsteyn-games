@@ -93,7 +93,10 @@ describe('GameStage', () => {
   });
 
   it('geeft de zetlog door aan de game', async () => {
-    const events = [{ seq: 1, type: 'started' }, { seq: 2, type: 'added' }];
+    const events = [
+      { seq: 1, type: 'started' },
+      { seq: 2, type: 'added' },
+    ];
     const { el } = await render(lobby({ events }));
 
     expect(el.querySelector('.events')?.textContent).toBe('2');

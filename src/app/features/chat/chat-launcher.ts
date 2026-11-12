@@ -13,8 +13,22 @@ import { ChatPanel } from './chat-panel';
   selector: 'dg-chat-launcher',
   styleUrl: './chat-launcher.scss',
   template: `
-    <button class="button button--secondary launcher" type="button" (click)="show()">
-      {{ i18n.t('chat.title') }}
+    <button
+      class="button button--secondary launcher"
+      [class.launcher--icon]="compact()"
+      type="button"
+      [attr.aria-label]="compact() ? label() : null"
+      (click)="show()"
+    >
+      @if (compact()) {
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path
+            d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4v-4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
+          />
+        </svg>
+      } @else {
+        {{ i18n.t('chat.title') }}
+      }
       @if (unread() > 0) {
         <span
           class="launcher__badge"
@@ -34,6 +48,8 @@ export class ChatLauncher {
 
   readonly lobby = input.required<LobbyView>();
   readonly lobbyChange = output<LobbyView>();
+  /** Alleen een icoon (met de teller), voor een speelscherm waar elke centimeter telt. */
+  readonly compact = input(false);
 
   protected readonly open = signal(false);
   /** Id van het laatst gelezen bericht. */
@@ -51,6 +67,13 @@ export class ChatLauncher {
       (message) => message.id > this.lastRead() && message.seatNo !== me,
     ).length;
   });
+
+  /** De naam van de icoonknop voor schermlezers, met het aantal ongelezen berichten. */
+  protected readonly label = computed(() =>
+    this.unread() > 0
+      ? `${this.i18n.t('chat.title')}: ${this.i18n.t('chat.unread', { count: this.unread() })}`
+      : this.i18n.t('chat.title'),
+  );
 
   constructor() {
     // Terwijl de chat openstaat, tellen nieuwe berichten direct als gelezen.

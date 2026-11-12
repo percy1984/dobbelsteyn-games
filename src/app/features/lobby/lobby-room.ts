@@ -1,4 +1,6 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { GAME_PREFERENCES } from '../../games/game-components';
+import { Modal } from '../../shared/modal/modal';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
@@ -13,7 +15,11 @@ import { QrShare } from './qr-share';
 /** Botniveaus: 1 (zwak) tot en met 10 (sterk). */
 const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-/** De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. */
+/**
+ * De wachtkamer: code, PIN, spelers, bots, instellingen en (voor de maker) promoveren. Starten gaat
+ * via een ready-check: de beheerder drukt op Start, de anderen melden zich ready en dan volgt de
+ * aftelling. Je eigen weergave-instellingen (bijvoorbeeld de kaarten) zitten achter het tandwiel.
+ */
 @Component({
   imports: [
     AwayNotice,
@@ -21,6 +27,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     Countdown,
     GamePreferences,
     LobbySettings,
+    Modal,
     QrShare,
     ReadyCheckDialog,
   ],
@@ -28,7 +35,23 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   styleUrl: './lobby-room.scss',
   template: `
     <section class="card room" aria-labelledby="room-title">
-      <h1 id="room-title">{{ i18n.gameName(lobby().game) }}</h1>
+      <div class="room__top">
+        <h1 id="room-title">{{ i18n.gameName(lobby().game) }}</h1>
+        @if (hasPreferences()) {
+          <button
+            class="room__gear"
+            type="button"
+            [attr.aria-label]="i18n.t('prefs.title')"
+            (click)="preferencesOpen.set(true)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+              />
+            </svg>
+          </button>
+        }
+      </div>
 
       <p class="room__code">
         <span class="room__label">{{ i18n.t('lobby.code') }}</span>
@@ -54,7 +77,7 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             @if (seat.kind === 'bot') {
               <span class="badge badge--creator">{{ i18n.t('bot.label') }}</span>
             }
-            @if (seat.kind === 'human') {
+            @if (seat.kind === 'human' && lobby().readyCheck) {
               <span class="badge" [class.badge--wait]="!seat.isReady">
                 <span aria-hidden="true">{{ seat.isReady ? '✓' : '…' }}</span>
                 {{ i18n.t(seat.isReady ? 'ready.yes' : 'ready.no') }}
@@ -107,20 +130,6 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         }
       </ul>
 
-      @if (waiting()) {
-        <div class="ready">
-          <button
-            class="button"
-            [class.button--secondary]="meReady()"
-            type="button"
-            [attr.aria-pressed]="meReady()"
-            (click)="toggleReady()"
-          >
-            {{ i18n.t(meReady() ? 'ready.me.undo' : 'ready.me') }}
-          </button>
-        </div>
-      }
-
       @if (canAddBot()) {
         <div class="add-bot">
           <label for="new-bot-level">{{ i18n.t('bot.level.label') }}</label>
@@ -149,30 +158,43 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
       <dg-lobby-settings [lobby]="lobby()" (changed)="lobbyChange.emit($event)" />
 
-      <dg-game-preferences [game]="lobby().game" />
-
-      @if (waiting() && lobby().me?.canManage) {
+      @if (waiting() && lobby().readyCheck) {
         <div class="start">
-          <button class="button" type="button" [disabled]="!canStart()" (click)="start()">
+          @if (!meReady()) {
+            <button class="button" type="button" (click)="ready()">
+              {{ i18n.t('ready.me') }}
+            </button>
+          }
+          <p class="hint" role="status">{{ i18n.t('ready.waiting') }}</p>
+          @if (lobby().me?.canManage) {
+            <button class="button button--secondary" type="button" (click)="cancelReadyCheck()">
+              {{ i18n.t('ready.check.cancel') }}
+            </button>
+          }
+        </div>
+      } @else if (waiting() && lobby().me?.canManage) {
+        <div class="start">
+          <button class="button" type="button" [disabled]="!enoughPlayers()" (click)="start()">
             {{ i18n.t('start.button') }}
           </button>
-          @if (!enoughPlayers()) {
+          @if (enoughPlayers()) {
+            <p class="hint">{{ i18n.t('start.hint') }}</p>
+          } @else {
             <p class="hint">{{ i18n.t('start.need', { min: lobby().minPlayers }) }}</p>
-          } @else if (!allReady()) {
-            <p class="hint">{{ i18n.t('ready.waiting') }}</p>
-            @if (lobby().readyCheck) {
-              <button class="button button--secondary" type="button" (click)="cancelReadyCheck()">
-                {{ i18n.t('ready.check.cancel') }}
-              </button>
-            } @else {
-              <button class="button button--secondary" type="button" (click)="startReadyCheck()">
-                {{ i18n.t('ready.check') }}
-              </button>
-            }
           }
         </div>
       } @else if (waiting()) {
         <p class="hint">{{ i18n.t('start.waiting') }}</p>
+      }
+
+      @if (hasPreferences()) {
+        <dg-modal
+          [title]="i18n.t('prefs.title')"
+          [open]="preferencesOpen()"
+          (closed)="preferencesOpen.set(false)"
+        >
+          <dg-game-preferences [game]="lobby().game" />
+        </dg-modal>
       }
 
       @if (waiting()) {
@@ -220,25 +242,25 @@ export class LobbyRoom {
       this.lobby().seats.length < this.lobby().maxPlayers,
   );
 
-  protected readonly allReady = computed(() => this.lobby().allReady ?? true);
-  protected readonly canStart = computed(() => this.enoughPlayers() && this.allReady());
+  /** Heeft deze game eigen weergave-instellingen (zie `GAME_PREFERENCES`)? Dan staat er een tandwiel. */
+  protected readonly hasPreferences = computed(() => this.lobby().game in GAME_PREFERENCES);
+  protected readonly preferencesOpen = signal(false);
+
   protected readonly meReady = computed(() => {
     const me = this.lobby().me?.seatNo;
     return this.lobby().seats.some((seat) => seat.seatNo === me && seat.isReady);
   });
 
-  protected toggleReady(): Promise<void> {
-    return this.run(() => this.lobbyApi.setReady(this.lobby().code, !this.meReady()));
-  }
-
-  protected startReadyCheck(): Promise<void> {
-    return this.run(() => this.lobbyApi.startReadyCheck(this.lobby().code));
+  /** Voor wie de popup van de ready-check heeft weggeklikt. */
+  protected ready(): Promise<void> {
+    return this.run(() => this.lobbyApi.setReady(this.lobby().code, true));
   }
 
   protected cancelReadyCheck(): Promise<void> {
     return this.run(() => this.lobbyApi.cancelReadyCheck(this.lobby().code));
   }
 
+  /** Start de ready-check (jij bent meteen ready); zijn er geen andere mensen, dan begint de aftelling direct. */
   protected start(): Promise<void> {
     return this.run(() => this.lobbyApi.start(this.lobby().code));
   }

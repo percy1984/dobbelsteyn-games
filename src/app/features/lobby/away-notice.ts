@@ -9,9 +9,11 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { I18n } from '../../core/i18n/i18n';
 import { LobbyApi } from '../../core/lobby/lobby-api';
 import { LobbyView, SeatView } from '../../core/lobby/lobby.models';
+import { Modal } from '../../shared/modal/modal';
 
 /** Hoe lang de melding "… is terug" in beeld blijft. */
 const BACK_MESSAGE_MS = 5000;
@@ -21,75 +23,106 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
  * Meldingen over spelers die tijdelijk weg zijn (telefoon in slaap, pagina dicht). Iedereen ziet
  * wie er weg is en wanneer die terug is. De maker en beheerders kunnen de weggevallen speler door
  * een bot laten vervangen of het spel beëindigen. Het spel wacht zonder tijdslimiet.
+ *
+ * Met `compact` (het schermvullende speelscherm) is de melding één regel; de keuzes van de beheerder
+ * staan dan in een popup, zodat het spel in beeld blijft.
  */
 @Component({
+  imports: [Modal, NgTemplateOutlet],
   selector: 'dg-away-notice',
+  host: { '[class.compact]': 'compact()' },
   styleUrl: './away-notice.scss',
   template: `
     @for (name of returned(); track name) {
       <p class="away__back" role="status">{{ i18n.t('away.back', { name }) }}</p>
     }
 
-    @for (seat of awaySeats(); track seat.seatNo) {
-      <div class="away" role="status">
-        <p class="away__text">
-          {{ i18n.t(playing() ? 'away.notice.game' : 'away.notice', { name: seat.name }) }}
-        </p>
-        @if (lobby().me?.canManage) {
-          <div class="away__actions">
-            <label class="away__label" [for]="'away-level-' + seat.seatNo">{{
-              i18n.t('bot.level.label')
-            }}</label>
-            <select
-              class="select"
-              [id]="'away-level-' + seat.seatNo"
-              (change)="level.set(+$any($event.target).value)"
-            >
-              @for (option of levels; track option) {
-                <option [value]="option" [selected]="option === level()">
-                  {{ i18n.t('bot.level', { level: option }) }}
-                </option>
-              }
-            </select>
-            <button class="button button--small" type="button" (click)="replace(seat)">
-              {{ i18n.t('away.replace') }}
+    @if (compact()) {
+      @if (awaySeats().length > 0) {
+        <div class="away away--strip" role="status">
+          <p class="away__text">{{ i18n.t('away.notice.game', { name: awayNames() }) }}</p>
+          @if (lobby().me?.canManage) {
+            <button class="button button--small" type="button" (click)="optionsOpen.set(true)">
+              {{ i18n.t('away.options') }}
             </button>
-          </div>
-        }
-      </div>
-    }
-
-    @if (awaySeats().length > 0 && playing() && lobby().me?.canManage) {
-      @if (confirmingEnd()) {
-        <div class="away away--confirm" role="alert">
-          <p class="away__text">{{ i18n.t('away.end.confirm') }}</p>
-          <div class="away__actions">
-            <button class="button button--small" type="button" (click)="end()">
-              {{ i18n.t('away.end.yes') }}
-            </button>
-            <button
-              class="button button--small button--secondary"
-              type="button"
-              (click)="confirmingEnd.set(false)"
-            >
-              {{ i18n.t('away.end.no') }}
-            </button>
-          </div>
+          }
         </div>
-      } @else {
-        <button
-          class="button button--small button--secondary away__end"
-          type="button"
-          (click)="confirmingEnd.set(true)"
+        <dg-modal
+          [title]="i18n.t('away.options')"
+          [open]="optionsOpen()"
+          (closed)="optionsOpen.set(false)"
         >
-          {{ i18n.t('away.end') }}
-        </button>
+          <div class="away__popup">
+            <ng-container *ngTemplateOutlet="choices" />
+          </div>
+        </dg-modal>
       }
+    } @else {
+      <ng-container *ngTemplateOutlet="choices" />
     }
 
-    @if (error()) {
-      <p class="alert" role="alert">{{ error() }}</p>
-    }
+    <ng-template #choices>
+      @for (seat of awaySeats(); track seat.seatNo) {
+        <div class="away" role="status">
+          <p class="away__text">
+            {{ i18n.t(playing() ? 'away.notice.game' : 'away.notice', { name: seat.name }) }}
+          </p>
+          @if (lobby().me?.canManage) {
+            <div class="away__actions">
+              <label class="away__label" [for]="'away-level-' + seat.seatNo">{{
+                i18n.t('bot.level.label')
+              }}</label>
+              <select
+                class="select"
+                [id]="'away-level-' + seat.seatNo"
+                (change)="level.set(+$any($event.target).value)"
+              >
+                @for (option of levels; track option) {
+                  <option [value]="option" [selected]="option === level()">
+                    {{ i18n.t('bot.level', { level: option }) }}
+                  </option>
+                }
+              </select>
+              <button class="button button--small" type="button" (click)="replace(seat)">
+                {{ i18n.t('away.replace') }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (awaySeats().length > 0 && playing() && lobby().me?.canManage) {
+        @if (confirmingEnd()) {
+          <div class="away away--confirm" role="alert">
+            <p class="away__text">{{ i18n.t('away.end.confirm') }}</p>
+            <div class="away__actions">
+              <button class="button button--small" type="button" (click)="end()">
+                {{ i18n.t('away.end.yes') }}
+              </button>
+              <button
+                class="button button--small button--secondary"
+                type="button"
+                (click)="confirmingEnd.set(false)"
+              >
+                {{ i18n.t('away.end.no') }}
+              </button>
+            </div>
+          </div>
+        } @else {
+          <button
+            class="button button--small button--secondary away__end"
+            type="button"
+            (click)="confirmingEnd.set(true)"
+          >
+            {{ i18n.t('away.end') }}
+          </button>
+        }
+      }
+
+      @if (error()) {
+        <p class="alert" role="alert">{{ error() }}</p>
+      }
+    </ng-template>
   `,
 })
 export class AwayNotice {
@@ -101,6 +134,10 @@ export class AwayNotice {
   /** Een door de server bevestigde nieuwe staat; de pagina neemt hem direct over. */
   readonly lobbyChange = output<LobbyView>();
 
+  /** Eén regel in plaats van een blok; de keuzes staan dan in een popup. */
+  readonly compact = input(false);
+
+  protected readonly optionsOpen = signal(false);
   protected readonly levels = BOT_LEVELS;
   protected readonly level = signal(5);
   protected readonly error = signal('');
@@ -117,6 +154,12 @@ export class AwayNotice {
       (seat) => seat.kind === 'human' && seat.isAway && seat.seatNo !== me,
     );
   });
+
+  protected readonly awayNames = computed(() =>
+    this.awaySeats()
+      .map((seat) => seat.name)
+      .join(', '),
+  );
 
   private previouslyAway = new Set<number>();
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
@@ -145,6 +188,7 @@ export class AwayNotice {
     effect(() => {
       if (this.awaySeats().length === 0) {
         this.confirmingEnd.set(false);
+        this.optionsOpen.set(false);
       }
     });
     this.destroyRef.onDestroy(() => this.timers.forEach((timer) => clearTimeout(timer)));

@@ -65,7 +65,7 @@ describe('LobbyRoom: starten', () => {
     const { el } = await render(lobby());
 
     expect(startButton(el)?.disabled).toBe(false);
-    expect(startButton(el)?.textContent).toContain('Spel starten');
+    expect(startButton(el)?.textContent?.trim()).toBe('Start');
   });
 
   it('schakelt de startknop uit en zegt waarom als er te weinig spelers zijn', async () => {
