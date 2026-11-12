@@ -50,3 +50,46 @@
   color: var(--dg-danger);
   font-weight: 600;
 }
+
+/* Compact (schermvullend speelscherm): één regel, de keuzes staan in een popup. */
+:host(.compact) {
+  flex: none;
+  gap: 0.25rem;
+  margin: 0;
+
+  &:empty {
+    display: none;
+  }
+
+  .away__back {
+    padding: 0.125rem 0.75rem;
+    font-size: 0.875rem;
+    text-align: center;
+  }
+}
+
+.away--strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.75rem;
+
+  .away__text {
+    min-inline-size: 0;
+    overflow: hidden;
+    font-size: 0.875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .button {
+    flex: none;
+    min-height: 2.25rem;
+  }
+}
+
+.away__popup {
+  display: grid;
+  gap: 0.5rem;
+}

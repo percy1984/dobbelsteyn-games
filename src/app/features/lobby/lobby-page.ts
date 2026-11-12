@@ -22,7 +22,7 @@ type PageState = 'loading' | 'join' | 'room' | 'game' | 'error';
   providers: [LobbyPoller],
   selector: 'dg-lobby-page',
   template: `
-    <main class="page" [class.narrow]="!wide()">
+    <main class="page" [class.narrow]="!wide()" [class.page--immersive]="immersive()">
       @if (poller.offline() && state() !== 'error') {
         <p class="alert" role="status">{{ i18n.t('lobby.offline') }}</p>
       }
@@ -65,6 +65,35 @@ type PageState = 'loading' | 'join' | 'room' | 'game' | 'error';
     .narrow {
       max-width: 36rem;
     }
+
+    /*
+     * Het speelscherm van een brede game vult precies het zichtbare scherm onder de bovenbalk en
+     * scrollt nooit: de game moet er zelf in passen. Op een laag scherm (telefoon op zijn kant) valt
+     * ook de bovenbalk weg (zie styles.scss).
+     */
+    .page--immersive {
+      position: fixed;
+      inset: var(--dg-bar-height, 3.5rem) 0 0 0;
+      /* De dynamische hoogte volgt de adresbalk van mobiele browsers; zonder ondersteuning geldt inset. */
+      block-size: calc(100dvh - var(--dg-bar-height, 3.5rem));
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-width: none;
+      margin: 0;
+      padding: 0.25rem max(0.5rem, env(safe-area-inset-right))
+        max(0.5rem, env(safe-area-inset-bottom)) max(0.5rem, env(safe-area-inset-left));
+      overflow: hidden;
+      background: var(--dg-bg);
+      /* Dubbeltikken zoomt niet per ongeluk in tijdens het spelen (knijpen kan nog wel). */
+      touch-action: manipulation;
+    }
+
+    .page--immersive > .alert {
+      flex: none;
+      font-size: 0.875rem;
+      text-align: center;
+    }
   `,
 })
 export class LobbyPage {
@@ -75,6 +104,8 @@ export class LobbyPage {
     const lobby = this.poller.lobby();
     return !!lobby && ['playing', 'finished'].includes(lobby.status) && WIDE_GAMES.has(lobby.game);
   });
+  /** Het speelscherm van een brede game vult het scherm en scrollt niet. */
+  protected readonly immersive = computed(() => this.wide() && !!this.poller.lobby()?.me);
   private readonly lobbyApi = inject(LobbyApi);
   private readonly sessions = inject(SeatSessions);
   private readonly router = inject(Router);

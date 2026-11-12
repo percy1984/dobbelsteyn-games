@@ -65,6 +65,9 @@ describe('ThirtyOne', () => {
   const el = (): HTMLElement => fixture.nativeElement as HTMLElement;
   const text = (selector: string): string =>
     el().querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  /** De melding voor schermlezers over de laatste gebeurtenis. */
+  const narration = (): string =>
+    el().querySelector('p.sr-only[aria-live]')?.textContent?.trim() ?? '';
   const buttons = (): HTMLButtonElement[] => [...el().querySelectorAll('button')];
   const button = (label: string): HTMLButtonElement | undefined =>
     buttons().find((b) => b.textContent?.trim() === label);
@@ -130,12 +133,15 @@ describe('ThirtyOne', () => {
         seats.map((s) => s.querySelector('.seat__name')?.textContent?.replace(/\s+/g, ' ').trim()),
       ).toEqual(['Percy (jij)', 'Anna', 'Bram']);
       expect(seats[0].querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('5 levens');
-      // Hoek 0 is onderaan; de volgende speler zit links, de laatste rechts.
-      expect(seats.map((s) => (s as HTMLElement).style.getPropertyValue('--a'))).toEqual([
-        '0deg',
-        '-120deg',
-        '-240deg',
+      // Jij staat onderaan (eigen klasse); de volgende speler zit links van de boog, de laatste rechts.
+      expect(seats.map((s) => s.classList.contains('table__seat--me'))).toEqual([
+        true,
+        false,
+        false,
       ]);
+      const x = (s: Element): number => Number((s as HTMLElement).style.getPropertyValue('--x'));
+      expect(x(seats[1])).toBeLessThan(0);
+      expect(x(seats[2])).toBeGreaterThan(0);
     });
 
     it('toont jouw drie kaarten open en die van anderen dicht', async () => {
@@ -398,13 +404,75 @@ describe('ThirtyOne', () => {
       const annaSeat = el().querySelectorAll('dg-thirty-one-seat')[1];
       expect(annaSeat.querySelectorAll('.slot--marked')).toHaveLength(1);
       expect(el().querySelectorAll('.pot__slot--marked')).toHaveLength(1);
-      expect(el().querySelector('.sr-only')?.textContent?.trim()).toBe('Anna wisselde een kaart.');
+      expect(narration()).toBe('Anna wisselde een kaart.');
 
-      // Na de pauze is de rand weg en klopt de stand met de server.
+      // Na de pauze klopt de stand met de server; de rand blijft nog even staan.
       await vi.advanceTimersByTimeAsync(2000);
       fixture.detectChanges();
-      expect(el().querySelectorAll('.slot--marked')).toHaveLength(0);
       expect(text('.game31__banner')).toBe('Bram is aan de beurt');
+      expect(el().querySelectorAll('.slot--marked')).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(3000);
+      fixture.detectChanges();
+      expect(el().querySelectorAll('.slot--marked')).toHaveLength(0);
+      expect(el().querySelectorAll('.pot__slot--marked')).toHaveLength(0);
+    });
+
+    it('laat de kaart die een ander uit de pot nam 5 seconden open liggen, met dezelfde rand als zijn kaart in de pot', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      await update(view({ turn: 2, allowed: null, pot: ['DA', 'C7', 'S8'] }), [
+        ev(1, 'swap', { seat: 1, handPos: 2, potPos: 1, taken: 'HA', given: 'C7' }),
+      ]);
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+
+      const anna = (): HTMLElement => el().querySelectorAll<HTMLElement>('dg-thirty-one-seat')[1];
+      const alts = (): (string | null)[] =>
+        [...anna().querySelectorAll('img')].map((img) => img.getAttribute('alt'));
+      const potSlot = (): HTMLElement => el().querySelectorAll<HTMLElement>('.pot__slot')[1];
+      // De genomen kaart (hartenaas) ligt open op de plek waar Anna hem neerlegde; de rest blijft dicht.
+      expect(alts()[2]).toBe('harten aas');
+      expect(alts()[0]).not.toBe('harten aas');
+      const color = anna().style.getPropertyValue('--mark');
+      expect(color).not.toBe('');
+      expect(potSlot().style.getPropertyValue('--mark')).toBe(color);
+      expect(anna().classList.contains('seat--swapped')).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(4900);
+      fixture.detectChanges();
+      expect(alts()[2]).toBe('harten aas');
+
+      await vi.advanceTimersByTimeAsync(200);
+      fixture.detectChanges();
+      expect(alts()[2]).not.toBe('harten aas');
+      expect(anna().classList.contains('seat--swapped')).toBe(false);
+      expect(potSlot().style.getPropertyValue('--mark')).toBe('');
+    });
+
+    it('geeft elke speler een eigen randkleur en markeert ook je eigen wissel', async () => {
+      await render(view({ turn: 0 }));
+
+      await update(
+        view({ turn: 2, allowed: null, hand: ['DA', 'H8', 'D9'], pot: ['S7', 'C7', 'S8'] }),
+        [
+          ev(1, 'swap', { seat: 0, handPos: 0, potPos: 0, taken: 'DA', given: 'S7' }),
+          ev(2, 'swap', { seat: 1, handPos: 1, potPos: 1, taken: 'HA', given: 'C7' }),
+        ],
+      );
+      await vi.advanceTimersByTimeAsync(2500);
+      fixture.detectChanges();
+
+      const [me, anna] = [...el().querySelectorAll<HTMLElement>('dg-thirty-one-seat')];
+      const mine = me.style.getPropertyValue('--mark');
+      const hers = anna.style.getPropertyValue('--mark');
+      expect(mine).not.toBe('');
+      expect(hers).not.toBe('');
+      expect(mine).not.toBe(hers);
+      expect(me.querySelectorAll('.slot--marked')).toHaveLength(1);
+      const pot = [...el().querySelectorAll<HTMLElement>('.pot__slot')];
+      expect(pot[0].style.getPropertyValue('--mark')).toBe(mine);
+      expect(pot[1].style.getPropertyValue('--mark')).toBe(hers);
     });
 
     it('laat de rand minstens een seconde staan', async () => {
@@ -430,13 +498,13 @@ describe('ThirtyOne', () => {
       ]);
       await vi.advanceTimersByTimeAsync(0);
       fixture.detectChanges();
-      expect(el().querySelector('.sr-only')?.textContent?.trim()).toBe('Anna wisselde een kaart.');
+      expect(narration()).toBe('Anna wisselde een kaart.');
       // Jouw beurt is er al, maar zolang het afspelen loopt kun je nog niets doen.
       expect(el().querySelector<HTMLButtonElement>('.pot button.cardbtn')!.disabled).toBe(true);
 
       await vi.advanceTimersByTimeAsync(1500);
       fixture.detectChanges();
-      expect(el().querySelector('.sr-only')?.textContent?.trim()).toBe('Bram paste.');
+      expect(narration()).toBe('Bram paste.');
       const bram = el().querySelectorAll('dg-thirty-one-seat')[2];
       expect(bram.textContent).toContain('Gepast');
 

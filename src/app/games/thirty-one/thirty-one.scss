@@ -1,13 +1,22 @@
+/*
+ * De tafel van 31-en vult precies de ruimte die hij krijgt en scrollt nooit. Van boven naar beneden:
+ * de balk (beurt, ronde, tandwiel), de tafel (tegenstanders op een boog, de pot, jouw kaarten) en de
+ * bediening. Op een laag, liggend scherm staan de balk en de bediening rechts naast de tafel.
+ *
+ * Alle maten op de tafel hangen af van de kaartbreedte `--c`, die de component uitrekent uit de
+ * gemeten ruimte (zie thirty-one-layout.ts; de verhoudingen hier horen daarbij).
+ */
 :host {
   display: block;
   inline-size: 100%;
-  /* De tafel past zijn indeling aan de breedte van dit onderdeel aan, niet aan het scherm. */
-  container-type: inline-size;
+  block-size: 100%;
+  min-block-size: 0;
+  container: game31 / size;
 
   --dg-felt: #1f6b3a;
   --dg-felt-dark: #154d29;
   --dg-felt-text: #ffffff;
-  --dg-felt-badge: rgb(255 255 255 / 0.2);
+  --dg-felt-badge: rgb(10 35 20 / 0.85);
   --dg-felt-badge-text: #ffffff;
   --dg-heart: #ff9a9a;
   --dg-focus-on-felt: #ffffff;
@@ -25,40 +34,46 @@
 }
 
 .game31 {
-  display: grid;
-  gap: 0.75rem;
-  justify-items: center;
-}
-
-.game31__meta,
-.game31__hint,
-.game31__score {
-  margin: 0;
-  color: var(--dg-muted);
-  font-size: 0.875rem;
-}
-
-.game31__score {
-  color: var(--dg-text);
-  font-weight: 700;
-}
-
-.game31__bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.375rem;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* Links het tandwiel; rechts blijft een vakje vrij voor de chatknop van het platform (zie GameStage). */
+.game31__bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem 1rem;
+  gap: 0.5rem;
+  min-block-size: 2.75rem;
+}
+
+.game31__status {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.125rem;
+  min-inline-size: 0;
 }
 
 .game31__banner {
+  max-inline-size: 100%;
   margin: 0;
-  padding: 0.375rem 1rem;
+  padding: 0.125rem 0.875rem;
+  overflow: hidden;
+  border: 2px solid var(--dg-border);
   border-radius: 999px;
   background: var(--dg-surface);
-  border: 2px solid var(--dg-border);
+  font-size: 0.9375rem;
   font-weight: 700;
+  line-height: 1.3;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &--me {
     border-color: #c98a00;
@@ -67,62 +82,109 @@
   }
 }
 
-.game31__last {
+.game31__meta {
   margin: 0;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
-  background: #f0c24b;
-  color: #2b2100;
-  font-weight: 600;
-  text-align: center;
+  color: var(--dg-muted);
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
-/* Smal: de tegenstanders in een rij, daaronder de pot en onderaan jijzelf. */
-.table {
-  position: relative;
+.game31__gear {
+  grid-column: 1;
+  grid-row: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-  gap: 0.75rem;
-  align-items: start;
-  justify-items: center;
-  inline-size: 100%;
-  padding: 0.75rem 0.5rem;
-  border-radius: 1rem;
-  background: radial-gradient(circle at 50% 40%, var(--dg-felt), var(--dg-felt-dark));
-}
+  place-items: center;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  padding: 0;
+  border: 2px solid var(--dg-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--dg-text);
+  cursor: pointer;
 
-.table__felt {
-  display: none;
-}
+  svg {
+    inline-size: 1.375rem;
+    block-size: 1.375rem;
+    fill: currentColor;
+    fill-rule: evenodd;
+  }
 
-.table__seat {
-  order: 0;
-  inline-size: 100%;
-  --card-width: clamp(2.25rem, 12cqi, 3.25rem);
-
-  &--me {
-    grid-column: 1 / -1;
-    max-inline-size: 18rem;
+  &:focus-visible {
+    outline: 3px solid var(--dg-focus);
+    outline-offset: 2px;
   }
 }
 
+.game31__last {
+  flex: none;
+  margin: 0;
+  padding: 0.125rem 0.75rem;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: #f0c24b;
+  color: #2b2100;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* De tafel: het laken vult alle ruimte die overblijft. */
+.table {
+  position: relative;
+  flex: 1 1 0;
+  min-block-size: 0;
+  container-type: size;
+  overflow: hidden;
+  border: 0.25rem solid #6b4a2b;
+  border-radius: 1.25rem;
+  background: radial-gradient(ellipse at 50% 45%, var(--dg-felt), var(--dg-felt-dark));
+
+  /* Veilige standaard tot de component de tafel gemeten heeft. */
+  --c: min(7cqw, 5cqh);
+  --ring-h: 62cqh;
+  --cp: calc(1.5 * var(--c));
+}
+
+/* Tegenstanders: op de boog, met de plek helemaal binnen de ring. */
+.table__seat {
+  position: absolute;
+  left: calc(50% + var(--x, 0) * (50% - 1.73 * var(--c)));
+  top: calc(var(--ring-h) / 2 + var(--y, 0) * (var(--ring-h) / 2 - 1.325 * var(--c)));
+  translate: -50% -50%;
+}
+
+/* Jijzelf: onderaan in het midden, met grotere kaarten. */
+.table__seat--me {
+  --c: min(17cqw, 15cqh, 5.5rem);
+  left: 50%;
+  top: auto;
+  bottom: 0.5rem;
+  translate: -50% 0;
+}
+
+/* De pot ligt in het midden, net boven je eigen kaarten. */
 .pot {
-  order: 1;
-  grid-column: 1 / -1;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  padding: 0.5rem 0;
+  position: absolute;
+  left: 50%;
+  top: calc(var(--ring-h) * 0.96 - 1.4 * var(--cp));
+  translate: -50% 0;
+  display: grid;
+  grid-template-columns: repeat(3, var(--cp));
+  /* Ook bij heel kleine kaarten liggen de aanraakpunten minstens 24px uit elkaar. */
+  gap: max(calc(0.1 * var(--cp)), calc(1.5rem - var(--cp)));
 }
 
 .pot__slot {
-  inline-size: clamp(3.25rem, 18cqi, 4.5rem);
   border-radius: 0.375rem;
   outline: 3px solid transparent;
-  outline-offset: 2px;
+  outline-offset: 1px;
 
+  /* Net gewisseld: de rand heeft de kleur van de speler die deze kaart hier legde. */
   &--marked {
-    outline-color: #ffd34d;
+    outline-color: var(--mark, #ffd34d);
   }
 }
 
@@ -146,77 +208,114 @@
   }
 
   &--selected {
-    transform: translateY(-0.5rem);
+    transform: translateY(-12%);
     outline: 3px solid #ffd34d;
-    outline-offset: 2px;
+    outline-offset: 1px;
   }
 }
 
-/* Breed: een ronde tafel met jou onderaan en de anderen gelijkmatig eromheen. */
-@container (min-width: 40rem) {
-  .table {
-    display: block;
-    /* Liggend vlak, en niet hoger dan het scherm toelaat (koptekst, melding en knoppen eronder). */
-    aspect-ratio: 9 / 5;
-    inline-size: min(100%, max(38rem, calc((100dvh - 20rem) * 1.8)));
-    margin-inline: auto;
-    /* Jouw kaarten steken iets onder het laken uit. */
-    margin-block-end: 2.5rem;
-    padding: 0;
-    background: none;
-  }
-
-  .table__felt {
-    display: block;
-    position: absolute;
-    inset: 9% 4%;
-    border-radius: 50%;
-    border: 0.5rem solid #6b4a2b;
-    background: radial-gradient(circle at 50% 45%, var(--dg-felt), var(--dg-felt-dark));
-    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
-  }
-
-  .table__seat,
-  .table__seat--me {
-    inline-size: auto;
-    max-inline-size: none;
-    position: absolute;
-    left: calc(50% + 40% * sin(var(--a)));
-    top: calc(50% + 37% * cos(var(--a)));
-    translate: -50% -50%;
-    --card-width: clamp(2.5rem, 6.5cqi, 3.75rem);
-  }
-
-  .pot {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-    flex: none;
-  }
-
-  .pot__slot {
-    inline-size: clamp(3.5rem, 8cqi, 5rem);
-  }
+/* De bediening heeft een vaste hoogte, zodat de tafel niet verspringt als de beurt wisselt. */
+.game31__controls {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  block-size: 7rem;
+  overflow: hidden;
 }
 
+.game31__score {
+  flex: none;
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.game31__hint,
 .game31__move {
   margin: 0;
   color: var(--dg-muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
   text-align: center;
 }
 
-.button--small {
-  min-height: 2.25rem;
-  padding: 0 0.875rem;
-  font-size: 0.875rem;
+/* De uitleg over verplaatsen staat er alleen als er ruimte voor is; de wachttijd altijd. */
+.game31__move--idle {
+  display: none;
+}
+
+@container game31 (min-height: 44rem) and (min-width: 30rem) {
+  .game31__controls {
+    block-size: 8.5rem;
+  }
+
+  .game31__move--idle {
+    display: block;
+  }
+}
+
+/* Weinig hoogte: geen uitleg, alleen score en knoppen. */
+@container game31 (max-height: 32rem) {
+  .game31__controls {
+    block-size: 4.75rem;
+  }
+
+  .game31__hint {
+    display: none;
+  }
+}
+
+/*
+ * Laag en liggend (telefoon op zijn kant): de balk en de bediening staan in een kolom naast de tafel,
+ * zodat de tafel de volle hoogte houdt.
+ */
+@container game31 (max-height: 26rem) and (min-aspect-ratio: 3 / 2) {
+  .game31 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 12rem;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 0.5rem;
+    row-gap: 0.25rem;
+  }
+
+  .table {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .game31__bar {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    row-gap: 0.25rem;
+  }
+
+  .game31__status {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .game31__last {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .game31__controls {
+    grid-column: 2;
+    grid-row: 3;
+    block-size: auto;
+  }
 }
 
 /* Het venster met de kaartvoorkeuren. */
 .prefs {
   inline-size: min(26rem, calc(100% - 2rem));
+  max-block-size: calc(100dvh - 2rem);
   padding: 1rem;
+  overflow-y: auto;
   border: 1px solid var(--dg-border);
   border-radius: 1rem;
   background: var(--dg-surface);
@@ -224,5 +323,16 @@
 
   &::backdrop {
     background: rgb(0 0 0 / 0.5);
+  }
+}
+
+/* Heel laag (kleine telefoon op zijn kant): alleen het hoogstnodige in de kolom naast de tafel. */
+@container game31 (max-height: 17rem) and (min-aspect-ratio: 3 / 2) {
+  .game31__meta {
+    display: none;
+  }
+
+  .game31__controls {
+    gap: 0.125rem;
   }
 }

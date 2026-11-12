@@ -14,10 +14,11 @@ import { LobbyView } from '../../core/lobby/lobby.models';
 import { Modal } from '../../shared/modal/modal';
 
 /**
- * Popup zodra de beheerder een ready-check doet. Iedereen ziet wie er wel en niet ready is. Wie nog
- * niet ready is, kan zich hier ready melden; wie al ready is, krijgt alleen het overzicht. De popup
- * verdwijnt vanzelf zodra iedereen ready is of de beheerder de check stopt. Sluit je hem zelf, dan
- * komt hij niet terug tot er een nieuwe ready-check is (je kunt je ook in de lobby ready melden).
+ * Popup zodra de beheerder op Start drukt (de ready-check). Iedereen ziet wie er wel en niet ready
+ * is. Wie nog niet ready is, kan zich hier ready melden; wie al ready is (zoals de starter zelf),
+ * krijgt alleen het overzicht. De popup verdwijnt vanzelf zodra iedereen ready is (dan begint de
+ * aftelling) of de beheerder de check stopt. Sluit je hem zelf, dan komt hij niet terug tot er een
+ * nieuwe ready-check is; in de wachtkamer staat dan nog een knop om je ready te melden.
  */
 @Component({
   imports: [Modal],

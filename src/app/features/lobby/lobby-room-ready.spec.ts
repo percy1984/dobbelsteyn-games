@@ -49,9 +49,7 @@ function lobby(
   };
 }
 
-type Api = Partial<
-  Record<'setReady' | 'startReadyCheck' | 'cancelReadyCheck' | 'start', ReturnType<typeof vi.fn>>
->;
+type Api = Partial<Record<'setReady' | 'cancelReadyCheck' | 'start', ReturnType<typeof vi.fn>>>;
 
 async function render(view: LobbyView, api: Api = {}) {
   TestBed.configureTestingModule({ providers: [{ provide: LobbyApi, useValue: api }] });
@@ -72,9 +70,19 @@ async function render(view: LobbyView, api: Api = {}) {
 describe('LobbyRoom: ready', () => {
   beforeEach(() => localStorage.clear());
 
-  it('toont per mens of die ready is, maar niet bij bots', async () => {
+  it('toont buiten een ready-check niet wie ready is en heeft geen ready-knop', async () => {
+    const { el } = await render(lobby([seat(0, 'Percy', false), seat(1, 'Anna', false)]));
+
+    expect(el.querySelector('.seats')?.textContent).not.toContain('eady');
+    // De popup (gesloten) heeft wel zo'n knop; de wachtkamer zelf niet.
+    expect(el.querySelector('.start')?.textContent).not.toContain('Ik ben ready');
+  });
+
+  it('toont tijdens een ready-check per mens of die ready is, maar niet bij bots', async () => {
     const { el } = await render(
-      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false), seat(2, 'Bot 1', true, 'bot')]),
+      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false), seat(2, 'Bot 1', true, 'bot')], {
+        check: true,
+      }),
     );
 
     const rows = Array.from(el.querySelectorAll('.seat')).map((r) =>
@@ -85,68 +93,48 @@ describe('LobbyRoom: ready', () => {
     expect(rows[2]).not.toContain('Ready');
   });
 
-  it('laat iedereen, ook de beheerder, zich ready melden en weer terugtrekken', async () => {
-    const api = { setReady: vi.fn().mockResolvedValue({}) };
-    const open = await render(lobby([seat(0, 'Percy', false), seat(1, 'Anna', false)]), api);
-
-    const ready = open.button('Ik ben ready')!;
-    expect(ready.getAttribute('aria-pressed')).toBe('false');
-    ready.click();
-    await open.fixture.whenStable();
-    expect(api.setReady).toHaveBeenLastCalledWith('ABCD', true);
-
-    TestBed.resetTestingModule();
-    const player = await render(
-      lobby([seat(0, 'Percy', true), seat(1, 'Anna', true)], { me: 1, manage: false }),
-      api,
-    );
-    const undo = player.button('Toch niet ready')!;
-    expect(undo.getAttribute('aria-pressed')).toBe('true');
-    undo.click();
-    await player.fixture.whenStable();
-    expect(api.setReady).toHaveBeenLastCalledWith('ABCD', false);
-  });
-
-  it('schakelt de startknop uit zolang niet iedereen ready is en zegt waarom', async () => {
-    const { el, button } = await render(lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)]));
-
-    expect(button('Spel starten')!.disabled).toBe(true);
-    expect(el.querySelector('.hint')?.textContent).toContain('Wachten tot iedereen ready is');
-  });
-
-  it('laat de beheerder starten zodra iedereen ready is en biedt dan geen ready-check meer aan', async () => {
-    const api = { start: vi.fn().mockResolvedValue({}) };
-    const { button, fixture } = await render(
-      lobby([seat(0, 'Percy', true), seat(1, 'Anna', true)]),
-      api,
-    );
-
-    expect(button('Spel starten')!.disabled).toBe(false);
-    expect(button('Ready-check starten')).toBeUndefined();
-    button('Spel starten')!.click();
-    await fixture.whenStable();
-    expect(api.start).toHaveBeenCalledWith('ABCD');
-  });
-
-  it('telt bots mee als ready: een mens tegen een bot kan starten zodra de mens ready is', async () => {
-    const { button } = await render(lobby([seat(0, 'Percy', true), seat(1, 'Bot 1', true, 'bot')]));
-
-    expect(button('Spel starten')!.disabled).toBe(false);
-  });
-
-  it('laat de beheerder een ready-check doen als niet iedereen ready is', async () => {
+  it('laat de beheerder met Start een ready-check beginnen, ook als nog niemand ready is', async () => {
     const checking = lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)], { check: true });
-    const api = { startReadyCheck: vi.fn().mockResolvedValue(checking) };
-    const { button, fixture, lobbyChange } = await render(
-      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)]),
+    const api = { start: vi.fn().mockResolvedValue(checking) };
+    const { el, button, fixture, lobbyChange } = await render(
+      lobby([seat(0, 'Percy', false), seat(1, 'Anna', false)]),
       api,
     );
 
-    button('Ready-check starten')!.click();
+    expect(button('Start')!.disabled).toBe(false);
+    expect(el.querySelector('.start .hint')?.textContent).toContain('Iedereen krijgt de vraag');
+    button('Start')!.click();
     await fixture.whenStable();
 
-    expect(api.startReadyCheck).toHaveBeenCalledWith('ABCD');
+    expect(api.start).toHaveBeenCalledWith('ABCD');
     expect(lobbyChange).toHaveBeenCalledWith(checking);
+  });
+
+  it('laat wie de popup wegklikte zich in de wachtkamer alsnog ready melden', async () => {
+    const api = { setReady: vi.fn().mockResolvedValue({}) };
+    const { el, fixture } = await render(
+      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)], {
+        me: 1,
+        manage: false,
+        check: true,
+      }),
+      api,
+    );
+
+    expect(el.querySelector('.start .hint')?.textContent).toContain(
+      'Wachten tot iedereen ready is',
+    );
+    el.querySelector<HTMLButtonElement>('.start button')!.click();
+    await fixture.whenStable();
+    expect(api.setReady).toHaveBeenCalledWith('ABCD', true);
+  });
+
+  it('toont wie al ready is tijdens de check geen ready-knop in de wachtkamer', async () => {
+    const { el } = await render(
+      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)], { check: true, manage: false }),
+    );
+
+    expect(el.querySelector('.start button')).toBeNull();
   });
 
   it('biedt tijdens een lopende ready-check "stoppen" aan in plaats van "starten"', async () => {
@@ -156,7 +144,7 @@ describe('LobbyRoom: ready', () => {
       api,
     );
 
-    expect(button('Ready-check starten')).toBeUndefined();
+    expect(button('Start')).toBeUndefined();
     // De knop staat zowel in de wachtkamer als in de popup; de eerste is die van de wachtkamer.
     button('Ready-check stoppen')!.click();
     await fixture.whenStable();
@@ -172,8 +160,7 @@ describe('LobbyRoom: ready', () => {
       }),
     );
 
-    expect(button('Ready-check starten')).toBeUndefined();
-    expect(button('Spel starten')).toBeUndefined();
+    expect(button('Start')).toBeUndefined();
     await new Promise((resolve) => setTimeout(resolve));
     await fixture.whenStable();
     expect(el.querySelector('dg-ready-check-dialog dialog')?.hasAttribute('open')).toBe(true);
@@ -183,11 +170,15 @@ describe('LobbyRoom: ready', () => {
     TestBed.configureTestingModule({ providers: [{ provide: LobbyApi, useValue: {} }] });
     TestBed.inject(I18n).setLang('en');
     const fixture = TestBed.createComponent(LobbyRoom);
-    fixture.componentRef.setInput('lobby', lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)]));
+    fixture.componentRef.setInput(
+      'lobby',
+      lobby([seat(0, 'Percy', true), seat(1, 'Anna', false)], { check: true }),
+    );
     await fixture.whenStable();
 
     const text = (fixture.nativeElement as HTMLElement).textContent;
     expect(text).toContain('Not ready');
-    expect(text).toContain('Start ready check');
+    expect(text).toContain('Stop ready check');
+    expect(text).toContain('Waiting until everyone is ready');
   });
 });

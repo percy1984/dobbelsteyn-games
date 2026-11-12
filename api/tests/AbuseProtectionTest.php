@@ -231,9 +231,9 @@ final class AbuseProtectionTest extends DbTestCase
         foreach (['oud wachtend', 'vers wachtend', 'oud afgelopen', 'oud lopend', 'lang lopend'] as $name) {
             $codes[$name] = $lobbies->create('tic-tac-toe', 'P' . count($codes), false, null)['lobby']['code'];
         }
-        $this->setStatusAndAge($codes['oud wachtend'], 'waiting', 31);
-        $this->setStatusAndAge($codes['vers wachtend'], 'waiting', 5);
-        $this->setStatusAndAge($codes['oud afgelopen'], 'finished', 31);
+        $this->setStatusAndAge($codes['oud wachtend'], 'waiting', 6);
+        $this->setStatusAndAge($codes['vers wachtend'], 'waiting', 3);
+        $this->setStatusAndAge($codes['oud afgelopen'], 'finished', 6);
         $this->setStatusAndAge($codes['oud lopend'], 'playing', 23 * 60);        // wacht nog op spelers
         $this->setStatusAndAge($codes['lang lopend'], 'playing', 25 * 60);       // al meer dan een dag niemand
 

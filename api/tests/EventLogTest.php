@@ -42,8 +42,10 @@ final class EventLogTest extends DbTestCase
     /** Start een spel en laat de aftelling verlopen; geeft de lobbyview van de maker terug. */
     private function begin(string $code, string $token): array
     {
-        $this->pdo->exec('UPDATE seats SET is_ready = 1');
-        $this->lobbies->start($code, $token);
+        if ($this->lobbies->start($code, $token)['status'] === 'waiting') {
+            $this->pdo->exec('UPDATE seats SET is_ready = 1');
+            $this->lobbies->start($code, $token);
+        }
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
 
         return $this->lobbies->poll($code, $token, null);
@@ -160,8 +162,10 @@ final class EventLogTest extends DbTestCase
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
         $code = $created['lobby']['code'];
         $guest = $this->lobbies->join($code, 'Anna', null);
-        $this->pdo->exec('UPDATE seats SET is_ready = 1');
-        $this->lobbies->start($code, $created['token']);
+        if ($this->lobbies->start($code, $created['token'])['status'] === 'waiting') {
+            $this->pdo->exec('UPDATE seats SET is_ready = 1');
+            $this->lobbies->start($code, $created['token']);
+        }
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
         $view = $this->lobbies->poll($code, $guest['token'], null);
 

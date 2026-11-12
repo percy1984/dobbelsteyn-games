@@ -29,6 +29,13 @@ final class LobbyService
     /** Zo lang duurt de aftelling (3-2-1) voordat het spel echt begint. */
     public const COUNTDOWN_SECONDS = 3;
 
+    /**
+     * Een lobby staat alleen in de lijst zolang er in de laatste zoveel seconden nog een mens was.
+     * Sluit de maker zijn browser, dan verdwijnt de lobby dus snel uit beeld; `Cleanup` verwijdert
+     * hem daarna echt. Ruimer dan `AWAY_AFTER_SECONDS`, omdat een tabblad op de achtergrond trager pollt.
+     */
+    public const LISTED_WHILE_SEEN_SECONDS = 90;
+
     private readonly CodeGenerator $codes;
     private readonly GameRunner $runner;
     private readonly RateLimiter $limiter;
@@ -188,8 +195,9 @@ final class LobbyService
     }
 
     /**
-     * Alle lobby's van een game die nog lopen (afgelopen spellen niet), nieuwste eerst. Openbare en
-     * privélobby's staan er allebei in; privé is herkenbaar aan `isPrivate` en vraagt een PIN.
+     * Alle lobby's van een game die nog lopen (afgelopen spellen niet) en waar nog iemand is, nieuwste
+     * eerst. Openbare en privélobby's staan er allebei in; privé is herkenbaar aan `isPrivate` en
+     * vraagt een PIN. Een lobby waar iedereen weg is (browser dicht) staat er niet in.
      *
      * @return list<array<string, mixed>>
      */
@@ -205,6 +213,10 @@ final class LobbyService
                     (SELECT s.name FROM seats s WHERE s.lobby_id = l.id AND s.is_creator = 1 LIMIT 1) AS host
              FROM lobbies l
              WHERE l.game = ? AND l.status IN ('waiting', 'countdown', 'playing')
+               AND EXISTS (
+                   SELECT 1 FROM seats s WHERE s.lobby_id = l.id AND s.kind = 'human'
+                     AND s.last_seen_at >= NOW(3) - INTERVAL " . self::LISTED_WHILE_SEEN_SECONDS . " SECOND
+               )
              ORDER BY l.created_at DESC, l.id DESC
              LIMIT 50"
         );
@@ -466,8 +478,10 @@ final class LobbyService
     }
 
     /**
-     * Start de aftelling (3-2-1). Alleen de maker of een beheerder, en pas als er genoeg spelers zijn
-     * (mensen en bots tellen mee). Na de aftelling begint het spel vanzelf (zie `advance`).
+     * "Start": de maker of een beheerder begint een ready-check, als er genoeg spelers zijn (mensen en
+     * bots tellen mee). Wie start is zelf meteen ready; de andere mensen melden zich in de popup (bots
+     * zijn altijd ready). Zodra iedereen ready is, begint de aftelling (3-2-1) vanzelf en daarna het
+     * spel (zie `touch` en `advance`). Zijn er geen andere mensen, dan begint de aftelling dus direct.
      *
      * @return array<string, mixed>
      */
@@ -477,20 +491,20 @@ final class LobbyService
 
         $this->transaction(function () use ($code, $token): void {
             $lobby = $this->load($code, lock: true);
-            $this->requireManager($lobby, $token);
+            $me = $this->requireManager($lobby, $token);
             if ($lobby['status'] !== 'waiting') {
                 throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
             }
             if (count($this->seats((int) $lobby['id'])) < (int) $lobby['min_players']) {
                 throw new ApiException(409, 'Er zijn nog niet genoeg spelers om te starten.', 'not_enough_players');
             }
-            if (!$this->allReady($this->seats((int) $lobby['id']))) {
-                throw new ApiException(409, 'Niet iedereen is ready.', 'not_ready');
-            }
 
-            $this->pdo->prepare(
-                "UPDATE lobbies SET status = 'countdown', ready_check = 0, countdown_ends_at = NOW(3) + INTERVAL " . self::COUNTDOWN_SECONDS . ' SECOND WHERE id = ?'
-            )->execute([$lobby['id']]);
+            if ((int) $lobby['ready_check'] !== 1) {
+                // Een nieuwe check begint altijd schoon; loopt er al een, dan doet deze beheerder gewoon mee.
+                $this->pdo->prepare('UPDATE seats SET is_ready = 0 WHERE lobby_id = ?')->execute([$lobby['id']]);
+                $this->pdo->prepare('UPDATE lobbies SET ready_check = 1 WHERE id = ?')->execute([$lobby['id']]);
+            }
+            $this->pdo->prepare('UPDATE seats SET is_ready = 1 WHERE id = ?')->execute([$me['id']]);
             $this->touch((int) $lobby['id']);
         });
 
@@ -699,8 +713,8 @@ final class LobbyService
     }
 
     /**
-     * Een speler meldt zich ready of weer niet-ready. Kan zolang we in de wachtkamer zijn; ook de
-     * beheerder doet mee.
+     * Een speler meldt zich ready (of weer niet-ready) tijdens een ready-check. Is hij de laatste, dan
+     * begint de aftelling vanzelf (zie `touch`).
      *
      * @return array<string, mixed>
      */
@@ -717,6 +731,9 @@ final class LobbyService
             if ($lobby['status'] !== 'waiting') {
                 throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
             }
+            if ((int) $lobby['ready_check'] !== 1) {
+                throw new ApiException(409, 'Er loopt geen ready-check (meer).', 'no_ready_check');
+            }
 
             $this->pdo->prepare('UPDATE seats SET is_ready = ? WHERE id = ?')->execute([$ready ? 1 : 0, $me['id']]);
             $this->touch((int) $lobby['id']);
@@ -726,35 +743,7 @@ final class LobbyService
     }
 
     /**
-     * De beheerder vraagt iedereen om ready te zijn: alle spelers krijgen een overzicht te zien en wie
-     * nog niet ready is, kan zich daar ready melden. Heeft geen zin als iedereen al ready is.
-     *
-     * @return array<string, mixed>
-     */
-    public function startReadyCheck(string $code, ?string $token): array
-    {
-        $code = Input::code($code);
-
-        $this->transaction(function () use ($code, $token): void {
-            $lobby = $this->load($code, lock: true);
-            $this->requireManager($lobby, $token);
-            if ($lobby['status'] !== 'waiting') {
-                throw new ApiException(409, 'Het spel is al gestart.', 'cannot_change');
-            }
-            $seats = $this->seats((int) $lobby['id']);
-            if ($this->allReady($seats)) {
-                throw new ApiException(409, 'Iedereen is al ready: je kunt gewoon starten.', 'all_ready');
-            }
-
-            $this->pdo->prepare('UPDATE lobbies SET ready_check = 1 WHERE id = ?')->execute([$lobby['id']]);
-            $this->touch((int) $lobby['id']);
-        });
-
-        return $this->viewFor($code, $token);
-    }
-
-    /**
-     * De beheerder stopt de ready-check zonder te starten.
+     * De beheerder stopt de ready-check zonder te starten; iedereen is daarna weer niet-ready.
      *
      * @return array<string, mixed>
      */
@@ -767,6 +756,7 @@ final class LobbyService
             $this->requireManager($lobby, $token);
 
             $this->pdo->prepare('UPDATE lobbies SET ready_check = 0 WHERE id = ?')->execute([$lobby['id']]);
+            $this->pdo->prepare('UPDATE seats SET is_ready = 0 WHERE lobby_id = ?')->execute([$lobby['id']]);
             $this->touch((int) $lobby['id']);
         });
 
@@ -834,7 +824,7 @@ final class LobbyService
             // Resterende milliseconden van de aftelling op het moment van dit antwoord.
             'countdownMs' => $lobby['status'] === 'countdown' ? (int) $lobby['countdown_ms'] : null,
             'allReady' => $this->allReady($seats),
-            // Alleen "actief" zolang er nog mensen niet ready zijn en we nog wachten.
+            // Loopt vanaf "Start" van de beheerder tot iedereen ready is (dan begint de aftelling).
             'readyCheck' => (int) $lobby['ready_check'] === 1 && $lobby['status'] === 'waiting' && !$this->allReady($seats),
             'me' => null,
         ];
@@ -999,12 +989,20 @@ final class LobbyService
         $this->pdo->prepare('UPDATE lobbies SET version = version + 1, last_activity_at = NOW(3) WHERE id = ?')
             ->execute([$lobbyId]);
 
-        // Is iedereen ready (of is de laatste niet-ready speler weg), dan is de ready-check klaar.
+        // Ready-check: is iedereen ready (of is de laatste niet-ready speler weg), dan begint de aftelling.
         $this->pdo->prepare(
-            "UPDATE lobbies SET ready_check = 0
-             WHERE id = ? AND ready_check = 1
-               AND NOT EXISTS (SELECT 1 FROM seats WHERE lobby_id = ? AND kind = 'human' AND is_ready = 0)"
-        )->execute([$lobbyId, $lobbyId]);
+            "UPDATE lobbies l SET l.status = 'countdown', l.ready_check = 0,
+                    l.countdown_ends_at = NOW(3) + INTERVAL " . self::COUNTDOWN_SECONDS . " SECOND
+             WHERE l.id = ? AND l.status = 'waiting' AND l.ready_check = 1
+               AND NOT EXISTS (SELECT 1 FROM seats s WHERE s.lobby_id = l.id AND s.kind = 'human' AND s.is_ready = 0)
+               AND (SELECT COUNT(*) FROM seats s WHERE s.lobby_id = l.id) >= l.min_players"
+        )->execute([$lobbyId]);
+        // Te weinig spelers over (iemand ging weg): de check stopt, de beheerder start later opnieuw.
+        $this->pdo->prepare(
+            'UPDATE lobbies l SET l.ready_check = 0
+             WHERE l.id = ? AND l.ready_check = 1
+               AND (SELECT COUNT(*) FROM seats s WHERE s.lobby_id = l.id) < l.min_players'
+        )->execute([$lobbyId]);
     }
 
     /**

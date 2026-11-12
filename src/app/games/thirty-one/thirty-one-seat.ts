@@ -10,6 +10,10 @@ const DRAG_THRESHOLD = 8;
  * liggen de kaarten dicht (`null`); van jezelf zijn ze open en aan te tikken. Bij de afrekening
  * liggen alle handen open.
  *
+ * De plek heeft een vaste maat in kaartbreedtes (`--c`, gezet door de tafel): zo kan de tafel
+ * uitrekenen hoe groot de kaarten mogen zijn (zie `thirty-one-layout.ts`). De labels (deler, gepast,
+ * score) liggen over de onderrand van de kaarten en kosten dus geen hoogte.
+ *
  * Je eigen kaarten kun je van plek verwisselen door er één naar een andere kaart te slepen (muis of
  * vinger), of met de pijltjestoetsen als een kaart de focus heeft.
  */
@@ -25,7 +29,8 @@ const DRAG_THRESHOLD = 8;
     '[class.seat--lost]': 'lost()',
     '[class.seat--dealing]': 'dealing()',
     '[class.seat--revealing]': 'score() !== null',
-    '[style.--a]': 'angle() + "deg"',
+    '[class.seat--swapped]': 'markColor() !== null',
+    '[style.--mark]': 'markColor()',
   },
   template: `
     <div class="seat__head">
@@ -37,25 +42,8 @@ const DRAG_THRESHOLD = 8;
       </span>
       <span class="hearts" role="img" [attr.aria-label]="livesLabel()">
         <span class="hearts__list" aria-hidden="true">{{ hearts() }}</span>
-        <span class="hearts__count" aria-hidden="true">♥ ×{{ lives() }}</span>
+        <span class="hearts__count" aria-hidden="true">♥{{ lives() }}</span>
       </span>
-    </div>
-
-    <div class="seat__badges">
-      @if (isDealer()) {
-        <span class="badge badge--dealer">{{ i18n.t('game.31-en.dealer') }}</span>
-      }
-      @if (eliminated()) {
-        <span class="badge badge--out">{{ i18n.t('game.31-en.out') }}</span>
-      } @else if (locked()) {
-        <span class="badge badge--passed">{{ i18n.t('game.31-en.passed') }}</span>
-      }
-      @if (away()) {
-        <span class="badge badge--away">{{ i18n.t('game.31-en.away') }}</span>
-      }
-      @if (lost()) {
-        <span class="badge badge--lost">{{ i18n.t('game.31-en.settled.lost') }}</span>
-      }
     </div>
 
     @if (!eliminated() || cards().length > 0) {
@@ -99,11 +87,27 @@ const DRAG_THRESHOLD = 8;
       </div>
     }
 
-    @if (score() !== null) {
-      <p class="seat__score">
-        {{ i18n.t('game.31-en.settled.points', { score: scoreText() }) }}
-      </p>
-    }
+    <div class="seat__badges">
+      @if (isDealer()) {
+        <span class="badge badge--dealer">{{ i18n.t('game.31-en.dealer') }}</span>
+      }
+      @if (eliminated()) {
+        <span class="badge badge--out">{{ i18n.t('game.31-en.out') }}</span>
+      } @else if (locked()) {
+        <span class="badge badge--passed">{{ i18n.t('game.31-en.passed') }}</span>
+      }
+      @if (away()) {
+        <span class="badge badge--away">{{ i18n.t('game.31-en.away') }}</span>
+      }
+      @if (lost()) {
+        <span class="badge badge--lost">{{ i18n.t('game.31-en.settled.lost') }}</span>
+      }
+      @if (score() !== null) {
+        <span class="badge seat__score">
+          {{ i18n.t('game.31-en.settled.points', { score: scoreText() }) }}
+        </span>
+      }
+    </div>
   `,
 })
 export class ThirtyOneSeat {
@@ -121,12 +125,15 @@ export class ThirtyOneSeat {
   readonly away = input(false);
   /** Verliest bij deze afrekening een leven. */
   readonly lost = input(false);
-  /** Hoek aan de tafel in graden: 0 is onderaan, daarna met de klok mee. */
-  readonly angle = input(0);
   /** De drie kaarten op positie; `null` is een dichte kaart. Leeg als de speler af is. */
   readonly cards = input<readonly (string | null)[]>([null, null, null]);
   /** Posities van kaarten die net gewisseld of verplaatst zijn (krijgen een rand). */
   readonly marked = input<readonly number[]>([]);
+  /**
+   * De randkleur van deze speler na een wissel: om de gewisselde kaart en om de naam, in dezelfde
+   * kleur als zijn kaart in de pot. Null als er geen recente wissel is.
+   */
+  readonly markColor = input<string | null>(null);
   /** Je eigen kaarten zijn aan te tikken. */
   readonly selectable = input(false);
   readonly disabled = input(false);

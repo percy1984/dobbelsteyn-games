@@ -327,6 +327,21 @@ final class LobbyServiceTest extends DbTestCase
         $this->assertTrue($byCode[$c['lobby']['code']]['joinable']);
     }
 
+    public function testListHidesALobbyOnceEveryHumanIsGoneAndShowsItAgainWhenSomeoneReturns(): void
+    {
+        $left = $this->lobbies->create('tic-tac-toe', 'Weg', false, null);
+        $this->lobbies->addBot($left['lobby']['code'], $left['token'], 5);
+        $stays = $this->lobbies->create('tic-tac-toe', 'Blijft', false, null);
+        // De maker sloot zijn browser: geen heartbeat meer. De bot houdt de lobby niet in de lijst.
+        $seconds = LobbyService::LISTED_WHILE_SEEN_SECONDS + 5;
+        $this->pdo->exec("UPDATE seats SET last_seen_at = NOW(3) - INTERVAL $seconds SECOND WHERE name = 'Weg'");
+
+        $this->assertSame([$stays['lobby']['code']], array_column($this->lobbies->listForGame('tic-tac-toe'), 'code'));
+
+        $this->pdo->exec("UPDATE seats SET last_seen_at = NOW(3) - INTERVAL 20 SECOND WHERE name = 'Weg'");
+        $this->assertCount(2, $this->lobbies->listForGame('tic-tac-toe'), 'Even weg (telefoon op zwart) is nog niet verdwenen.');
+    }
+
     public function testListIsNewestFirstAndEmptyWhenThereAreNoLobbies(): void
     {
         $this->assertSame([], $this->lobbies->listForGame('tic-tac-toe'));

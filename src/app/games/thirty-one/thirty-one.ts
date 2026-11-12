@@ -18,6 +18,7 @@ import { CardPreferencesPanel } from '../cards/card-preferences-panel';
 import { PlayingCard } from '../cards/playing-card';
 import { FlightVariant, fly, nextVariant } from './card-flight';
 import { ThirtyOneActions } from './thirty-one-actions';
+import { SEAT_WIDTH, fitCardWidth, seatPositions } from './thirty-one-layout';
 import { ThirtyOneSeat } from './thirty-one-seat';
 import {
   Display,
@@ -29,13 +30,48 @@ import {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** Zo lang blijft een gewisselde kaart herkenbaar (open bij de speler, met een rand, ook in de pot). */
+export const SWAP_MARK_MS = 5000;
+
+/**
+ * Elke speler heeft een eigen randkleur voor zijn wissels, zodat je ziet wie welke kaart nam en welke
+ * hij teruglegde. Lichte kleuren: ze steken af tegen het groene laken. Geen geel, want dat is de beurt.
+ */
+const SWAP_COLORS: readonly string[] = [
+  '#ff8a3d',
+  '#4fc3f7',
+  '#ff80ab',
+  '#ffffff',
+  '#c5a3ff',
+  '#c6ff00',
+  '#1de9b6',
+  '#f5deb3',
+];
+
+/** Een recente wissel: wat de speler uit de pot nam (per handpositie) en waar zijn kaarten in de pot liggen. */
+interface SwapMark {
+  readonly seat: number;
+  readonly color: string;
+  readonly hand: ReadonlyMap<number, string>;
+  readonly pot: readonly number[];
+}
+
 /**
  * De tafel van 31-en. Het platform (`GameStage`) geeft alle inputs van het spelcontract mee.
+ *
+ * De tafel vult de ruimte die hij krijgt en past altijd in zijn geheel in beeld: jij onderaan, de
+ * tegenstanders op een boog om de pot. De kaartmaat volgt uit de gemeten ruimte (zie
+ * `thirty-one-layout.ts`), zodat het spel er op elk scherm hetzelfde uitziet en niemand hoeft te
+ * scrollen.
  *
  * Wat je ziet loopt tijdens het afspelen van de zetlog een beetje achter op de server: bots spelen
  * daar direct door, hier komt elke gebeurtenis (wissel, pas, afrekening) één voor één in beeld, met
  * een korte pauze. Invoer is tijdens het afspelen geblokkeerd. Aan het eind staat de weergave weer
  * precies gelijk aan de view van de server.
+ *
+ * Een wissel blijft daarna nog even herkenbaar (`SWAP_MARK_MS`): de kaart die de speler uit de pot nam
+ * ligt open in zijn hand (die was toch al openbaar) en heeft dezelfde gekleurde rand als de kaart die
+ * hij in de pot legde. Elke speler heeft zijn eigen kleur. Het spel gaat intussen gewoon door.
  */
 @Component({
   imports: [CardPreferencesPanel, PlayingCard, ThirtyOneActions, ThirtyOneSeat],
@@ -45,27 +81,43 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
     @if (shown(); as d) {
       <div class="game31">
         <div class="game31__bar">
-          <p class="game31__banner" [class.game31__banner--me]="myTurn()" role="status">
-            {{ banner() }}
-          </p>
-          <p class="game31__meta">
-            {{ i18n.t('game.31-en.round', { round: d.round }) }} ·
-            {{ i18n.t('game.31-en.deck', { count: d.deckCount }) }}
-          </p>
+          <div class="game31__status">
+            <p class="game31__banner" [class.game31__banner--me]="myTurn()" role="status">
+              {{ banner() }}
+            </p>
+            <p class="game31__meta">
+              {{ i18n.t('game.31-en.round', { round: d.round }) }} ·
+              {{ i18n.t('game.31-en.deck', { count: d.deckCount }) }}
+            </p>
+          </div>
+          <button type="button" class="game31__gear" (click)="openPreferences()">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.6 7.6 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.6 7.6 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.6 7.6 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+              />
+            </svg>
+            <span class="sr-only">{{ i18n.t('game.31-en.preferences') }}</span>
+          </button>
         </div>
         @if (lastRoundText(); as text) {
           <p class="game31__last">{{ text }}</p>
         }
 
-        <div class="table" role="group" [attr.aria-label]="i18n.t('game.31-en.table')">
-          <div class="table__felt" aria-hidden="true"></div>
-
+        <div
+          #table
+          class="table"
+          role="group"
+          [attr.aria-label]="i18n.t('game.31-en.table')"
+          [style.--c]="fit()?.card"
+          [style.--ring-h]="fit()?.ring"
+        >
           <div class="pot" role="group" [attr.aria-label]="i18n.t('game.31-en.pot')">
             @for (card of d.pot; track $index) {
               <div
                 class="pot__slot"
                 [attr.data-pot]="$index"
-                [class.pot__slot--marked]="potMarked().includes($index)"
+                [class.pot__slot--marked]="potMarked().includes($index) || !!potColors()[$index]"
+                [style.--mark]="potColors()[$index]"
               >
                 <button
                   type="button"
@@ -85,7 +137,8 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
             <dg-thirty-one-seat
               class="table__seat"
               [class.table__seat--me]="p.isMe"
-              [style.order]="p.isMe ? 2 : 0"
+              [style.--x]="p.x"
+              [style.--y]="p.y"
               [seat]="p.seat"
               [name]="p.name"
               [lives]="p.lives"
@@ -95,9 +148,9 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
               [locked]="p.locked"
               [away]="p.away"
               [lost]="p.lost"
-              [angle]="p.angle"
               [cards]="p.cards"
               [marked]="p.marked"
+              [markColor]="p.markColor"
               [score]="p.score"
               [selectable]="p.isMe && p.cards.length > 0 && !d.reveal"
               [disabled]="!canAct()"
@@ -110,44 +163,38 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
           }
         </div>
 
-        @if (!result() && !d.reveal) {
-          @if (myTurn()) {
-            <dg-thirty-one-actions
-              [allowed]="state()?.allowed ?? null"
-              [swapReady]="swapReady()"
-              [disabled]="!canAct()"
-              (swap)="swap()"
-              (swapAll)="send({ type: 'swapAll' })"
-              (pass)="send({ type: 'pass' })"
-              (skip)="send({ type: 'skip' })"
-            />
-          } @else if (hasHand()) {
-            <p class="game31__hint">{{ i18n.t('game.31-en.hintOther') }}</p>
+        <div class="game31__controls">
+          @if (hasHand() && !d.reveal) {
+            <p class="game31__score">
+              {{ i18n.t('game.31-en.score', { score: scoreText() }) }}
+            </p>
           }
-        }
-        @if (hasHand() && !d.reveal) {
-          <p class="game31__score">
-            {{ i18n.t('game.31-en.score', { score: scoreText() }) }}
-          </p>
-        }
-
-        @if (hasHand() && !d.reveal) {
-          <p class="game31__move">
-            @if (cooldownSeconds() > 0) {
-              {{ i18n.t('game.31-en.moveCooldown', { seconds: cooldownSeconds() }) }}
-            } @else {
-              {{ i18n.t('game.31-en.moveHint') }}
+          @if (!result() && !d.reveal) {
+            @if (myTurn()) {
+              <dg-thirty-one-actions
+                [allowed]="state()?.allowed ?? null"
+                [swapReady]="swapReady()"
+                [disabled]="!canAct()"
+                (swap)="swap()"
+                (swapAll)="send({ type: 'swapAll' })"
+                (pass)="send({ type: 'pass' })"
+                (skip)="send({ type: 'skip' })"
+              />
+            } @else if (hasHand()) {
+              <p class="game31__hint">{{ i18n.t('game.31-en.hintOther') }}</p>
             }
-          </p>
-        }
+          }
+          @if (hasHand() && !d.reveal) {
+            <p class="game31__move" [class.game31__move--idle]="cooldownSeconds() === 0">
+              @if (cooldownSeconds() > 0) {
+                {{ i18n.t('game.31-en.moveCooldown', { seconds: cooldownSeconds() }) }}
+              } @else {
+                {{ i18n.t('game.31-en.moveHint') }}
+              }
+            </p>
+          }
+        </div>
 
-        <button
-          type="button"
-          class="button button--secondary button--small"
-          (click)="openPreferences()"
-        >
-          <span aria-hidden="true">⚙</span> {{ i18n.t('game.31-en.preferences') }}
-        </button>
         <dialog
           #prefsDialog
           class="prefs"
@@ -184,6 +231,10 @@ export class ThirtyOne {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly prefsDialog = viewChild<ElementRef<HTMLDialogElement>>('prefsDialog');
+  private readonly table = viewChild<ElementRef<HTMLElement>>('table');
+  /** De gemeten maat van de tafel; bij elke wijziging wordt de kaartmaat opnieuw uitgerekend. */
+  private readonly tableSize = signal<{ width: number; ring: number; mine: number } | null>(null);
+  private observer: ResizeObserver | null = null;
   private readonly feed = new GameEventFeed();
   private readonly display = signal<Display | null>(null);
   /** True zolang de zetlog wordt afgespeeld; de invoer is dan geblokkeerd. */
@@ -194,6 +245,20 @@ export class ThirtyOne {
   private lastVariant: FlightVariant | null = null;
   /** Tijdens een vlucht van een eigen kaart: je hand zoals hij was, vóór de wissel. */
   private readonly handOverride = signal<readonly string[] | null>(null);
+
+  /** Recente wissels die nog herkenbaar in beeld staan. */
+  private readonly marks = signal<readonly SwapMark[]>([]);
+  private readonly markTimers = new Set<ReturnType<typeof setTimeout>>();
+  /** Per potpositie de randkleur van de speler die daar net een kaart legde. */
+  protected readonly potColors = computed(() => {
+    const colors: (string | null)[] = [null, null, null];
+    for (const mark of this.marks()) {
+      for (const position of mark.pot) {
+        colors[position] = mark.color;
+      }
+    }
+    return colors;
+  });
 
   // Verplaatsen mag hooguit één keer per interval (de server bewaakt dat; dit toont de wachttijd).
   private readonly cooldownUntil = signal(0);
@@ -232,7 +297,31 @@ export class ThirtyOne {
     String(this.state()?.score ?? '').replace('.', ','),
   );
 
-  /** Alle spelers met alles wat de stoel nodig heeft; jij onderaan (hoek 0), de rest met de klok mee. */
+  /** Het aantal spelers om jou heen. */
+  private readonly opponents = computed(() => {
+    const players = this.shown()?.players ?? [];
+    return players.filter((p) => p.seat !== this.mySeatNo()).length;
+  });
+
+  /**
+   * De kaartmaat van de tegenstanders en de hoogte van de ring (beide als CSS-lengte), of null zolang
+   * de tafel niet gemeten is; de stylesheet heeft dan een veilige standaard.
+   */
+  protected readonly fit = computed(() => {
+    const size = this.tableSize();
+    if (!size) {
+      return null;
+    }
+    // Een kaart van een ander is nooit groter dan 80% van die van jou, en niet groter dan nodig.
+    const card = Math.min(
+      fitCardWidth(this.opponents(), size.width, size.ring),
+      size.mine * 0.8,
+      64,
+    );
+    return { card: `${Math.floor(card * 100) / 100}px`, ring: `${size.ring}px` };
+  });
+
+  /** Alle spelers met alles wat de stoel nodig heeft; jij onderaan, de rest met de klok mee op de boog. */
   protected readonly ring = computed(() => {
     const d = this.shown();
     const view = this.state();
@@ -240,14 +329,15 @@ export class ThirtyOne {
       return [];
     }
     const n = d.players.length;
-    const mine = Math.max(
-      0,
-      d.players.findIndex((p) => p.seat === this.mySeatNo()),
-    );
+    const mine = d.players.findIndex((p) => p.seat === this.mySeatNo());
+    const positions = seatPositions(mine < 0 ? n : n - 1);
     return d.players.map((p, index) => {
       const isMe = p.seat === this.mySeatNo();
+      // De hoeveelste na jou, met de klok mee (kijk je alleen mee, dan gewoon op volgorde).
+      const position = isMe ? null : positions[mine < 0 ? index : ((index - mine + n) % n) - 1];
       const revealed = d.reveal?.hands.find((h) => h.seat === p.seat);
       const ownCards = view && view.round === d.round ? (this.handOverride() ?? view.hand) : [];
+      const mark = d.reveal ? undefined : this.marks().find((m) => m.seat === p.seat);
       let cards: readonly (string | null)[];
       if (revealed) {
         cards = revealed.cards;
@@ -256,8 +346,10 @@ export class ThirtyOne {
       } else if (isMe) {
         cards = ownCards.length > 0 ? ownCards : [null, null, null];
       } else {
-        cards = [null, null, null];
+        // Dicht, behalve een kaart die deze speler net open uit de pot nam.
+        cards = [0, 1, 2].map((position) => mark?.hand.get(position) ?? null);
       }
+      const highlighted = d.highlight?.seat === p.seat ? d.highlight.handPositions : [];
       return {
         seat: p.seat,
         name: this.nameOf(p.seat),
@@ -268,9 +360,11 @@ export class ThirtyOne {
         isDealer: d.dealer === p.seat,
         away: this.seats().find((s) => s.seatNo === p.seat)?.isAway ?? false,
         lost: d.reveal?.lost.includes(p.seat) ?? false,
-        angle: -(360 * ((index - mine + n) % n)) / n,
+        x: position?.x ?? 0,
+        y: position?.y ?? 0,
         cards,
-        marked: d.highlight?.seat === p.seat ? d.highlight.handPositions : [],
+        marked: mark ? [...new Set([...highlighted, ...mark.hand.keys()])] : highlighted,
+        markColor: mark?.color ?? null,
         score: revealed?.score ?? null,
       };
     });
@@ -320,6 +414,8 @@ export class ThirtyOne {
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.destroyed = true;
+      this.observer?.disconnect();
+      this.markTimers.forEach((timer) => clearTimeout(timer));
       if (this.ticker) {
         clearInterval(this.ticker);
       }
@@ -329,6 +425,22 @@ export class ThirtyOne {
       const view = this.state();
       const events = this.events();
       untracked(() => this.sync(view, events));
+    });
+
+    // Meet de tafel zodra hij er is en bij elke verandering van het scherm (draaien, adresbalk, ...).
+    effect(() => {
+      const table = this.table()?.nativeElement;
+      this.observer?.disconnect();
+      this.observer = null;
+      if (!table || typeof ResizeObserver === 'undefined') {
+        return;
+      }
+      this.observer = new ResizeObserver(() => this.measure(table));
+      this.observer.observe(table);
+      const mine = table.querySelector<HTMLElement>('.table__seat--me');
+      if (mine) {
+        this.observer.observe(mine);
+      }
     });
 
     // Een nieuwe beurt of ronde: een eerdere selectie hoort daar niet meer bij.
@@ -408,6 +520,26 @@ export class ThirtyOne {
     this.selectedHand.set(null);
     this.selectedPot.set(null);
     void this.submit()(move);
+  }
+
+  /** Legt de beschikbare ruimte vast: de breedte van de tafel en de hoogte boven je eigen kaarten. */
+  private measure(table: HTMLElement): void {
+    const mine = table.querySelector<HTMLElement>('.table__seat--me');
+    const mineHeight = mine ? mine.offsetHeight + 8 : 0;
+    const next = {
+      width: table.clientWidth,
+      ring: Math.max(0, table.clientHeight - mineHeight),
+      mine: mine ? mine.offsetWidth / SEAT_WIDTH : 64,
+    };
+    const current = this.tableSize();
+    if (
+      !current ||
+      current.width !== next.width ||
+      current.ring !== next.ring ||
+      current.mine !== next.mine
+    ) {
+      this.tableSize.set(next);
+    }
   }
 
   private nameOf(seat: number): string {
@@ -498,6 +630,49 @@ export class ThirtyOne {
     }
   }
 
+  /**
+   * Onthoudt een wissel, zodat de kaarten nog even herkenbaar blijven. Verplaatst de speler zijn
+   * kaarten of begint er een nieuwe ronde, dan klopt de plek niet meer en verdwijnt de markering.
+   */
+  private noteSwap(event: GameEvent): void {
+    const seat = event['seat'] as number | undefined;
+    if (event.type === 'moved') {
+      this.marks.update((marks) => marks.filter((m) => m.seat !== seat));
+      return;
+    }
+    if (['dealt', 'settled', 'finished', 'dirtyLaundry'].includes(event.type)) {
+      this.marks.set([]);
+      return;
+    }
+    if ((event.type !== 'swap' && event.type !== 'swapAll') || seat === undefined) {
+      return;
+    }
+    const all = event.type === 'swapAll';
+    const taken = all ? (event['taken'] as string[]) : [event['taken'] as string];
+    const handPositions = all ? [0, 1, 2] : [event['handPos'] as number];
+    const pot = all ? [0, 1, 2] : [event['potPos'] as number];
+    const order = (this.display()?.players ?? []).findIndex((p) => p.seat === seat);
+    const mark: SwapMark = {
+      seat,
+      color: SWAP_COLORS[Math.max(0, order) % SWAP_COLORS.length],
+      hand: new Map(handPositions.map((position, index) => [position, taken[index]])),
+      pot,
+    };
+    // Een oudere wissel van dezelfde speler vervalt; ligt er een nieuwe kaart op een potplek, dan is
+    // die plek niet meer van de vorige wisselaar.
+    this.marks.update((marks) => [
+      ...marks
+        .filter((m) => m.seat !== seat)
+        .map((m) => ({ ...m, pot: m.pot.filter((position) => !pot.includes(position)) })),
+      mark,
+    ]);
+    const timer = setTimeout(() => {
+      this.markTimers.delete(timer);
+      this.marks.update((marks) => marks.filter((m) => m !== mark && !isStale(m, mark)));
+    }, SWAP_MARK_MS);
+    this.markTimers.add(timer);
+  }
+
   private async play(): Promise<void> {
     this.playing.set(true);
     try {
@@ -509,6 +684,7 @@ export class ThirtyOne {
         }
         this.handOverride.set(null);
         this.display.set(applyEvent(current, event));
+        this.noteSwap(event);
         await sleep(eventDuration(event));
         if (this.destroyed) {
           return;
@@ -523,4 +699,9 @@ export class ThirtyOne {
       }
     }
   }
+}
+
+/** Dezelfde wissel, ook als de markering intussen een potplek aan een latere wissel heeft afgestaan. */
+function isStale(candidate: SwapMark, original: SwapMark): boolean {
+  return candidate.seat === original.seat && candidate.hand === original.hand;
 }

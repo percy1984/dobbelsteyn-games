@@ -20,12 +20,16 @@ final class DisconnectTest extends DbTestCase
         $this->lobbies = new LobbyService($this->pdo, GameRegistry::default(), new Rng(static fn (int $min, int $max): int => $min));
     }
 
-    /** Start het spel nadat iedereen zich ready gemeld heeft (de ready-regels zelf testen we in ReadyCheckTest). */
+    /** Drukt op Start en laat daarna iedereen ready zijn, zodat de aftelling loopt (de ready-regels zelf testen we in ReadyCheckTest). */
     private function startReady(string $code, ?string $token): array
     {
-        $this->pdo->exec('UPDATE seats SET is_ready = 1');
+        $view = $this->lobbies->start($code, $token);
+        if ($view['status'] === 'waiting') {
+            $this->pdo->exec('UPDATE seats SET is_ready = 1');
+            $view = $this->lobbies->start($code, $token);
+        }
 
-        return $this->lobbies->start($code, $token);
+        return $view;
     }
 
     private function assertApiError(int $status, string $code, callable $fn): void

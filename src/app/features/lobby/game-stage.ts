@@ -11,21 +11,32 @@ import { AwayNotice } from './away-notice';
 /**
  * Het speelscherm: laadt de component van de game, geeft die zijn eigen kijk op het spel en stuurt
  * zetten naar de server. Na afloop staat hier de uitslag, met "nog een keer" voor de maker.
+ *
+ * Een brede game (zie `WIDE_GAMES`) krijgt het hele scherm en moet daar zelf in passen: het
+ * speelscherm vult dan de hoogte en scrollt niet. De chatknop staat als icoon rechtsboven; de game
+ * laat daar een vakje van 2,75rem vrij.
  */
 @Component({
   imports: [AwayNotice, ChatLauncher, NgComponentOutlet, RouterLink],
   selector: 'dg-game-stage',
   styleUrl: './game-stage.scss',
+  host: { '[class.fill]': 'fill()' },
   template: `
     <section class="card stage" [class.stage--compact]="compact()" aria-labelledby="stage-title">
       <h1 id="stage-title">{{ i18n.gameName(lobby().game) }}</h1>
       <p class="stage__status" role="status" aria-live="polite">{{ statusText() }}</p>
 
-      <dg-away-notice [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
+      <dg-away-notice
+        [lobby]="lobby()"
+        [compact]="fill()"
+        (lobbyChange)="lobbyChange.emit($event)"
+      />
 
       @if (component(); as game) {
         @if (lobby().status !== 'ended') {
-          <ng-container *ngComponentOutlet="game; inputs: inputs()" />
+          <div class="stage__game">
+            <ng-container *ngComponentOutlet="game; inputs: inputs()" />
+          </div>
         }
       } @else if (unavailable()) {
         <p class="alert" role="alert">{{ i18n.t('stage.unavailable') }}</p>
@@ -36,7 +47,11 @@ import { AwayNotice } from './away-notice';
       }
 
       <div class="stage__chat">
-        <dg-chat-launcher [lobby]="lobby()" (lobbyChange)="lobbyChange.emit($event)" />
+        <dg-chat-launcher
+          [lobby]="lobby()"
+          [compact]="fill()"
+          (lobbyChange)="lobbyChange.emit($event)"
+        />
       </div>
 
       @if (lobby().result || lobby().status === 'ended') {
@@ -74,6 +89,10 @@ export class GameStage {
   protected readonly compact = computed(
     () =>
       WIDE_GAMES.has(this.lobby().game) && !this.lobby().result && this.lobby().status !== 'ended',
+  );
+  /** Een brede game vult het scherm (zolang er een tafel te zien is). */
+  protected readonly fill = computed(
+    () => WIDE_GAMES.has(this.lobby().game) && this.lobby().status !== 'ended',
   );
   protected readonly unavailable = signal(false);
   protected readonly busy = signal(false);
