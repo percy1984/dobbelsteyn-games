@@ -9,7 +9,10 @@ use Dg\Games\GameRegistry;
 use Dg\Games\Rng;
 use Dg\Lobbies\LobbyService;
 
-/** Ready melden, de ready-check van de beheerder, en dat starten daarvan afhangt. */
+/**
+ * Starten gaat altijd via een ready-check: de beheerder drukt op Start (en is dan zelf ready), de
+ * andere mensen melden zich ready en daarna begint de aftelling vanzelf.
+ */
 final class ReadyCheckTest extends DbTestCase
 {
     private LobbyService $lobbies;
@@ -41,69 +44,92 @@ final class ReadyCheckTest extends DbTestCase
         return ['code' => $code, 'percy' => $created['token'], 'anna' => $anna['token']];
     }
 
+    /** Drie mensen (Percy maker, Anna, Piet); de lobby is daarvoor opgerekt naar vier plaatsen. @return array{code: string, percy: string, anna: string, piet: string} */
+    private function threePlayers(): array
+    {
+        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
+        $this->pdo->exec('UPDATE lobbies SET max_players = 4');
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $piet = $this->lobbies->join($code, 'Piet', null);
+
+        return ['code' => $code, 'percy' => $created['token'], 'anna' => $anna['token'], 'piet' => $piet['token']];
+    }
+
     /** @return list<bool> isReady per plaats */
     private function readyFlags(string $code, string $token): array
     {
         return array_map(static fn (array $seat): bool => $seat['isReady'], $this->lobbies->viewFor($code, $token)['seats']);
     }
 
-    public function testNewPlayersAreNotReadyButBotsAre(): void
-    {
-        $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
-        $code = $created['lobby']['code'];
-
-        $view = $this->lobbies->addBot($code, $created['token'], 5);
-
-        $this->assertSame([false, true], $this->readyFlags($code, $created['token']));
-        $this->assertFalse($view['allReady']);
-        $this->assertFalse($view['readyCheck']);
-    }
-
-    public function testStartingNeedsEveryHumanToBeReadyIncludingTheCreator(): void
+    public function testStartBeginsAReadyCheckInWhichTheStarterIsAlreadyReady(): void
     {
         $lobby = $this->twoPlayers();
 
-        $this->assertApiError(409, 'not_ready', fn () => $this->lobbies->start($lobby['code'], $lobby['percy']));
-        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
-        $this->assertApiError(409, 'not_ready', fn () => $this->lobbies->start($lobby['code'], $lobby['percy']));
+        $view = $this->lobbies->start($lobby['code'], $lobby['percy']);
 
-        $view = $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
-        $this->assertTrue($view['allReady']);
-        $this->assertSame('countdown', $this->lobbies->start($lobby['code'], $lobby['percy'])['status']);
+        $this->assertSame('waiting', $view['status'], 'Het spel begint nog niet.');
+        $this->assertTrue($view['readyCheck']);
+        $this->assertSame([true, false], $this->readyFlags($lobby['code'], $lobby['percy']));
+        $this->assertTrue($this->lobbies->viewFor($lobby['code'], $lobby['anna'])['readyCheck']);
+        $this->assertTrue($this->lobbies->poll($lobby['code'], null, null)['readyCheck'], 'Ook voor wie net kijkt.');
     }
 
-    public function testAHumanVersusABotOnlyNeedsTheHumanToBeReady(): void
+    public function testTheCountdownStartsAsSoonAsTheLastPlayerIsReady(): void
+    {
+        $lobby = $this->threePlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+
+        $view = $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
+        $this->assertSame('waiting', $view['status'], 'Piet is nog niet ready.');
+        $this->assertTrue($view['readyCheck']);
+
+        $view = $this->lobbies->setReady($lobby['code'], $lobby['piet'], true);
+
+        $this->assertSame('countdown', $view['status']);
+        $this->assertFalse($view['readyCheck']);
+        $this->assertGreaterThan(0, $view['countdownMs']);
+        $this->assertLessThanOrEqual(LobbyService::COUNTDOWN_SECONDS * 1000, $view['countdownMs']);
+    }
+
+    public function testAfterTheCountdownTheGameBegins(): void
+    {
+        $lobby = $this->twoPlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
+        $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
+
+        $this->assertSame('playing', $this->lobbies->poll($lobby['code'], $lobby['anna'], null)['status']);
+    }
+
+    public function testWithOnlyBotsAsOpponentsTheCountdownStartsImmediately(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
         $code = $created['lobby']['code'];
         $this->lobbies->addBot($code, $created['token'], 5);
 
-        $this->assertApiError(409, 'not_ready', fn () => $this->lobbies->start($code, $created['token']));
-        $this->lobbies->setReady($code, $created['token'], true);
+        $view = $this->lobbies->start($code, $created['token']);
 
-        $this->assertSame('countdown', $this->lobbies->start($code, $created['token'])['status']);
+        $this->assertSame('countdown', $view['status']);
+        $this->assertFalse($view['readyCheck']);
     }
 
-    public function testNotEnoughPlayersIsReportedBeforeNotReady(): void
+    public function testStartNeedsEnoughPlayersAndAManager(): void
     {
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $code = $created['lobby']['code'];
 
-        $this->assertApiError(409, 'not_enough_players', fn () => $this->lobbies->start($created['lobby']['code'], $created['token']));
-    }
+        $this->assertApiError(409, 'not_enough_players', fn () => $this->lobbies->start($code, $created['token']));
 
-    public function testPlayersCanToggleReadyAndEveryoneSeesIt(): void
-    {
-        $lobby = $this->twoPlayers();
-
-        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
-        $this->assertSame([false, true], $this->readyFlags($lobby['code'], $lobby['percy']));
-        $this->lobbies->setReady($lobby['code'], $lobby['anna'], false);
-        $this->assertSame([false, false], $this->readyFlags($lobby['code'], $lobby['percy']));
+        $anna = $this->lobbies->join($code, 'Anna', null);
+        $this->assertApiError(403, 'not_allowed', fn () => $this->lobbies->start($code, $anna['token']));
+        $this->assertFalse($this->lobbies->viewFor($code, $anna['token'])['readyCheck']);
     }
 
     public function testReadyChangesBumpTheVersionSoOthersSeeThem(): void
     {
-        $lobby = $this->twoPlayers();
+        $lobby = $this->threePlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
         $version = $this->lobbies->poll($lobby['code'], $lobby['percy'], null)['version'];
 
         $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
@@ -113,68 +139,65 @@ final class ReadyCheckTest extends DbTestCase
         $this->assertTrue($seen['seats'][1]['isReady']);
     }
 
-    public function testOnlyPlayersInTheLobbyCanReadyUpAndOnlyWhileWaiting(): void
+    public function testReadyUpIsOnlyForPlayersInTheLobbyDuringAReadyCheck(): void
     {
         $lobby = $this->twoPlayers();
 
+        $this->assertApiError(409, 'no_ready_check', fn () => $this->lobbies->setReady($lobby['code'], $lobby['anna'], true));
+
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
         $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->setReady($lobby['code'], null, true));
         $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->setReady($lobby['code'], 'verkeerd', true));
 
-        $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
         $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
-        $this->lobbies->start($lobby['code'], $lobby['percy']);
         $this->assertApiError(409, 'cannot_change', fn () => $this->lobbies->setReady($lobby['code'], $lobby['anna'], false));
     }
 
-    public function testOnlyAManagerCanStartAReadyCheckAndEveryoneSeesIt(): void
+    public function testASecondManagerPressingStartJustJoinsTheRunningCheck(): void
     {
-        $lobby = $this->twoPlayers();
+        $lobby = $this->threePlayers();
+        $this->lobbies->setPromoted($lobby['code'], $lobby['percy'], 1, true);
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->lobbies->setReady($lobby['code'], $lobby['piet'], true);
 
-        $this->assertApiError(403, 'not_allowed', fn () => $this->lobbies->startReadyCheck($lobby['code'], $lobby['anna']));
-        $this->assertFalse($this->lobbies->viewFor($lobby['code'], $lobby['anna'])['readyCheck']);
+        $view = $this->lobbies->start($lobby['code'], $lobby['anna']);
 
-        $view = $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']);
-
-        $this->assertTrue($view['readyCheck']);
-        $this->assertTrue($this->lobbies->viewFor($lobby['code'], $lobby['anna'])['readyCheck']);
-        $this->assertTrue($this->lobbies->poll($lobby['code'], null, null)['readyCheck'], 'Ook voor wie net kijkt.');
+        $this->assertSame('countdown', $view['status'], 'Percy en Piet blijven ready; Anna was de laatste.');
     }
 
-    public function testNoReadyCheckWhenEveryoneIsAlreadyReady(): void
+    public function testTheCountdownStartsWhenTheOnlyNotReadyPlayerLeaves(): void
     {
-        $lobby = $this->twoPlayers();
-        $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
+        $lobby = $this->threePlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
         $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
 
-        $this->assertApiError(409, 'all_ready', fn () => $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']));
+        $this->lobbies->leave($lobby['code'], $lobby['piet']);
+
+        $this->assertSame('countdown', $this->lobbies->viewFor($lobby['code'], $lobby['percy'])['status']);
     }
 
-    public function testReadyCheckEndsByItselfWhenTheLastPlayerIsReady(): void
+    public function testTheCheckStopsWhenTooFewPlayersAreLeft(): void
     {
         $lobby = $this->twoPlayers();
-        $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']);
-        $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
-        $this->assertTrue($this->lobbies->viewFor($lobby['code'], $lobby['anna'])['readyCheck'], 'Anna is nog niet ready.');
-
-        $view = $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
-
-        $this->assertFalse($view['readyCheck']);
-        $this->assertTrue($view['allReady']);
-        // Wie daarna weer niet-ready wordt, opent de check niet opnieuw.
-        $this->assertFalse($this->lobbies->setReady($lobby['code'], $lobby['anna'], false)['readyCheck']);
-    }
-
-    public function testReadyCheckEndsWhenTheOnlyNotReadyPlayerLeaves(): void
-    {
-        $lobby = $this->twoPlayers();
-        $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
-        $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']);
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
 
         $this->lobbies->leave($lobby['code'], $lobby['anna']);
         $view = $this->lobbies->viewFor($lobby['code'], $lobby['percy']);
 
+        $this->assertSame('waiting', $view['status']);
         $this->assertFalse($view['readyCheck']);
-        $this->assertTrue($view['allReady']);
+    }
+
+    public function testTheCountdownStartsWhenTheLastNotReadyPlayerIsReplacedByABot(): void
+    {
+        $lobby = $this->twoPlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->pdo->exec("UPDATE seats SET last_seen_at = NOW(3) - INTERVAL 30 SECOND WHERE name = 'Anna'");
+        $this->lobbies->poll($lobby['code'], $lobby['percy'], null);
+
+        $view = $this->lobbies->replaceWithBot($lobby['code'], $lobby['percy'], 1, 5);
+
+        $this->assertSame('countdown', $view['status']);
     }
 
     public function testANewPlayerJoiningDuringTheCheckIsNotReadyAndSeesTheCheck(): void
@@ -182,9 +205,8 @@ final class ReadyCheckTest extends DbTestCase
         $created = $this->lobbies->create('tic-tac-toe', 'Percy', false, null);
         $code = $created['lobby']['code'];
         $this->pdo->exec('UPDATE lobbies SET max_players = 4');
-        $this->lobbies->setReady($code, $created['token'], true);
         $this->lobbies->join($code, 'Anna', null);
-        $this->lobbies->startReadyCheck($code, $created['token']);
+        $this->lobbies->start($code, $created['token']);
 
         $piet = $this->lobbies->join($code, 'Piet', null);
 
@@ -192,25 +214,38 @@ final class ReadyCheckTest extends DbTestCase
         $this->assertFalse($piet['lobby']['seats'][2]['isReady']);
     }
 
-    public function testManagerCanCancelTheReadyCheck(): void
+    public function testManagerCanCancelTheReadyCheckAndThenNobodyIsReadyAnymore(): void
     {
-        $lobby = $this->twoPlayers();
-        $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']);
+        $lobby = $this->threePlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
 
         $this->assertApiError(403, 'not_allowed', fn () => $this->lobbies->cancelReadyCheck($lobby['code'], $lobby['anna']));
         $view = $this->lobbies->cancelReadyCheck($lobby['code'], $lobby['percy']);
 
         $this->assertFalse($view['readyCheck']);
-        $this->assertFalse($view['allReady']);
+        $this->assertSame('waiting', $view['status']);
+        $this->assertSame([false, false, false], $this->readyFlags($lobby['code'], $lobby['percy']));
     }
 
-    public function testStartingEndsTheCheckAndARematchResetsEveryoneToNotReady(): void
+    public function testANewCheckStartsCleanAfterACancelledOne(): void
+    {
+        $lobby = $this->threePlayers();
+        $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
+        $this->lobbies->cancelReadyCheck($lobby['code'], $lobby['percy']);
+
+        $view = $this->lobbies->start($lobby['code'], $lobby['percy']);
+
+        $this->assertTrue($view['readyCheck']);
+        $this->assertSame([true, false, false], $this->readyFlags($lobby['code'], $lobby['percy']));
+    }
+
+    public function testARematchNeedsANewReadyCheck(): void
     {
         $lobby = $this->twoPlayers();
-        $this->lobbies->startReadyCheck($lobby['code'], $lobby['percy']);
-        $this->lobbies->setReady($lobby['code'], $lobby['percy'], true);
-        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
         $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->lobbies->setReady($lobby['code'], $lobby['anna'], true);
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
         $this->lobbies->poll($lobby['code'], $lobby['percy'], null);
         $this->pdo->exec("UPDATE lobbies SET status = 'finished'");
@@ -220,17 +255,21 @@ final class ReadyCheckTest extends DbTestCase
         $this->assertSame('waiting', $view['status']);
         $this->assertSame([false, false], array_map(static fn (array $s): bool => $s['isReady'], $view['seats']));
         $this->assertFalse($view['readyCheck']);
-        $this->assertApiError(409, 'not_ready', fn () => $this->lobbies->start($lobby['code'], $lobby['percy']));
+
+        $again = $this->lobbies->start($lobby['code'], $lobby['percy']);
+        $this->assertSame('waiting', $again['status'], 'Anna moet zich opnieuw ready melden.');
+        $this->assertTrue($again['readyCheck']);
     }
 
-    public function testReadyCheckWorksForADisconnectedCreatorViaTheNextManager(): void
+    public function testStartWorksForADisconnectedCreatorViaTheNextManager(): void
     {
         $lobby = $this->twoPlayers();
         $this->pdo->exec("UPDATE seats SET last_seen_at = NOW(3) - INTERVAL 30 SECOND WHERE name = 'Percy'");
         $this->lobbies->poll($lobby['code'], $lobby['anna'], null);
 
-        $view = $this->lobbies->startReadyCheck($lobby['code'], $lobby['anna']);
+        $view = $this->lobbies->start($lobby['code'], $lobby['anna']);
 
         $this->assertTrue($view['readyCheck']);
+        $this->assertSame([false, true], $this->readyFlags($lobby['code'], $lobby['anna']));
     }
 }

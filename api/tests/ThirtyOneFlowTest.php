@@ -29,8 +29,10 @@ final class ThirtyOneFlowTest extends DbTestCase
 
     private function begin(string $code, string $token): array
     {
-        $this->pdo->exec('UPDATE seats SET is_ready = 1');
-        $this->lobbies->start($code, $token);
+        if ($this->lobbies->start($code, $token)['status'] === 'waiting') {
+            $this->pdo->exec('UPDATE seats SET is_ready = 1');
+            $this->lobbies->start($code, $token);
+        }
         $this->pdo->exec('UPDATE lobbies SET countdown_ends_at = NOW(3) - INTERVAL 1 SECOND');
 
         return $this->lobbies->poll($code, $token, null);

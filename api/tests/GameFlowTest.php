@@ -24,9 +24,13 @@ final class GameFlowTest extends DbTestCase
     /** Start het spel nadat iedereen zich ready gemeld heeft (de ready-regels zelf testen we in ReadyCheckTest). */
     private function startReady(string $code, ?string $token): array
     {
-        $this->pdo->exec('UPDATE seats SET is_ready = 1');
+        $view = $this->lobbies->start($code, $token);
+        if ($view['status'] === 'waiting') {
+            $this->pdo->exec('UPDATE seats SET is_ready = 1');
+            $view = $this->lobbies->start($code, $token);
+        }
 
-        return $this->lobbies->start($code, $token);
+        return $view;
     }
 
     private function assertApiError(int $status, string $code, callable $fn): void

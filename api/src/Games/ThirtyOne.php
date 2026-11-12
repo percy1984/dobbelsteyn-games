@@ -71,7 +71,7 @@ final class ThirtyOne implements EventedGame
             ['key' => 'lives', 'type' => 'choice', 'default' => '5', 'choices' => self::LIVES],
             ['key' => 'passRule', 'type' => 'choice', 'default' => 'direct', 'choices' => self::PASS_RULES],
             ['key' => 'skip', 'type' => 'choice', 'default' => 'off', 'choices' => self::SKIP],
-            ['key' => 'swapAll', 'type' => 'choice', 'default' => 'starter', 'choices' => self::SWAP_ALL],
+            ['key' => 'swapAll', 'type' => 'choice', 'default' => 'everyone', 'choices' => self::SWAP_ALL],
             ['key' => 'dirtyLaundry', 'type' => 'choice', 'default' => 'off', 'choices' => self::DIRTY_LAUNDRY],
         ];
     }

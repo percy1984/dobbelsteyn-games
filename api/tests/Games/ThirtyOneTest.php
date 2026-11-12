@@ -467,7 +467,7 @@ final class ThirtyOneTest extends GameContractTestCase
 
     public function testSwapAllForTheStarterOnlyWorksInTheStartersFirstTurn(): void
     {
-        $state = $this->rigged();
+        $state = $this->rigged(['swapAll' => 'starter']);
 
         $this->assertFalse($this->thirty()->view($this->swapFirst($state, 1), 2)['allowed']['swapAll'] ?? false);
         $this->assertTrue($this->thirty()->view($state, 1)['allowed']['swapAll']);
@@ -908,7 +908,7 @@ final class ThirtyOneTest extends GameContractTestCase
     public function testSettingsAreNormalizedAndInvalidValuesRejected(): void
     {
         $this->assertSame(
-            ['lives' => '5', 'passRule' => 'direct', 'skip' => 'off', 'swapAll' => 'starter', 'dirtyLaundry' => 'off'],
+            ['lives' => '5', 'passRule' => 'direct', 'skip' => 'off', 'swapAll' => 'everyone', 'dirtyLaundry' => 'off'],
             $this->thirty()->normalizeSettings([]),
         );
         $this->expectException(\InvalidArgumentException::class);

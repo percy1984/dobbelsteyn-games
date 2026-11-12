@@ -8,17 +8,20 @@ use PDO;
 
 /**
  * Ruimt verlaten lobby's op. "Verlaten" betekent: geen enkele mens heeft nog een heartbeat gegeven
- * (zie de polling). Er is geen aparte cron nodig: dit draait hooguit eens per minuut, meegeleverd met
- * een gewoon verzoek (zie `Api`).
+ * (zie de polling), bijvoorbeeld omdat de maker zijn browser gesloten heeft. Zo'n lobby staat al na
+ * anderhalve minuut niet meer in de lijst (zie `LobbyService::listForGame`); hier verdwijnt hij echt.
+ * Er is geen aparte cron nodig: dit draait hooguit eens per minuut, meegeleverd met een gewoon
+ * verzoek (zie `Api`).
  *
- * Tijden: een wachtkamer of afgelopen spel verdwijnt na 30 minuten zonder mensen; een lopend spel
+ * Tijden: een wachtkamer of afgelopen spel verdwijnt na 5 minuten zonder mensen (kort genoeg om op te
+ * ruimen, lang genoeg om even de link te delen in een andere app); een lopend spel
  * wacht lang (24 uur) op spelers die weg zijn, in lijn met "geen time-out bij wachten".
  */
 final class Cleanup
 {
     public function __construct(
         private readonly PDO $pdo,
-        private readonly int $idleMinutes = 30,
+        private readonly int $idleMinutes = 5,
         private readonly int $runningHours = 24,
     ) {
     }
