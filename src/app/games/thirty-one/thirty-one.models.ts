@@ -49,6 +49,8 @@ export interface Reveal {
   readonly lost: readonly number[];
   readonly eliminated: readonly number[];
   readonly reason: string;
+  /** Wie Stop 31 riep (alleen bij `reason: 'stop31'`), anders null. */
+  readonly by: number | null;
 }
 
 /** Wat er net gebeurd is, voor de melding en de rand om gewisselde kaarten. */
@@ -139,12 +141,17 @@ export function eventDuration(event: GameEvent): number {
       // Na de vlucht blijven de gewisselde kaarten een seconde zichtbaar met een rand.
       return 1100;
     case 'swapAll':
-      return 1200;
-    case 'pass':
+      return 2000;
     case 'skip':
-    case 'stop31':
-    case 'lastRound':
       return 1000;
+    // Momenten die het verloop van de ronde veranderen krijgen een grote melding over de tafel; die
+    // moet lang genoeg staan om te lezen, ook op een telefoon.
+    case 'pass':
+      return 2000;
+    case 'lastRound':
+      return 2500;
+    case 'stop31':
+      return 2800;
     case 'dirtyLaundry':
       return 1800;
     case 'settled':
@@ -168,8 +175,20 @@ function withLocked(players: readonly PlayerInfo[], seat: number): readonly Play
   return players.map((p) => (p.seat === seat ? { ...p, locked: true } : p));
 }
 
+/** Zetten die een beurt kosten; in de laatste ronde heeft de speler daarna zijn laatste beurt gehad. */
+const TURN_EVENTS = ['swap', 'swapAll', 'pass', 'skip'];
+
 /** Past de weergave één gebeurtenis aan. Onbekende gebeurtenissen laten alles zoals het is. */
 export function applyEvent(display: Display, event: GameEvent): Display {
+  const next = applyOne(display, event);
+  if (display.finalRound && TURN_EVENTS.includes(event.type)) {
+    // Zoals de server: wie in de laatste ronde gespeeld heeft, staat niet meer in `toPlay`.
+    return { ...next, toPlay: next.toPlay.filter((seat) => seat !== seatOf(event)) };
+  }
+  return next;
+}
+
+function applyOne(display: Display, event: GameEvent): Display {
   const base: Display = { ...display, reveal: null };
   switch (event.type) {
     case 'swap': {
@@ -288,6 +307,8 @@ export function applyEvent(display: Display, event: GameEvent): Display {
           lost: event['lost'] as readonly number[],
           eliminated: event['eliminated'] as readonly number[],
           reason: event['reason'] as string,
+          // Stop 31 komt vlak voor de afrekening; onthoud wie het riep.
+          by: display.highlight?.kind === 'stop31' ? display.highlight.seat : null,
         },
         highlight: null,
       };

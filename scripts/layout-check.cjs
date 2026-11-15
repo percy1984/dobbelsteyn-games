@@ -91,7 +91,8 @@ function lobby(count, scenario) {
       score: 9,
       finalRound: scenario === 'busy',
       lastRoundPending: false,
-      toPlay: [],
+      // Laatste ronde: iedereen behalve wie paste krijgt nog een beurt (lange balk, badges).
+      toPlay: scenario === 'busy' ? seats.map((s) => s.seatNo).filter((n) => n !== 1) : [],
       allowed: myTurn ? { swap: true, swapAll: true, pass: true, skip: scenario === 'busy' } : null,
       lastMoveMs: null,
       moveIntervalMs: 5000,

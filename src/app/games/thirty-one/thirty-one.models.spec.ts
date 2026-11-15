@@ -149,6 +149,47 @@ describe('applyEvent', () => {
     expect(next.toPlay).toEqual([2, 0]);
   });
 
+  it('laatste ronde: wie gespeeld heeft, valt af uit de spelers die nog een beurt krijgen', () => {
+    let d = applyEvent(start(), event('pass', { seat: 1 }));
+    d = applyEvent(d, event('lastRound', { startedBy: 1, toPlay: [2, 0] }));
+    expect(d.toPlay).toEqual([2, 0]);
+
+    d = applyEvent(d, event('swap', { seat: 2, handPos: 0, potPos: 0, taken: 'DA', given: 'C7' }));
+    expect(d.toPlay).toEqual([0]);
+    d = applyEvent(d, event('pass', { seat: 0 }));
+    expect(d.toPlay).toEqual([]);
+  });
+
+  it('afrekenen na Stop 31: onthoudt wie 31 had', () => {
+    const stop = applyEvent(start(), event('stop31', { seat: 2 }));
+    const settled = applyEvent(
+      stop,
+      event('settled', {
+        round: 1,
+        reason: 'stop31',
+        hands: [],
+        lost: [],
+        lives: [],
+        eliminated: [],
+      }),
+    );
+
+    expect(settled.reveal?.by).toBe(2);
+    expect(
+      applyEvent(
+        start(),
+        event('settled', {
+          round: 1,
+          reason: 'lastRound',
+          hands: [],
+          lost: [],
+          lives: [],
+          eliminated: [],
+        }),
+      ).reveal?.by,
+    ).toBeNull();
+  });
+
   it('vuile was: vervangt de pot, of laat hem staan bij opnieuw schudden', () => {
     const replaced = applyEvent(
       start(),

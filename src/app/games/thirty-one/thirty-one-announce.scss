@@ -1,0 +1,62 @@
+/* Ligt in de tafel (een container): `cqmin` en `--ring-h` komen van daar. */
+:host {
+  position: absolute;
+  z-index: 25;
+  left: 50%;
+  top: calc(var(--ring-h, 62cqh) / 2);
+  translate: -50% -50%;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  inline-size: max-content;
+  max-inline-size: 92%;
+  padding: clamp(0.5rem, 3cqmin, 1rem) clamp(0.75rem, 5cqmin, 1.75rem);
+  border: 3px solid #f0c24b;
+  border-radius: 1rem;
+  background: rgb(8 28 16 / 0.9);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.45);
+  color: #ffffff;
+  text-align: center;
+  pointer-events: none;
+}
+
+:host(.announce--last) {
+  border-color: #ff6b5e;
+}
+
+:host(.announce--stop31) {
+  border-color: #ffd34d;
+  background: #2b2100;
+
+  .announce__title {
+    color: #ffd34d;
+  }
+}
+
+.announce__title {
+  margin: 0;
+  font-size: clamp(1.25rem, 9cqmin, 2.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.announce__sub {
+  margin: 0;
+  font-size: clamp(0.875rem, 4cqmin, 1.25rem);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :host {
+    animation: announce-in 320ms ease-out;
+  }
+}
+
+@keyframes announce-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}

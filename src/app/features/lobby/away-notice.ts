@@ -33,8 +33,8 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   host: { '[class.compact]': 'compact()' },
   styleUrl: './away-notice.scss',
   template: `
-    @for (name of returned(); track name) {
-      <p class="away__back" role="status">{{ i18n.t('away.back', { name }) }}</p>
+    @for (message of returned(); track message) {
+      <p class="away__back" role="status">{{ message }}</p>
     }
 
     @if (compact()) {
@@ -68,7 +68,19 @@ const BOT_LEVELS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             {{ i18n.t(playing() ? 'away.notice.game' : 'away.notice', { name: seat.name }) }}
           </p>
           @if (lobby().me?.canManage) {
+            @if (playing()) {
+              <p class="away__hint">{{ i18n.t('away.choice', { name: seat.name }) }}</p>
+            }
             <div class="away__actions">
+              @if (compact()) {
+                <button
+                  class="button button--small button--secondary"
+                  type="button"
+                  (click)="optionsOpen.set(false)"
+                >
+                  {{ i18n.t('away.wait') }}
+                </button>
+              }
               <label class="away__label" [for]="'away-level-' + seat.seatNo">{{
                 i18n.t('bot.level.label')
               }}</label>
@@ -162,26 +174,33 @@ export class AwayNotice {
   );
 
   private previouslyAway = new Set<number>();
+  /** Plaatsen waar een bot de plek van een weggevallen speler warm hield. */
+  private previousStandIns = new Set<number>();
   private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 
   constructor() {
-    // Wie eerst weg was en nu weer aanwezig is, krijgt even een "is terug"-melding.
+    // Wie eerst weg was (of door een bot vervangen) en nu weer aanwezig is, krijgt even een melding.
     effect(() => {
       const seats = this.lobby().seats;
       untracked(() => {
         const nowAway = new Set(
           seats.filter((s) => s.kind === 'human' && s.isAway).map((s) => s.seatNo),
         );
+        const standIns = new Set(
+          seats.filter((s) => s.kind === 'bot' && s.standInFor).map((s) => s.seatNo),
+        );
         for (const seat of seats) {
-          if (
-            this.previouslyAway.has(seat.seatNo) &&
-            !nowAway.has(seat.seatNo) &&
-            seat.kind === 'human'
-          ) {
-            this.announceReturn(seat);
+          if (seat.kind !== 'human' || nowAway.has(seat.seatNo)) {
+            continue;
+          }
+          if (this.previousStandIns.has(seat.seatNo)) {
+            this.announce(this.i18n.t('away.reclaimed', { name: seat.name }));
+          } else if (this.previouslyAway.has(seat.seatNo)) {
+            this.announce(this.i18n.t('away.back', { name: seat.name }));
           }
         }
         this.previouslyAway = nowAway;
+        this.previousStandIns = standIns;
       });
     });
     // Geen weggevallen spelers meer: de bevestiging om te beëindigen vervalt.
@@ -205,11 +224,11 @@ export class AwayNotice {
     return this.run(() => this.lobbyApi.endGame(this.lobby().code));
   }
 
-  private announceReturn(seat: SeatView): void {
-    this.returned.update((names) => [...names, seat.name]);
+  private announce(message: string): void {
+    this.returned.update((messages) => [...messages, message]);
     const timer = setTimeout(() => {
       this.timers.delete(timer);
-      this.returned.update((names) => names.filter((name) => name !== seat.name));
+      this.returned.update((messages) => messages.filter((m) => m !== message));
     }, BACK_MESSAGE_MS);
     this.timers.add(timer);
   }

@@ -217,7 +217,7 @@ describe('ThirtyOne', () => {
       );
 
       expect(text('.game31__last')).toBe(
-        'Laatste ronde: Percy is gepast. Iedereen krijgt nog één beurt.',
+        'Laatste ronde! Percy heeft gepast. Nog één beurt voor: Anna, Bram.',
       );
     });
 
@@ -508,10 +508,140 @@ describe('ThirtyOne', () => {
       const bram = el().querySelectorAll('dg-thirty-one-seat')[2];
       expect(bram.textContent).toContain('Gepast');
 
-      await vi.advanceTimersByTimeAsync(1500);
+      // Een Pas krijgt een grote melding over de tafel en blijft daarom langer staan.
+      expect(text('.announce__title')).toBe('Bram past!');
+      await vi.advanceTimersByTimeAsync(2000);
       fixture.detectChanges();
+      expect(el().querySelector('.announce')).toBeNull();
       expect(text('.game31__banner')).toBe('Jij bent aan de beurt');
       expect(el().querySelector<HTMLButtonElement>('.pot button.cardbtn')!.disabled).toBe(false);
+    });
+
+    it('laat groot zien dat een ander Stop 31 heeft, met je eigen kaarten nog open', async () => {
+      await render(view({ turn: 1, allowed: null }));
+
+      // De server is al een ronde verder; de tafel speelt de oude ronde nog af.
+      await update(view({ round: 2, turn: 1, allowed: null, hand: ['C7', 'C8', 'C9'] }), [
+        ev(1, 'swap', { seat: 1, handPos: 0, potPos: 0, taken: 'DA', given: 'C7' }),
+        ev(2, 'stop31', { seat: 1 }),
+        ev(3, 'settled', {
+          round: 1,
+          reason: 'stop31',
+          hands: [
+            { seat: 0, cards: ['S7', 'H8', 'D9'], score: 9 },
+            { seat: 1, cards: ['DA', 'DK', 'DQ'], score: 31 },
+            { seat: 2, cards: ['C9', 'CT', 'D7'], score: 19 },
+          ],
+          lost: [0],
+          lives: [
+            { seat: 0, lives: 4 },
+            { seat: 1, lives: 5 },
+            { seat: 2, lives: 5 },
+          ],
+          eliminated: [],
+        }),
+      ]);
+      const myCards = (): (string | null)[] =>
+        [...el().querySelectorAll('dg-thirty-one-seat')[0].querySelectorAll('img')].map((img) =>
+          img.getAttribute('alt'),
+        );
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(myCards()).toEqual(['schoppen 7', 'harten 8', 'ruiten 9']);
+      expect(text('.game31__score')).toBe('Jouw score: 9');
+
+      await vi.advanceTimersByTimeAsync(1500);
+      fixture.detectChanges();
+      expect(text('.announce__title')).toBe('Anna heeft 31!');
+      expect(text('.announce__sub')).toBe('Stop 31: de ronde stopt meteen.');
+      expect(narration()).toBe('Anna heeft 31! De ronde stopt.');
+      expect(el().querySelectorAll('dg-thirty-one-seat')[1].textContent).toContain('31!');
+      // Je eigen kaarten blijven open liggen, ook al heeft de server al opnieuw gedeeld.
+      expect(myCards()).toEqual(['schoppen 7', 'harten 8', 'ruiten 9']);
+
+      await vi.advanceTimersByTimeAsync(2800);
+      fixture.detectChanges();
+      expect(el().querySelector('.announce')).toBeNull();
+      expect(text('.game31__banner')).toBe('Afrekening: Stop 31 door Anna');
+      expect(el().querySelectorAll('dg-thirty-one-seat')[1].textContent).toContain('31!');
+    });
+
+    it('telt in de laatste ronde af wie nog een beurt krijgt, en zegt het als het jouw laatste is', async () => {
+      const players = [
+        { seat: 0, lives: 5, locked: false },
+        { seat: 1, lives: 5, locked: false },
+        { seat: 2, lives: 5, locked: false },
+      ];
+      await render(view({ turn: 2, allowed: null, players }));
+
+      await update(
+        view({
+          turn: 0,
+          allowed: ALL,
+          finalRound: true,
+          toPlay: [0, 1],
+          players: players.map((p) => (p.seat === 2 ? { ...p, locked: true } : p)),
+        }),
+        [ev(1, 'pass', { seat: 2 }), ev(2, 'lastRound', { startedBy: 2, toPlay: [0, 1] })],
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      fixture.detectChanges();
+      expect(text('.announce__title')).toBe('Bram past!');
+      expect(text('.announce__sub')).toBe('Iedereen krijgt nog één beurt.');
+
+      await vi.advanceTimersByTimeAsync(2000);
+      fixture.detectChanges();
+      expect(text('.announce__title')).toBe('Laatste ronde!');
+      expect(text('.announce__sub')).toBe('Nog één beurt voor: jij, Anna.');
+      // Jij bent als eerste aan de beurt in de laatste ronde.
+      expect(text('.game31__last')).toBe(
+        'Laatste ronde! Dit is je laatste beurt. Bram heeft gepast. Daarna nog: Anna.',
+      );
+      const seats = el().querySelectorAll('dg-thirty-one-seat');
+      expect(seats[0].textContent).toContain('Nog 1 beurt');
+      expect(seats[1].textContent).toContain('Nog 1 beurt');
+      expect(seats[2].textContent).toContain('Gepast');
+      expect(seats[2].textContent).not.toContain('Nog 1 beurt');
+    });
+
+    it('noemt voor een ander wie er in de laatste ronde nog een beurt krijgt', async () => {
+      await render(
+        view({
+          turn: 1,
+          allowed: null,
+          finalRound: true,
+          toPlay: [1, 2],
+          players: [
+            { seat: 0, lives: 5, locked: true },
+            { seat: 1, lives: 5, locked: false },
+            { seat: 2, lives: 5, locked: false },
+          ],
+        }),
+      );
+
+      expect(text('.game31__last')).toBe(
+        'Laatste ronde! Percy heeft gepast. Nog één beurt voor: Anna, Bram.',
+      );
+      expect(el().querySelector('.game31__last--me')).toBeNull();
+    });
+
+    it('zegt het duidelijk als jij de allerlaatste beurt hebt', async () => {
+      await render(
+        view({
+          finalRound: true,
+          toPlay: [0],
+          players: [
+            { seat: 0, lives: 5, locked: false },
+            { seat: 1, lives: 5, locked: true },
+            { seat: 2, lives: 5, locked: false },
+          ],
+        }),
+      );
+
+      expect(text('.game31__last')).toBe(
+        'Laatste ronde! Dit is de allerlaatste beurt. Daarna volgt de afrekening.',
+      );
+      expect(el().querySelector('.game31__last--me')).not.toBeNull();
     });
 
     it('toont bij de afrekening alle handen open met de punten en wie een leven verliest', async () => {

@@ -213,6 +213,7 @@ final class LobbyService
                     (SELECT s.name FROM seats s WHERE s.lobby_id = l.id AND s.is_creator = 1 LIMIT 1) AS host
              FROM lobbies l
              WHERE l.game = ? AND l.status IN ('waiting', 'countdown', 'playing')
+               AND l.created_at >= NOW(3) - INTERVAL " . Cleanup::MAX_AGE_HOURS . " HOUR
                AND EXISTS (
                    SELECT 1 FROM seats s WHERE s.lobby_id = l.id AND s.kind = 'human'
                      AND s.last_seen_at >= NOW(3) - INTERVAL " . self::LISTED_WHILE_SEEN_SECONDS . " SECOND
@@ -613,9 +614,12 @@ final class LobbyService
                 throw new ApiException(409, 'Deze speler is niet (meer) weg.', 'not_away');
             }
 
-            // Token weg: de oude telefoon heeft geen toegang meer. De naam blijft herkenbaar.
+            // De bot houdt de plek warm: het token en de naam van de speler blijven bewaard, zodat hij
+            // bij terugkomst zijn plek weer overneemt (zie `reclaimStandIn`). De naam blijft herkenbaar.
             $this->pdo->prepare(
-                "UPDATE seats SET kind = 'bot', bot_level = ?, name = ?, token_hash = NULL,
+                // MySQL wijst de kolommen van links naar rechts toe: eerst bewaren, dan overschrijven.
+                "UPDATE seats SET stand_in_token_hash = token_hash, stand_in_name = name,
+                        kind = 'bot', bot_level = ?, name = ?, token_hash = NULL,
                         is_creator = 0, is_promoted = 0, is_away = 0, last_seen_at = NULL
                  WHERE id = ?"
             )->execute([$level, mb_substr($target['name'], 0, 20) . ' (bot)', $target['id']]);
@@ -864,6 +868,8 @@ final class LobbyService
             'botLevel' => $seat['bot_level'] === null ? null : (int) $seat['bot_level'],
             'isAway' => (int) $seat['is_away'] === 1,
             'isReady' => $seat['kind'] === 'bot' || (int) $seat['is_ready'] === 1,
+            // Een bot die de plek van een weggevallen speler warm houdt (die neemt hem bij terugkomst over).
+            'standInFor' => $seat['kind'] === 'bot' ? ($seat['stand_in_name'] ?? null) : null,
         ];
     }
 
@@ -874,7 +880,8 @@ final class LobbyService
             'SELECT l.*,
                     (l.countdown_ends_at IS NOT NULL AND l.countdown_ends_at <= NOW(3)) AS countdown_due,
                     GREATEST(0, TIMESTAMPDIFF(MICROSECOND, NOW(3), l.countdown_ends_at) DIV 1000) AS countdown_ms
-             FROM lobbies l WHERE l.code = ?' . ($lock ? ' FOR UPDATE' : '')
+             FROM lobbies l
+             WHERE l.code = ? AND l.created_at >= NOW(3) - INTERVAL ' . Cleanup::MAX_AGE_HOURS . ' HOUR' . ($lock ? ' FOR UPDATE' : '')
         );
         $stmt->execute([$code]);
         $lobby = $stmt->fetch();
@@ -902,6 +909,34 @@ final class LobbyService
         }
         $stmt = $this->pdo->prepare('SELECT * FROM seats WHERE lobby_id = ? AND token_hash = ?');
         $stmt->execute([$lobbyId, hash('sha256', $token)]);
+
+        return $stmt->fetch() ?: $this->reclaimStandIn($lobbyId, $token);
+    }
+
+    /**
+     * Een speler die door een bot vervangen is en terugkomt (zelfde token), neemt zijn plek weer over:
+     * de bot verdwijnt, de speler speelt verder met de kaarten en levens van de bot. Dat is voor de
+     * anderen een zichtbare wijziging (de versie gaat omhoog).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function reclaimStandIn(int $lobbyId, string $token): ?array
+    {
+        $hash = hash('sha256', $token);
+        $stmt = $this->pdo->prepare(
+            // Van links naar rechts: eerst terugzetten, dan pas de bewaarde waarden wissen.
+            "UPDATE seats SET kind = 'human', name = stand_in_name, bot_level = NULL, token_hash = stand_in_token_hash,
+                    stand_in_token_hash = NULL, stand_in_name = NULL, is_away = 0, last_seen_at = NOW(3)
+             WHERE lobby_id = ? AND kind = 'bot' AND stand_in_token_hash = ?"
+        );
+        $stmt->execute([$lobbyId, $hash]);
+        if ($stmt->rowCount() === 0) {
+            return null;
+        }
+        $this->touch($lobbyId);
+
+        $stmt = $this->pdo->prepare('SELECT * FROM seats WHERE lobby_id = ? AND token_hash = ?');
+        $stmt->execute([$lobbyId, $hash]);
 
         return $stmt->fetch() ?: null;
     }

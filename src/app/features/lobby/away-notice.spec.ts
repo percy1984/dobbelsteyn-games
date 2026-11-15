@@ -220,6 +220,39 @@ describe('AwayNotice: terugkomen', () => {
     expect(el.textContent).not.toContain('terug');
   });
 
+  it('meldt dat een vervangen speler terug is en de plek van de bot weer overneemt', () => {
+    const standIn: SeatView = { ...seat(1, 'Anna (bot)', false, 'bot'), standInFor: 'Anna' };
+    const { fixture, el } = setup(lobby([seat(0, 'Percy'), standIn]));
+    fixture.detectChanges();
+    expect(el.textContent?.trim()).toBe('');
+
+    fixture.componentRef.setInput('lobby', lobby([seat(0, 'Percy'), seat(1, 'Anna')]));
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('Anna is terug en neemt de plek weer over van de bot.');
+  });
+
+  it('legt de beheerder uit dat hij kan wachten of vervangen, en "Wachten" sluit de keuze', () => {
+    const { fixture, el } = setup(lobby([seat(0, 'Percy'), seat(1, 'Anna', true)]));
+    fixture.componentRef.setInput('compact', true);
+    fixture.detectChanges();
+    const open = [...el.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Wachten of vervangen?'),
+    );
+    open!.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Komt Anna later terug, dan neemt Anna de plek van de bot');
+
+    const wait = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Wachten',
+    );
+    wait!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('dialog')?.hasAttribute('open')).toBe(false);
+    expect(el.textContent).toContain('Anna is tijdelijk weg. Het spel wacht.');
+  });
+
   it('ruimt de timers op als de component verdwijnt', () => {
     const { fixture } = setup(lobby([seat(0, 'Percy'), seat(1, 'Anna', true)]));
     fixture.detectChanges();

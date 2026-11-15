@@ -87,6 +87,21 @@
     background: #b3261e;
     color: #fff;
   }
+
+  /* Laatste ronde: deze speler krijgt nog precies één beurt. */
+  &--last-turn {
+    background: #ffffff;
+    color: #7a1a12;
+    box-shadow: 0 0 0 2px #b3261e;
+  }
+
+  /* Bij de afrekening: deze speler riep Stop 31. */
+  &--stop31 {
+    background: #ffd34d;
+    color: #2b2100;
+    box-shadow: 0 0 0 2px #2b2100;
+    font-size: 1em;
+  }
 }
 
 .slot {
