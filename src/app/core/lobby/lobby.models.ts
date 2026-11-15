@@ -11,6 +11,11 @@ export interface SeatView {
   readonly isAway: boolean;
   /** Ready gemeld in de lopende ready-check; bots zijn altijd ready. */
   readonly isReady: boolean;
+  /**
+   * Alleen bij een bot die een weggevallen speler vervangt: de naam van die speler. Komt die terug,
+   * dan neemt hij zijn plek weer over van de bot.
+   */
+  readonly standInFor?: string | null;
 }
 
 /** Wat de speler zelf in deze lobby is en mag. */
