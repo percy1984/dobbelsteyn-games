@@ -95,6 +95,11 @@ const DRAG_THRESHOLD = 8;
         <span class="badge badge--out">{{ i18n.t('game.31-en.out') }}</span>
       } @else if (locked()) {
         <span class="badge badge--passed">{{ i18n.t('game.31-en.passed') }}</span>
+      } @else if (lastTurn()) {
+        <span class="badge badge--last-turn">{{ i18n.t('game.31-en.lastTurn') }}</span>
+      }
+      @if (stop31()) {
+        <span class="badge badge--stop31">{{ i18n.t('game.31-en.stop31Badge') }}</span>
       }
       @if (away()) {
         <span class="badge badge--away">{{ i18n.t('game.31-en.away') }}</span>
@@ -125,6 +130,10 @@ export class ThirtyOneSeat {
   readonly away = input(false);
   /** Verliest bij deze afrekening een leven. */
   readonly lost = input(false);
+  /** Laatste ronde: deze speler krijgt nog één beurt. */
+  readonly lastTurn = input(false);
+  /** Bij de afrekening: deze speler riep Stop 31. */
+  readonly stop31 = input(false);
   /** De drie kaarten op positie; `null` is een dichte kaart. Leeg als de speler af is. */
   readonly cards = input<readonly (string | null)[]>([null, null, null]);
   /** Posities van kaarten die net gewisseld of verplaatst zijn (krijgen een rand). */

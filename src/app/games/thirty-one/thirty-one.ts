@@ -18,6 +18,7 @@ import { CardPreferencesPanel } from '../cards/card-preferences-panel';
 import { PlayingCard } from '../cards/playing-card';
 import { FlightVariant, fly, nextVariant } from './card-flight';
 import { ThirtyOneActions } from './thirty-one-actions';
+import { AnnounceKind, ThirtyOneAnnounce } from './thirty-one-announce';
 import { SEAT_WIDTH, fitCardWidth, seatPositions } from './thirty-one-layout';
 import { ThirtyOneSeat } from './thirty-one-seat';
 import {
@@ -26,6 +27,7 @@ import {
   applyEvent,
   displayFromView,
   eventDuration,
+  scoreOf,
 } from './thirty-one.models';
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,6 +52,13 @@ const SWAP_COLORS: readonly string[] = [
   '#1de9b6',
   '#f5deb3',
 ];
+
+/** De grote melding over de tafel (zie `ThirtyOneAnnounce`). */
+interface Announcement {
+  readonly kind: AnnounceKind;
+  readonly title: string;
+  readonly sub: string;
+}
 
 /** Een recente wissel: wat de speler uit de pot nam (per handpositie) en waar zijn kaarten in de pot liggen. */
 interface SwapMark {
@@ -80,7 +89,7 @@ interface SwapMark {
  * hij in de pot legde. Elke speler heeft zijn eigen kleur. Het spel gaat intussen gewoon door.
  */
 @Component({
-  imports: [CardPreferencesPanel, PlayingCard, ThirtyOneActions, ThirtyOneSeat],
+  imports: [CardPreferencesPanel, PlayingCard, ThirtyOneActions, ThirtyOneAnnounce, ThirtyOneSeat],
   selector: 'dg-thirty-one',
   styleUrl: './thirty-one.scss',
   template: `
@@ -106,7 +115,7 @@ interface SwapMark {
           </button>
         </div>
         @if (lastRoundText(); as text) {
-          <p class="game31__last">{{ text }}</p>
+          <p class="game31__last" [class.game31__last--me]="lastTurnIsMine()">{{ text }}</p>
         }
 
         <div
@@ -139,6 +148,10 @@ interface SwapMark {
             }
           </div>
 
+          @if (announcement(); as a) {
+            <dg-thirty-one-announce [kind]="a.kind" [title]="a.title" [sub]="a.sub" />
+          }
+
           @if (roundCountdown(); as count) {
             <div class="table__countdown" role="status" aria-live="assertive">
               <p class="table__countdown-label">
@@ -166,6 +179,8 @@ interface SwapMark {
               [locked]="p.locked"
               [away]="p.away"
               [lost]="p.lost"
+              [lastTurn]="p.lastTurn"
+              [stop31]="p.stop31"
               [cards]="p.cards"
               [marked]="p.marked"
               [markColor]="p.markColor"
@@ -314,9 +329,34 @@ export class ThirtyOne {
     () => this.selectedHand() !== null && this.selectedPot() !== null,
   );
   protected readonly potMarked = computed(() => this.shown()?.highlight?.potPositions ?? []);
-  protected readonly scoreText = computed(() =>
-    String(this.state()?.score ?? '').replace('.', ','),
-  );
+
+  /**
+   * Je eigen hand per ronde, zoals de server hem het laatst liet zien. De server deelt na Stop 31 of
+   * de laatste beurt meteen de volgende ronde; de tafel speelt de oude ronde dan nog af. Zonder dit
+   * zouden je eigen kaarten in die tijd dicht liggen.
+   */
+  private readonly ownHands = signal<ReadonlyMap<number, readonly string[]>>(new Map());
+
+  /** Je eigen kaarten zoals de tafel ze nu laat zien (bij de ronde die in beeld is). */
+  protected readonly ownCards = computed((): readonly string[] => {
+    const d = this.shown();
+    const view = this.state();
+    if (!d || !view) {
+      return [];
+    }
+    if (view.round === d.round) {
+      return this.handOverride() ?? view.hand;
+    }
+    return this.ownHands().get(d.round) ?? [];
+  });
+
+  /** De score van je hand; voor een ronde die de server al afsloot, uitgerekend uit de bewaarde hand. */
+  protected readonly scoreText = computed(() => {
+    const view = this.state();
+    const cards = this.ownCards();
+    const oldRound = !!view && view.round !== this.shown()?.round && cards.length === 3;
+    return String(oldRound ? scoreOf(cards) : (view?.score ?? '')).replace('.', ',');
+  });
 
   /** Het aantal spelers om jou heen. */
   private readonly opponents = computed(() => {
@@ -345,10 +385,10 @@ export class ThirtyOne {
   /** Alle spelers met alles wat de stoel nodig heeft; jij onderaan, de rest met de klok mee op de boog. */
   protected readonly ring = computed(() => {
     const d = this.shown();
-    const view = this.state();
     if (!d) {
       return [];
     }
+    const ownCards = this.ownCards();
     const n = d.players.length;
     const mine = d.players.findIndex((p) => p.seat === this.mySeatNo());
     const positions = seatPositions(mine < 0 ? n : n - 1);
@@ -357,7 +397,6 @@ export class ThirtyOne {
       // De hoeveelste na jou, met de klok mee (kijk je alleen mee, dan gewoon op volgorde).
       const position = isMe ? null : positions[mine < 0 ? index : ((index - mine + n) % n) - 1];
       const revealed = d.reveal?.hands.find((h) => h.seat === p.seat);
-      const ownCards = view && view.round === d.round ? (this.handOverride() ?? view.hand) : [];
       const mark = d.reveal ? undefined : this.marks().find((m) => m.seat === p.seat);
       let cards: readonly (string | null)[];
       if (revealed) {
@@ -381,6 +420,11 @@ export class ThirtyOne {
         isDealer: d.dealer === p.seat,
         away: this.seats().find((s) => s.seatNo === p.seat)?.isAway ?? false,
         lost: d.reveal?.lost.includes(p.seat) ?? false,
+        lastTurn:
+          !d.reveal && d.finalRound && d.highlight?.kind !== 'stop31' && d.toPlay.includes(p.seat),
+        stop31:
+          d.reveal?.by === p.seat ||
+          (d.highlight?.kind === 'stop31' && d.highlight.seat === p.seat),
         x: position?.x ?? 0,
         y: position?.y ?? 0,
         cards,
@@ -397,9 +441,11 @@ export class ThirtyOne {
       return '';
     }
     if (d.reveal) {
-      return `${this.i18n.t('game.31-en.settled.title')}: ${this.i18n.t(
-        `game.31-en.reason.${d.reveal.reason}` as TranslationKey,
-      )}`;
+      const reason =
+        d.reveal.reason === 'stop31' && d.reveal.by !== null
+          ? this.i18n.t('game.31-en.reason.stop31.by', { name: this.nameOf(d.reveal.by) })
+          : this.i18n.t(`game.31-en.reason.${d.reveal.reason}` as TranslationKey);
+      return `${this.i18n.t('game.31-en.settled.title')}: ${reason}`;
     }
     if (this.myTurn() && !this.playing()) {
       return this.i18n.t('game.31-en.yourTurn');
@@ -407,18 +453,79 @@ export class ThirtyOne {
     return d.turn === null ? '' : this.i18n.t('game.31-en.turnOf', { name: this.nameOf(d.turn) });
   });
 
+  /** In de laatste ronde: jij bent nu aan de beurt, en dat is je laatste. */
+  protected readonly lastTurnIsMine = computed(() => {
+    const d = this.shown();
+    return !!d && !d.reveal && d.finalRound && this.myTurn() && d.toPlay[0] === this.mySeatNo();
+  });
+
+  /**
+   * De balk boven de tafel zodra iemand gepast heeft: dat het de laatste ronde is, wie gepast heeft en
+   * wie er nog één beurt krijgt (in volgorde). Zo weet iedereen hoe dicht de afrekening is.
+   */
   protected readonly lastRoundText = computed(() => {
     const d = this.shown();
     if (!d || d.reveal || (!d.finalRound && !d.lastRoundPending)) {
       return '';
     }
-    const names = d.players
+    const passed = d.players
       .filter((p) => p.locked)
       .map((p) => this.nameOf(p.seat))
       .join(', ');
-    return this.i18n.t(d.finalRound ? 'game.31-en.lastRound' : 'game.31-en.lastRoundPending', {
-      name: names,
-    });
+    if (!d.finalRound) {
+      return this.i18n.t('game.31-en.lastRoundPending', { name: passed });
+    }
+    if (d.toPlay.length === 0) {
+      return this.i18n.t('game.31-en.lastRound.end');
+    }
+    if (this.lastTurnIsMine()) {
+      const after = d.toPlay.slice(1);
+      return after.length === 0
+        ? this.i18n.t('game.31-en.lastRound.mineLast')
+        : this.i18n.t('game.31-en.lastRound.mine', { name: passed, names: this.namesOf(after) });
+    }
+    return this.i18n.t('game.31-en.lastRound', { name: passed, names: this.namesOf(d.toPlay) });
+  });
+
+  /**
+   * De grote melding over de tafel bij momenten die de ronde veranderen: iemand past of ruilt alles
+   * (de laatste ronde komt eraan), de laatste ronde begint, of iemand heeft 31 (Stop 31).
+   */
+  protected readonly announcement = computed((): Announcement | null => {
+    const d = this.shown();
+    const highlight = d?.highlight;
+    if (!d || !highlight || d.reveal) {
+      return null;
+    }
+    const isMe = highlight.seat === this.mySeatNo();
+    const name = this.nameOf(highlight.seat);
+    const t = (key: string, params: Record<string, string> = {}): string =>
+      this.i18n.t(`game.31-en.announce.${key}` as TranslationKey, params);
+    switch (highlight.kind) {
+      case 'stop31':
+        return {
+          kind: 'stop31',
+          title: isMe ? t('stop31Me') : t('stop31', { name }),
+          sub: t('stop31.sub'),
+        };
+      case 'pass':
+        // In de laatste ronde betekent Pas alleen "ik houd mijn hand"; dat is geen nieuws.
+        return d.finalRound
+          ? null
+          : { kind: 'pass', title: isMe ? t('passMe') : t('pass', { name }), sub: t('pass.sub') };
+      case 'swapAll':
+        return d.finalRound
+          ? null
+          : { kind: 'pass', title: t('swapAll', { name }), sub: t('swapAll.sub') };
+      case 'lastRound':
+        return {
+          kind: 'last',
+          title: t('lastRound'),
+          sub: t('lastRound.sub', { names: this.namesOf(d.toPlay) }),
+        };
+      default:
+        return null;
+    }
   });
 
   /** De melding voor schermlezers over wat er net gebeurde (wissel, pas, afrekening, ...). */
@@ -567,10 +674,27 @@ export class ThirtyOne {
     return this.seats().find((s) => s.seatNo === seat)?.name ?? '';
   }
 
+  /** Namen in volgorde, met "jij" voor je eigen plek. */
+  private namesOf(seats: readonly number[]): string {
+    return seats
+      .map((seat) => (seat === this.mySeatNo() ? this.i18n.t('lobby.you') : this.nameOf(seat)))
+      .join(', ');
+  }
+
   /** Neemt een nieuwe view en zetlog op: de eerste keer direct tonen, daarna gebeurtenissen afspelen. */
   private sync(view: ThirtyOneView | undefined, events: readonly GameEvent[]): void {
     if (!view) {
       return;
+    }
+    if (view.hand.length > 0) {
+      // Alleen de huidige en de vorige ronde zijn nodig.
+      this.ownHands.update(
+        (hands) =>
+          new Map([
+            ...[...hands].filter(([round]) => round >= view.round - 1 && round !== view.round),
+            [view.round, view.hand],
+          ]),
+      );
     }
     this.feed.receive(events);
     if (!this.initialised) {
@@ -645,9 +769,9 @@ export class ThirtyOne {
 
   /** Houdt je eigen hand even op de oude stand, zodat de kaart die je weggeeft ook echt wegvliegt. */
   private holdOwnHand(previous: ((hand: readonly string[]) => readonly string[]) | null): void {
-    const view = this.state();
-    if (previous && view && view.hand.length > 0) {
-      this.handOverride.set(previous(view.hand));
+    const hand = this.ownCards();
+    if (previous && hand.length > 0) {
+      this.handOverride.set(previous(hand));
     }
   }
 
@@ -694,6 +818,27 @@ export class ThirtyOne {
     this.markTimers.add(timer);
   }
 
+  /**
+   * Je eigen wissel in een ronde die de server al afgesloten heeft (bijvoorbeeld jouw wissel naar 31):
+   * de view kent alleen nog de nieuwe ronde, dus de bewaarde hand van de oude ronde volgt de wissel hier.
+   */
+  private followOwnSwap(event: GameEvent, round: number): void {
+    const hand = this.ownHands().get(round);
+    if (!hand || event['seat'] !== this.mySeatNo() || this.state()?.round === round) {
+      return;
+    }
+    let next: readonly string[] | null = null;
+    if (event.type === 'swap') {
+      next = hand.map((card, i) => (i === event['handPos'] ? (event['taken'] as string) : card));
+    } else if (event.type === 'swapAll') {
+      next = event['taken'] as string[];
+    }
+    if (next) {
+      const updated = next;
+      this.ownHands.update((hands) => new Map([...hands, [round, updated]]));
+    }
+  }
+
   /** Telt 3-2-1 af over de tafel; de afrekening blijft er intussen onder staan. */
   private async countDown(round: number): Promise<void> {
     for (const value of ROUND_COUNTDOWN) {
@@ -723,6 +868,7 @@ export class ThirtyOne {
           return;
         }
         this.handOverride.set(null);
+        this.followOwnSwap(event, current.round);
         this.display.set(applyEvent(current, event));
         this.noteSwap(event);
         await sleep(eventDuration(event));
