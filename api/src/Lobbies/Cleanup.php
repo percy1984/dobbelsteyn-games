@@ -16,9 +16,16 @@ use PDO;
  * Tijden: een wachtkamer of afgelopen spel verdwijnt na 5 minuten zonder mensen (kort genoeg om op te
  * ruimen, lang genoeg om even de link te delen in een andere app); een lopend spel
  * wacht lang (24 uur) op spelers die weg zijn, in lijn met "geen time-out bij wachten".
+ *
+ * Daarboven geldt een harde grens: geen lobby blijft langer dan 15 uur bestaan (`MAX_AGE_HOURS`),
+ * wat er ook gebeurt. Een oudere lobby telt meteen als verdwenen (zie `LobbyService::load`), ook
+ * als deze opruimronde nog niet gedraaid heeft.
  */
 final class Cleanup
 {
+    /** Zo lang (vanaf het aanmaken) mag een lobby hooguit bestaan. */
+    public const MAX_AGE_HOURS = 15;
+
     public function __construct(
         private readonly PDO $pdo,
         private readonly int $idleMinutes = 5,
@@ -40,7 +47,12 @@ final class Cleanup
              AND l.last_activity_at < NOW(3) - INTERVAL (CASE WHEN l.status IN ('playing', 'countdown') THEN ? * 60 ELSE ? END) MINUTE"
         );
         $stmt->execute([$this->runningHours, $this->idleMinutes, $this->runningHours, $this->idleMinutes]);
+        $removed = $stmt->rowCount();
 
-        return $stmt->rowCount();
+        $removed += $this->pdo->exec(
+            'DELETE FROM lobbies WHERE created_at < NOW(3) - INTERVAL ' . self::MAX_AGE_HOURS . ' HOUR'
+        );
+
+        return $removed;
     }
 }

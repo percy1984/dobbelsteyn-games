@@ -261,6 +261,36 @@ final class AbuseProtectionTest extends DbTestCase
         $this->assertTrue($this->exists($code)[$code]);
     }
 
+    public function testNoLobbyLivesLongerThanFifteenHoursEvenWithPlayersPresent(): void
+    {
+        $lobbies = $this->service();
+        $old = $lobbies->create('tic-tac-toe', 'Percy', false, null);
+        $young = $lobbies->create('tic-tac-toe', 'Anna', false, null);
+        $this->pdo->prepare('UPDATE lobbies SET created_at = NOW(3) - INTERVAL 15 HOUR - INTERVAL 1 MINUTE WHERE code = ?')
+            ->execute([$old['lobby']['code']]);
+        $this->pdo->prepare('UPDATE lobbies SET created_at = NOW(3) - INTERVAL 14 HOUR - INTERVAL 50 MINUTE WHERE code = ?')
+            ->execute([$young['lobby']['code']]);
+
+        // Nog voor de opruimronde telt de oude lobby als verdwenen, ook voor wie erin zit.
+        $listed = array_column($lobbies->listForGame('tic-tac-toe'), 'code');
+        $this->assertNotContains($old['lobby']['code'], $listed);
+        $this->assertContains($young['lobby']['code'], $listed);
+        try {
+            $lobbies->poll($old['lobby']['code'], $old['token'], null);
+            $this->fail('Een lobby van meer dan 15 uur oud hoort niet meer te bestaan.');
+        } catch (ApiException $e) {
+            $this->assertSame('lobby_not_found', $e->errorCode);
+        }
+
+        $removed = (new Cleanup($this->pdo))->run();
+
+        $this->assertSame(1, $removed);
+        $this->assertSame(
+            [$old['lobby']['code'] => false, $young['lobby']['code'] => true],
+            $this->exists($old['lobby']['code'], $young['lobby']['code']),
+        );
+    }
+
     public function testCleanupRemovesTheSeatsChatAndGameStateOfADeletedLobby(): void
     {
         $lobbies = $this->service();
