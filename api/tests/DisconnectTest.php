@@ -160,15 +160,42 @@ final class DisconnectTest extends DbTestCase
         $this->assertGreaterThan($waiting['version'], $view['version']);
     }
 
-    public function testTheReplacedPlayersOldPhoneLosesAccess(): void
+    public function testAReplacedPlayerWhoComesBackTakesTheirSeatBackFromTheBot(): void
+    {
+        $game = $this->runningGame();
+        $this->makeAway($game['code'], 'Anna', $game['percy']);
+        $replaced = $this->lobbies->replaceWithBot($game['code'], $game['percy'], 1, 5);
+        $this->assertSame('Anna', $replaced['seats'][1]['standInFor']);
+        $this->assertSame([0], $replaced['activeSeats'], 'De bot speelde Anna haar beurt.');
+
+        $back = $this->lobbies->poll($game['code'], $game['anna'], null);
+
+        $this->assertSame(1, $back['me']['seatNo']);
+        $this->assertSame('human', $back['seats'][1]['kind']);
+        $this->assertSame('Anna', $back['seats'][1]['name']);
+        $this->assertNull($back['seats'][1]['botLevel']);
+        $this->assertNull($back['seats'][1]['standInFor']);
+        $this->assertFalse($back['seats'][1]['isAway']);
+        $this->assertGreaterThan($replaced['version'], $back['version'], 'De anderen zien dat Anna terug is.');
+        $this->assertFalse($back['me']['isCreator']);
+
+        // Anna speelt gewoon verder op haar plek.
+        $this->lobbies->move($game['code'], $game['percy'], ['cell' => 8]);
+        $this->lobbies->move($game['code'], $game['anna'], ['cell' => 2]);
+        $this->lobbies->sendChat($game['code'], $game['anna'], 'Ik ben er weer');
+    }
+
+    public function testAStandInBotKeepsPlayingWhileThePlayerStaysAway(): void
     {
         $game = $this->runningGame();
         $this->makeAway($game['code'], 'Anna', $game['percy']);
         $this->lobbies->replaceWithBot($game['code'], $game['percy'], 1, 5);
 
-        $this->assertNull($this->lobbies->poll($game['code'], $game['anna'], null)['me']);
-        $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->move($game['code'], $game['anna'], ['cell' => 0]));
-        $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->sendChat($game['code'], $game['anna'], 'Hallo?'));
+        $view = $this->lobbies->move($game['code'], $game['percy'], ['cell' => 8]);
+
+        $this->assertSame('bot', $view['seats'][1]['kind']);
+        $this->assertSame([0], $view['activeSeats'], 'De bot zette meteen weer.');
+        $this->assertApiError(403, 'not_in_lobby', fn () => $this->lobbies->sendChat($game['code'], 'onbekend-token', 'Hallo?'));
     }
 
     public function testOnlyAnAwayHumanCanBeReplacedAndTheFirstActionWins(): void
