@@ -81,3 +81,41 @@
   min-height: 3rem;
   font-size: 1.25rem;
 }
+
+.dialog__group {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem 1rem;
+  border: 2px solid var(--dg-border);
+  border-radius: 1rem;
+}
+
+.dialog__group legend {
+  padding: 0 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.dialog__choice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 0.5rem;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+
+.dialog__choice input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.15rem;
+  accent-color: var(--dg-accent);
+}
+
+.dialog__hint {
+  display: block;
+  margin: 0;
+  color: var(--dg-muted);
+}

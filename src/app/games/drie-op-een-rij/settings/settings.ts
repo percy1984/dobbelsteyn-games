@@ -1,6 +1,6 @@
 /**
  * Instellingen van Drie op een rij. DEFAULT_SETTINGS is de enige bron voor standaardwaarden en de
- * presets zijn ook constanten. (Opslaan, valideren en migreren volgen in fase 4.)
+ * presets zijn ook constanten. Valideren en migreren: `validate.ts`; opslaan: `settings-store.ts`.
  */
 import { BOARD, TIMING } from '../engine/config';
 import { MECHANICS } from '../engine/mechanics/registry';
@@ -10,8 +10,10 @@ import { DEFAULT_THEME, type ThemeId } from '../themes/themes';
 export type PresetId = 'standaard' | 'klassiek' | 'uitdagend' | 'allesAan' | 'eigen';
 export type BoardChoice = 'willekeurig' | 'vandaag' | 'nummer';
 
+export const SETTINGS_SCHEMA_VERSION = 1;
+
 export interface GameSettings {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: typeof SETTINGS_SCHEMA_VERSION;
   readonly mode: GameMode;
   readonly difficulty: Difficulty;
   /** Bord is vierkant: size x size. */

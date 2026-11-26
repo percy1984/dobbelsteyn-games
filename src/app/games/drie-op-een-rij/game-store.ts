@@ -8,6 +8,7 @@ import {
   isStill,
   needsTicks,
   step,
+  type EngineOptions,
   type GameEvent,
   type GameState,
   type LevelLayout,
@@ -20,6 +21,8 @@ import { GameTexts } from './i18n/game-texts';
 import type { GameTextKey } from './i18n/nl';
 import { generateLevel } from './level/level-generator';
 import { activeMechanics, type GameSettings } from './settings/settings';
+import { GameSound, type SoundKind } from './sound/sound';
+import { recordScore } from './storage/progress';
 import { themeById, tileLabel } from './themes/themes';
 
 const STEP_MS = 1000 / TICKS_PER_SECOND;
@@ -43,6 +46,7 @@ export interface GameSetup {
 @Injectable()
 export class GameStore {
   private readonly texts = inject(GameTexts);
+  private readonly sound = inject(GameSound);
 
   readonly setup = signal<GameSetup | null>(null);
   readonly layout = signal<LevelLayout | null>(null);
@@ -62,6 +66,10 @@ export class GameStore {
     return !!s && s.locked && !s.result;
   });
   readonly result = computed(() => this.state()?.result ?? null);
+  /** Plek in de highscorelijst van het laatst afgelopen level (1 = record), of null. */
+  readonly rank = signal<number | null>(null);
+  /** Gekozen in het pauzemenu, wacht op het eerstvolgende rustmoment. */
+  private pendingOptions: Partial<EngineOptions> | null = null;
 
   /** Hamer: gekozen en wachtend op een vakje. */
   readonly hammerMode = signal(false);
@@ -133,6 +141,8 @@ export class GameStore {
     this.lastSettled = this.state();
     this.banner.set('');
     this.announcement.set('');
+    this.rank.set(null);
+    this.pendingOptions = null;
     this.scheduleHint();
     this.ensureLoop();
   }
@@ -142,6 +152,32 @@ export class GameStore {
     if (setup) {
       this.start(setup);
     }
+  }
+
+  /**
+   * Instellingen wijzigen tijdens het spel (pauzemenu). Thema, geluid en hint gaan direct in; het
+   * bord verandert niet. Locked/Unlocked en de animatiesnelheid gaan in bij het eerstvolgende
+   * rustmoment.
+   */
+  changeSettings(change: Partial<Pick<GameSettings, 'theme' | 'sound' | 'volume' | 'hintSeconds' | 'input' | 'speed'>>): void {
+    const setup = this.setup();
+    if (!setup) return;
+    this.setup.set({ ...setup, settings: { ...setup.settings, ...change } });
+    const engine: Partial<EngineOptions> = {
+      ...(change.input ? { input: change.input } : {}),
+      ...(change.speed ? { speed: change.speed } : {}),
+    };
+    if (Object.keys(engine).length > 0) {
+      this.pendingOptions = { ...this.pendingOptions, ...engine };
+      this.applyPendingOptions();
+    }
+  }
+
+  private applyPendingOptions(): void {
+    const s = this.state();
+    if (!s || !this.pendingOptions || !(s.settled && isStill(s))) return;
+    this.state.set({ ...s, options: { ...s.options, ...this.pendingOptions } });
+    this.pendingOptions = null;
   }
 
   pause(): void {
@@ -273,8 +309,11 @@ export class GameStore {
     if (!this.canUndo() || !previous) return;
     this.stopLoop();
     this.undoStack.set(stack.slice(0, -1));
-    this.state.set(previous);
-    this.lastSettled = previous;
+    const current = this.state();
+    const restored = current ? { ...previous, options: { ...current.options, ...this.pendingOptions } } : previous;
+    this.pendingOptions = null;
+    this.state.set(restored);
+    this.lastSettled = restored;
     this.selected.set(null);
     this.hint.set(null);
     this.hammerMode.set(false);
@@ -316,6 +355,7 @@ export class GameStore {
   }
 
   private handleEvents(events: readonly GameEvent[]): void {
+    this.playSound(events);
     for (const event of events) {
       switch (event.type) {
         case 'SwapRejected':
@@ -327,9 +367,11 @@ export class GameStore {
           break;
         case 'LevelWon':
           this.announce('melding.gewonnen');
+          this.recordResult();
           break;
         case 'LevelLost':
           this.announce('melding.verloren');
+          this.recordResult();
           break;
         case 'Collected':
           this.announceGoals();
@@ -338,10 +380,41 @@ export class GameStore {
           this.announce(event.special === 'bom' ? 'melding.bom' : event.special === 'kruis' ? 'melding.kruis' : 'melding.ster');
           break;
         case 'Settled':
+          this.applyPendingOptions();
           this.lastSettled = this.state();
           break;
       }
     }
+  }
+
+  /** Eén geluid per keer, het belangrijkste eerst. */
+  private playSound(events: readonly GameEvent[]): void {
+    const settings = this.setup()?.settings;
+    if (!settings?.sound || events.length === 0) return;
+    const types = new Set(events.map((event) => event.type));
+    const order: readonly [GameEvent['type'], SoundKind][] = [
+      ['LevelWon', 'won'],
+      ['LevelLost', 'lost'],
+      ['Shuffled', 'shuffle'],
+      ['HammerUsed', 'hammer'],
+      ['SpecialCreated', 'special'],
+      ['SpecialTriggered', 'special'],
+      ['Matched', 'match'],
+      ['SwapRejected', 'nope'],
+    ];
+    const hit = order.find(([type]) => types.has(type));
+    if (hit) {
+      this.sound.play(hit[1], settings.volume);
+    }
+  }
+
+  /** Score in de highscorelijst van deze modus, invoer en preset. */
+  private recordResult(): void {
+    const s = this.state();
+    const setup = this.setup();
+    if (!s || !setup) return;
+    const { mode, input, preset } = setup.settings;
+    this.rank.set(recordScore({ mode, input, preset }, { score: s.score, level: setup.level, seed: setup.seed }));
   }
 
   private announceGoals(): void {

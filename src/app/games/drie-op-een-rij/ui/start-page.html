@@ -1,0 +1,233 @@
+<main class="start">
+  <h1 class="start__title">{{ texts.t('titel') }}</h1>
+  <div class="start__stones" aria-hidden="true">
+    @for (img of stones(); track $index) {
+      <img [ngSrc]="img" width="100" height="100" alt="" priority />
+    }
+  </div>
+  <p class="start__intro">{{ texts.t('start.intro') }}</p>
+
+  <div class="start__actions">
+    @if (progress()) {
+      <button type="button" class="button" (click)="continueGame()" aria-describedby="dor-progress">
+        {{ texts.t('start.verder') }}
+      </button>
+      <p class="start__note" id="dor-progress">{{ progressLabel() }}</p>
+    }
+    <button
+      type="button"
+      class="button"
+      [class.button--secondary]="!!progress()"
+      (click)="newGame()"
+    >
+      {{ texts.t('start.nieuw') }}
+    </button>
+    <a class="button button--secondary" routerLink="uitleg">{{ texts.t('start.uitleg') }}</a>
+  </div>
+
+  <section class="settings" aria-labelledby="dor-settings-title">
+    <h2 id="dor-settings-title" class="settings__title">{{ texts.t('inst.titel') }}</h2>
+
+    <fieldset class="group">
+      <legend>{{ texts.t('modus.label') }}</legend>
+      @for (m of modes; track m) {
+        <label class="choice">
+          <input type="radio" [value]="m" [formField]="f.mode" />
+          <span>
+            <strong>{{ texts.text('modus.' + m) }}</strong>
+            <span class="choice__hint">{{ texts.text('modus.' + m + '.uitleg') }}</span>
+          </span>
+        </label>
+      }
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>{{ texts.t('moeilijk.label') }}</legend>
+      <div class="inline">
+        @for (d of difficulties; track d) {
+          <label class="choice">
+            <input type="radio" [value]="d" [formField]="f.difficulty" />
+            <span>{{ texts.text('moeilijk.' + d) }}</span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>{{ texts.t('bordkeuze.label') }}</legend>
+      @for (b of boards; track b) {
+        <label class="choice">
+          <input type="radio" [value]="b" [formField]="f.board" />
+          <span>{{ texts.text('bordkeuze.' + b) }}</span>
+        </label>
+      }
+      @if (model().board === 'nummer') {
+        <div class="field">
+          <label for="dor-board-number">{{ texts.t('bordkeuze.nummerLabel') }}</label>
+          <input
+            id="dor-board-number"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="dor-board-number-hint dor-board-number-error"
+            [formField]="f.boardNumber"
+          />
+          <span class="field__hint" id="dor-board-number-hint">{{
+            texts.t('bordkeuze.nummerHint')
+          }}</span>
+          <span class="field__error" id="dor-board-number-error">
+            @if (f.boardNumber().touched() && f.boardNumber().invalid()) {
+              {{ texts.t('bordkeuze.nummerFout') }}
+            }
+          </span>
+        </div>
+      }
+    </fieldset>
+
+    <fieldset class="group">
+      <legend>{{ texts.t('thema.label') }}</legend>
+      <div class="inline">
+        @for (th of themes; track th.id) {
+          <label class="choice choice--theme">
+            <input type="radio" [value]="th.id" [formField]="f.theme" />
+            <img [ngSrc]="th.tiles[0]" width="100" height="100" alt="" />
+            <span>{{ texts.t(th.nameKey) }}</span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <details class="more">
+      <summary>{{ texts.t('groep.elementen') }}</summary>
+      <dg-dor-mechanics-panel
+        [settings]="settings()"
+        [theme]="theme()"
+        (presetChosen)="choosePreset($event)"
+        (toggled)="toggleMechanic($event)"
+      />
+    </details>
+
+    <details class="more">
+      <summary>{{ texts.t('groep.spelen') }}</summary>
+      <div class="more__body">
+        <fieldset class="group">
+          <legend>{{ texts.t('invoer.label') }}</legend>
+          @for (i of inputs; track i) {
+            <label class="choice">
+              <input type="radio" [value]="i" [formField]="f.input" />
+              <span>
+                <strong>{{ texts.text('invoer.' + i) }}</strong>
+                <span class="choice__hint">{{ texts.text('invoer.' + i + '.uitleg') }}</span>
+              </span>
+            </label>
+          }
+        </fieldset>
+        <fieldset class="group">
+          <legend>{{ texts.t('snelheid.label') }}</legend>
+          <div class="inline">
+            @for (sp of speeds; track sp) {
+              <label class="choice">
+                <input type="radio" [value]="sp" [formField]="f.speed" />
+                <span>{{ texts.text('snelheid.' + sp) }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+        <label class="choice choice--check">
+          <input
+            type="checkbox"
+            [formField]="f.pauseTimeDuringResolution"
+            aria-describedby="dor-timepause-hint"
+          />
+          <span>
+            <strong>{{ texts.t('tijdpauze.label') }}</strong>
+            <span class="choice__hint" id="dor-timepause-hint">{{
+              texts.t('tijdpauze.uitleg')
+            }}</span>
+          </span>
+        </label>
+        <fieldset class="group">
+          <legend>{{ texts.t('hint.label') }}</legend>
+          <div class="inline">
+            @for (h of hints; track h) {
+              <label class="choice">
+                <input type="radio" [value]="h" [formField]="f.hintSeconds" />
+                <span>{{
+                  h === '0' ? texts.t('hint.uit') : texts.t('hint.seconden', { n: h })
+                }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+        <fieldset class="group">
+          <legend>{{ texts.t('grootte.label') }}</legend>
+          <div class="inline">
+            @for (n of sizes; track n) {
+              <label class="choice">
+                <input type="radio" [value]="n" [formField]="f.size" />
+                <span>{{ texts.t('grootte.waarde', { n }) }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+        <fieldset class="group">
+          <legend>{{ texts.t('soorten.label') }}</legend>
+          <div class="inline">
+            @for (n of kindChoices; track n) {
+              <label class="choice">
+                <input type="radio" [value]="n" [formField]="f.kinds" />
+                <span>{{ n }}</span>
+              </label>
+            }
+          </div>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="more">
+      <summary>{{ texts.t('groep.geluid') }}</summary>
+      <div class="more__body">
+        <label class="choice choice--check">
+          <input type="checkbox" [formField]="f.sound" />
+          <strong>{{ texts.t('geluid.aan') }}</strong>
+        </label>
+        <div class="field">
+          <label for="dor-volume">{{ texts.t('geluid.volume') }}</label>
+          <input id="dor-volume" type="range" step="10" [formField]="f.volume" />
+        </div>
+      </div>
+    </details>
+
+    <section class="scores" aria-labelledby="dor-scores-title">
+      <h2 id="dor-scores-title" class="settings__title">{{ texts.t('scores.titel') }}</h2>
+      <p class="start__note">{{ scoresFor() }}</p>
+      @if (scores().length > 0) {
+        <ol class="scores__list">
+          @for (entry of scores(); track $index) {
+            <li>{{ texts.t('scores.regel', { n: entry.score, level: entry.level }) }}</li>
+          }
+        </ol>
+      } @else {
+        <p class="start__note">{{ texts.t('scores.leeg') }}</p>
+      }
+    </section>
+
+    <div class="start__actions">
+      <button type="button" class="button button--secondary" (click)="resetAsked.set(true)">
+        {{ texts.t('reset.knop') }}
+      </button>
+      <p class="start__note" role="status">{{ status() }}</p>
+      <a class="start__link" routerLink="credits">{{ texts.t('credits.titel') }}</a>
+    </div>
+  </section>
+</main>
+
+<dg-modal [open]="resetAsked()" [title]="texts.t('reset.knop')" (closed)="resetAsked.set(false)">
+  <p class="dialog__text">{{ texts.t('reset.vraag') }}</p>
+  <div class="dialog__stack">
+    <button type="button" class="button" (click)="confirmReset()">{{ texts.t('reset.ja') }}</button>
+    <button type="button" class="button button--secondary" (click)="resetAsked.set(false)">
+      {{ texts.t('reset.nee') }}
+    </button>
+  </div>
+</dg-modal>

@@ -4,7 +4,7 @@ import { isImplemented } from '../engine/mechanics';
 import { MECHANICS } from '../engine/mechanics/registry';
 import { GameTexts } from '../i18n/game-texts';
 import type { GameTextKey } from '../i18n/nl';
-import { DEFAULT_SETTINGS } from '../settings/settings';
+import { SettingsStore } from '../settings/settings-store';
 import { themeById } from '../themes/themes';
 import { MechanicCard } from './mechanic-card';
 
@@ -69,7 +69,8 @@ import { MechanicCard } from './mechanic-card';
 export class HowItWorks {
   protected readonly texts = inject(GameTexts);
   protected readonly steps: readonly GameTextKey[] = ['intro.1', 'intro.2', 'intro.3'];
-  protected readonly theme = computed(() => themeById(DEFAULT_SETTINGS.theme));
+  private readonly settings = inject(SettingsStore);
+  protected readonly theme = computed(() => themeById(this.settings.settings().theme));
   protected readonly mechanics = computed(() =>
     MECHANICS.filter((info) => isImplemented(info.id)).map((info) => info.id),
   );

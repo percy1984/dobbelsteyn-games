@@ -96,8 +96,26 @@ export const FACET: ThemeManifest = {
   credits: [OWN_WORK],
 };
 
+/** Warm en afgerond, met een gouden rand. */
+export const GOUDRAND: ThemeManifest = {
+  id: 'goudrand',
+  nameKey: 'thema.goudrand',
+  tiles: range(7, (k) => `${DIR}/goudrand/steen-${k}.svg`),
+  tileLabels: LABELS,
+  cssVars: {
+    ...BASE_THEME.cssVars,
+    '--dor-board': '#3a2716',
+    '--dor-cell': '#4d3520',
+    '--dor-accent': '#ffe08a',
+  },
+  credits: [OWN_WORK],
+};
+
 /** Thema's in de lobby. Thema's met `todo` zijn nog niet af. */
-export const THEMES: readonly ThemeManifest[] = [FACET];
+export const THEMES: readonly ThemeManifest[] = [FACET, GOUDRAND];
+
+/** Thema's die de speler kan kiezen. */
+export const SELECTABLE_THEMES: readonly ThemeManifest[] = THEMES.filter((theme) => !theme.todo);
 
 export const DEFAULT_THEME: ThemeId = 'facet';
 
