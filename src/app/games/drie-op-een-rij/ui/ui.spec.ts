@@ -5,13 +5,18 @@ import { findHint } from '../engine';
 import { boardFromText } from '../engine/test-helpers';
 import { GameStore } from '../game-store';
 import { HAMMER } from '../engine/config';
-import { DEFAULT_SETTINGS } from '../settings/settings';
+import { DEFAULT_SETTINGS, PRESETS } from '../settings/settings';
 import { markSeen } from '../storage/local';
 import { FACET } from '../themes/themes';
 import { Board } from './board';
 import { GamePage } from './game-page';
 
-const SETUP = { seed: 'test', level: 1, settings: DEFAULT_SETTINGS };
+/** Vaste testinstellingen (Aantal beurten, Locked), los van de standaard voor spelers. */
+const SETUP = {
+  seed: 'test',
+  level: 1,
+  settings: { ...DEFAULT_SETTINGS, mode: 'beurten', difficulty: 'normaal', input: 'locked', preset: 'standaard', mechanics: PRESETS.standaard },
+} as const;
 
 function stubAnimationFrame() {
   const raf = vi.fn(() => 1);
@@ -260,7 +265,6 @@ describe('GamePage', () => {
     const { fixture, el } = await render();
     expect(el.querySelector('dialog[open]')).toBeNull();
     expect(el.textContent).toContain('Bordnummer: v1-papa');
-    expect(el.textContent).toContain('Beurten over:');
     expect(el.textContent).toContain('Goud: nog');
     expect(el.querySelectorAll('button.cell').length).toBe(64);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
@@ -278,7 +282,7 @@ describe('GamePage', () => {
     await fixture.whenStable();
     expect((fixture.nativeElement as HTMLElement).classList).toContain('dor-groot');
     expect(el.textContent).not.toContain('Bordnummer:');
-    expect(el.textContent).toContain('Beurten over:');
+    expect(el.textContent).toContain('Goud: nog');
     expect(el.querySelectorAll('button.cell').length).toBe(64);
     expect(localStorage.getItem('drie-op-een-rij.grootScherm')).toBe('true');
     button('Klein scherm').click();

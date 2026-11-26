@@ -1,6 +1,7 @@
 import { posOf } from './board';
 import { speed, type Ctx } from './context';
-import type { Piece } from './types';
+import { detonate } from './hits';
+import type { Piece, Pos, TilePiece } from './types';
 
 /**
  * Zet alle animaties één tick verder en verwerkt wat klaar is. Volgorde binnen een tick:
@@ -9,6 +10,7 @@ import type { Piece } from './types';
 export function advanceMotion(ctx: Ctx): void {
   const { s } = ctx;
   const fallStep = Math.round(1000 / speed(s).fallPerCell);
+  const detonating: { at: Pos; piece: TilePiece }[] = [];
   for (let i = 0; i < s.cells.length; i++) {
     const cell = s.cells[i];
     const piece = cell.piece;
@@ -52,6 +54,12 @@ export function advanceMotion(ctx: Ctx): void {
           settle(piece, s.tick);
         }
         break;
+      case 'ontstekend':
+        m.timer--;
+        if (m.timer <= 0 && piece.kind === 'tile') {
+          detonating.push({ at: posOf(s, i), piece });
+        }
+        break;
       case 'gemarkeerd':
         m.timer--;
         if (m.timer <= 0) {
@@ -76,6 +84,10 @@ export function advanceMotion(ctx: Ctx): void {
         }
         break;
     }
+  }
+  // Na de lus, in vaste volgorde: een explosie kan weer andere speciale stenen ontsteken.
+  for (const { at, piece } of detonating) {
+    detonate(ctx, at, piece);
   }
 }
 

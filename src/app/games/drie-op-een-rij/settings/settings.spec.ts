@@ -73,8 +73,12 @@ describe('validateSettings', () => {
 describe('presets', () => {
   it('herkent elke preset en wordt "eigen" na een eigen wijziging', () => {
     expect(presetOf(PRESETS.klassiek)).toBe('klassiek');
-    expect(DEFAULT_SETTINGS.preset).toBe('standaard');
-    const own = withMechanic(DEFAULT_SETTINGS, 'ketting', false);
+    expect(presetOf(PRESETS.standaard)).toBe('standaard');
+    // Standaard: preset Standaard plus het goudzakje, dus een eigen set.
+    expect(DEFAULT_SETTINGS.preset).toBe('eigen');
+    expect(DEFAULT_SETTINGS.mechanics.goudzakje).toBe(true);
+    expect(presetOf(DEFAULT_SETTINGS.mechanics)).toBe('eigen');
+    const own = withMechanic(withPreset(DEFAULT_SETTINGS, 'standaard'), 'ketting', false);
     expect(own.preset).toBe('eigen');
     expect(own.mechanics.ketting).toBe(false);
     const back = withPreset(own, 'standaard');

@@ -1,5 +1,5 @@
 import { applyAction } from './apply-action';
-import { HAMMER } from './config';
+import { HAMMER, SPEEDS } from './config';
 import { runUntilSettled, step } from './step';
 import { boardFromText, UNLOCKED } from './test-helpers';
 import type { GameAction, GameEvent, GameState, Pos, Special } from './types';
@@ -61,10 +61,30 @@ describe('speciale stenen maken', () => {
 });
 
 describe('speciale stenen laten afgaan', () => {
+  it('een kettingreactie gaat stap voor stap, met een korte vertraging per speciale steen', () => {
+    const s = boardFromText(SPLIT);
+    setSpecial(s, { r: 4, c: 1 }, 'bom');
+    setSpecial(s, { r: 3, c: 0 }, 'bom');
+    let current = until(accept(s, MOVE_A), 'Matched').state;
+    const ticks: number[] = [];
+    for (let i = 0; i < 300 && ticks.length < 2; i++) {
+      const next = step(current);
+      current = next.state;
+      for (const e of next.events) if (e.type === 'SpecialTriggered') ticks.push(current.tick);
+    }
+    expect(ticks.length).toBe(2);
+    expect(ticks[1] - ticks[0]).toBe(SPEEDS[current.options.speed].trigger);
+  });
+
   it('een bom in een match ontploft in een vlak van 3x3, voor dezelfde afhandelingsreeks', () => {
     const s = boardFromText(SPLIT);
     setSpecial(s, { r: 4, c: 1 }, 'bom');
-    const { events } = until(accept(s, MOVE_A), 'Matched');
+    const matched = until(accept(s, MOVE_A), 'Matched');
+    // Eerst licht de bom even op; pas daarna gaat hij af.
+    const bomb = matched.state.cells[4 * 6 + 1].piece;
+    expect(bomb?.m.state).toBe('ontstekend');
+    expect(matched.events.some((e) => e.type === 'SpecialTriggered' || e.type === 'Explosion')).toBe(false);
+    const { events } = until(matched.state, 'SpecialTriggered');
     const explosion = events.find((e) => e.type === 'Explosion');
     expect(events).toContainEqual({ type: 'SpecialTriggered', at: { r: 4, c: 1 }, special: 'bom' });
     expect(explosion?.type === 'Explosion' && explosion.cells).toContainEqual({ r: 3, c: 0 });
@@ -74,7 +94,7 @@ describe('speciale stenen laten afgaan', () => {
   it('een kruis ruimt de hele rij en kolom op', () => {
     const s = boardFromText(SPLIT);
     setSpecial(s, { r: 4, c: 1 }, 'kruis');
-    const { events } = until(accept(s, MOVE_A), 'Matched');
+    const { events } = until(until(accept(s, MOVE_A), 'Matched').state, 'Explosion');
     const explosion = events.find((e) => e.type === 'Explosion');
     const cells = explosion?.type === 'Explosion' ? explosion.cells : [];
     expect(cells).toContainEqual({ r: 0, c: 1 });
