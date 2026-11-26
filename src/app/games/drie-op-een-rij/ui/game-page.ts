@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Modal } from '../../../shared/modal/modal';
 import type { InputMode, MechanicId, Pos } from '../engine';
@@ -8,7 +8,7 @@ import { parseBoardNumber } from '../rng/rng';
 import type { GameSettings } from '../settings/settings';
 import { SettingsStore } from '../settings/settings-store';
 import { sameGameSettings, settingsFromQuery, settingsToQuery } from '../settings/url';
-import { markSeen, seen } from '../storage/local';
+import { markSeen, readJson, seen, writeJson } from '../storage/local';
 import { saveProgress } from '../storage/progress';
 import { SELECTABLE_THEMES, type ThemeId } from '../themes/themes';
 import { Board } from './board';
@@ -29,6 +29,7 @@ type Card = { kind: 'intro' } | { kind: 'mechanic'; id: MechanicId };
   host: {
     '(document:keydown.escape)': 'onEscape()',
     '(document:visibilitychange)': 'onVisibility()',
+    '[class.dor-groot]': 'large()',
   },
 })
 export class GamePage {
@@ -88,7 +89,14 @@ export class GamePage {
 
   protected readonly showResult = computed(() => !!this.store.result() && !this.resultClosed());
 
+  /**
+   * Groot scherm: het bord krijgt (bijna) het hele scherm, de HUD wordt een smalle balk en de
+   * bovenbalk van de site verdwijnt. De keuze wordt onthouden voor het volgende spel.
+   */
+  protected readonly large = signal(readJson<boolean>('grootScherm', false) === true);
+
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.exitFullscreen());
     // Gewonnen: "Verder spelen" begint voortaan bij het volgende level.
     effect(() => {
       const setup = this.store.setup();
@@ -225,6 +233,29 @@ export class GamePage {
     this.saved.update((s) => ({ ...s, mode, difficulty, size, kinds, input, mechanics }));
     this.saved.saveNow();
     this.keptMessage.set(this.texts.t('url.bewaard'));
+  }
+
+  /**
+   * Wisselen tussen groot en klein scherm. Waar de browser het toestaat (Android, pc) gaat de pagina
+   * ook schermvullend, zonder adresbalk; lukt dat niet (iPhone), dan blijft het bij de grote weergave.
+   */
+  protected toggleLarge(): void {
+    const large = !this.large();
+    this.large.set(large);
+    writeJson('grootScherm', large);
+    if (large) {
+      if (document.fullscreenEnabled && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => undefined);
+      }
+    } else {
+      this.exitFullscreen();
+    }
+  }
+
+  private exitFullscreen(): void {
+    if (typeof document !== 'undefined' && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => undefined);
+    }
   }
 
   protected stop(): void {

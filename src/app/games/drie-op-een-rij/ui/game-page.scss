@@ -25,6 +25,24 @@
   }
 }
 
+// Groot scherm: geen bovenbalk, weinig rand en een smalle HUD-balk boven het bord.
+.game--groot {
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  height: 100dvh;
+  padding: 0.5rem;
+}
+
+// Liggend scherm: de smalle balk als kolom naast het bord.
+@media (min-aspect-ratio: 5 / 4) {
+  .game--groot {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr);
+    padding: 0.5rem 1rem;
+  }
+}
+
 .game__board {
   position: relative;
   min-height: 0;

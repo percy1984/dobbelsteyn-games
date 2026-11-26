@@ -76,6 +76,8 @@ export const EN: Record<GameTextKey, string> = {
   'hud.hint': 'Hint',
   'hud.pauze': 'Pause',
   'hud.doelen': 'Goals',
+  'scherm.groot': 'Big screen',
+  'scherm.klein': 'Small screen',
   'doel.goud': 'Gold: {n} left',
   'doel.amulet': 'Amulets: {done} of {target}',
   'doel.schat': 'Treasures: {done} of {target}',

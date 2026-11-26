@@ -77,6 +77,8 @@ export const NL = {
   'hud.hint': 'Hint',
   'hud.pauze': 'Pauze',
   'hud.doelen': 'Doelen',
+  'scherm.groot': 'Groot scherm',
+  'scherm.klein': 'Klein scherm',
   'doel.goud': 'Goud: nog {n}',
   'doel.amulet': 'Amuletten: {done} van {target}',
   'doel.schat': 'Schatten: {done} van {target}',

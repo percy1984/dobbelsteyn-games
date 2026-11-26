@@ -33,6 +33,7 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 - Routes: `/games/drie-op-een-rij` (start en instellingen), `/spel?seed=<bordnummer>&level=<n>&...` (het spel), `/uitleg` (Hoe werkt het?), `/credits`.
 - De `GameStore` draait een requestAnimationFrame-lus met vaste tijdstap (60 ticks per seconde, accumulator) en stopt zodra het bord in rust is. De UI tekent stukken op hun engine-positie; CSS-animaties zijn alleen cosmetisch.
 - Het bord is een grid van knoppen met een label per vakje ("rij 3, kolom 5, rode cirkel, gouden vakje"). Klikken, slepen of swipen; pijltjestoetsen plus Enter of spatie. Esc pauzeert.
+- Knop "Groot scherm" (in de HUD): de HUD wordt een smalle balk, de bovenbalk van de site verdwijnt en waar de browser het toestaat gaat de pagina schermvullend (Fullscreen API; op de iPhone alleen de grote weergave). De keuze staat in localStorage onder `grootScherm`.
 - Meldingen gaan via een rustige aria-live-regio. Bij `prefers-reduced-motion` vallen alleen gloed en pop weg; bewegingsduren in de engine blijven gelijk.
 - De tekeningen maakt `scripts/generate-drie-op-een-rij-svgs.mjs` (zelf getekend, uitvoer gecommit). Elke steensoort heeft een eigen vorm én kleur.
 
