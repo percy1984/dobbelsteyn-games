@@ -319,3 +319,53 @@ describe('bordstroom', () => {
     expect(after).toEqual([ids[3], ids[0], ids[1], ids[2]]);
   });
 });
+
+describe('hulpobjecten (uitbreiding)', () => {
+  it('stekelbol: een match in zijn kleur geeft direct een explosie op zijn rij; hij blijft liggen en draait om', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'stekelbol'] });
+    putBlock(s, 3, 0, 'stekelbol', { color: 0, dir: 0 });
+    const { state, events } = play(s);
+    const boom = events.find((e) => e.type === 'Explosion');
+    expect(boom?.type === 'Explosion' && boom.cells.every((p) => p.r === 3)).toBe(true);
+    const after = pieceAt(state, 3, 0);
+    expect(after?.kind === 'block' && after.mech).toBe('stekelbol');
+    expect(after?.kind === 'block' && after.dir).toBe(1);
+  });
+
+  it('stekelbol: een match in een andere kleur doet niets', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'stekelbol'] });
+    putBlock(s, 3, 0, 'stekelbol', { color: 3 });
+    const { events } = play(s);
+    expect(events.some((e) => e.type === 'Explosion')).toBe(false);
+  });
+
+  it('pers: de meter vult met het aantal stenen; vol laat bij het beurteinde alle stenen van die kleur verdwijnen', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'pers'] });
+    putBlock(s, 3, 0, 'pers', { color: 0, counter: 0 });
+    const first = play(s);
+    const pers = pieceAt(first.state, 3, 0);
+    expect(pers?.kind === 'block' && pers.counter).toBe(3);
+
+    const t = boardFromText(rows('#10x23'), { mechanics: ['goud', 'pers'] });
+    putBlock(t, 3, 0, 'pers', { color: 2, counter: 12 });
+    const kind2 = t.cells.flatMap((cell) => (cell.piece?.kind === 'tile' && cell.piece.type === 2 ? [cell.piece.id] : []));
+    expect(kind2.length).toBeGreaterThan(0);
+    const { state } = play(t);
+    expect(state.cells.some((cell) => kind2.includes(cell.piece?.id ?? -1))).toBe(false);
+    const after = pieceAt(state, 3, 0);
+    expect(after?.kind === 'block' && after.counter).toBe(0);
+  });
+
+  it('waterklok: vol kleurt bij het beurteinde de eerste drie stenen in de uitloop-richting', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'waterklok'] });
+    // Waterklok op (0,4) met uitloop naar beneden (kolom 4: rij 1, 2, 3).
+    putBlock(s, 0, 4, 'waterklok', { color: 4, counter: 9, dir: 2 });
+    const { events } = play(s);
+    const spreads = events.filter((e) => e.type === 'Spread' && e.mech === 'waterklok');
+    expect(spreads.map((e) => (e.type === 'Spread' ? e.at : null))).toEqual([
+      { r: 1, c: 4 },
+      { r: 2, c: 4 },
+      { r: 3, c: 4 },
+    ]);
+  });
+});
