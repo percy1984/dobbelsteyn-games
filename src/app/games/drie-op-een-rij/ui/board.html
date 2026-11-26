@@ -43,6 +43,37 @@
     }
   </div>
 
+  <div class="layer marks" aria-hidden="true">
+    @let mi = markImg();
+    @for (m of marks(); track m.key) {
+      <div
+        class="mark"
+        [class.mark--wall-top]="m.walls[0]"
+        [class.mark--wall-right]="m.walls[1]"
+        [class.mark--wall-bottom]="m.walls[2]"
+        [class.mark--wall-left]="m.walls[3]"
+      >
+        @if (m.belt !== null) {
+          <img class="mark__belt" [ngSrc]="mi.belt" width="100" height="100" alt="" [style.rotate]="(m.belt - 1) * 90 + 'deg'" />
+        }
+        @if (m.path) {
+          <img class="mark__path" [ngSrc]="mi.path" width="100" height="100" alt="" />
+        }
+        @if (m.exit) {
+          <img class="mark__exit" [ngSrc]="mi.exit" width="100" height="100" alt="" />
+        }
+        @if (m.portalIn !== null) {
+          <img class="mark__portal mark__portal--in" [ngSrc]="mi.portalIn" width="100" height="100" alt="" />
+          <span class="mark__num mark__num--in">{{ m.portalIn }}</span>
+        }
+        @if (m.portalOut !== null) {
+          <img class="mark__portal mark__portal--out" [ngSrc]="mi.portalOut" width="100" height="100" alt="" />
+          <span class="mark__num mark__num--out">{{ m.portalOut }}</span>
+        }
+      </div>
+    }
+  </div>
+
   <div
     class="layer cells"
     role="group"

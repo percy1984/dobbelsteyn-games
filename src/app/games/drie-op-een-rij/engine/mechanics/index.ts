@@ -2,7 +2,13 @@ import type { MechanicId } from '../types';
 import { ALTAAR, KETTING, MUNTBLOK, ROTSBLOK } from './blockers';
 import { AMULET, VEER } from './fallers';
 import { GOUD, ZILVER } from './floors';
+import { HARS, KLEURBLOK, MUUR, SCHILD } from './layers';
+import { LOPENDE_BAND, PORTAAL } from './flow';
+import { PERS, STEKELBOL, WATERKLOK } from './helpers';
+import { GROOT_BLOK, REIZIGER } from './goals';
+import { KLIMMER, TIJDBOM } from './lose';
 import type { MechanicModule } from './module';
+import { GOUDZAKJE, OLIE, OLIEBRON } from './spreaders';
 import { VERBORGEN_SCHAT } from './treasure';
 
 /**
@@ -18,6 +24,22 @@ export const MODULES: Partial<Record<MechanicId, MechanicModule>> = {
   rotsblok: ROTSBLOK,
   muntblok: MUNTBLOK,
   veer: VEER,
+  kleurblok: KLEURBLOK,
+  hars: HARS,
+  schild: SCHILD,
+  muur: MUUR,
+  olie: OLIE,
+  oliebron: OLIEBRON,
+  goudzakje: GOUDZAKJE,
+  portaal: PORTAAL,
+  lopendeBand: LOPENDE_BAND,
+  stekelbol: STEKELBOL,
+  pers: PERS,
+  waterklok: WATERKLOK,
+  reiziger: REIZIGER,
+  grootBlok: GROOT_BLOK,
+  tijdbom: TIJDBOM,
+  klimmer: KLIMMER,
   altaar: ALTAAR,
 };
 

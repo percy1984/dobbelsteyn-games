@@ -24,6 +24,7 @@ export const TURN_END_ORDER: readonly MechanicId[] = [
   'lopendeBand',
   'klimmer',
   'olie',
+  'oliebron',
   'stekelbol',
   'tijdbom',
 ];

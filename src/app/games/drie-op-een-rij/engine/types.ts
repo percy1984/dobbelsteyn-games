@@ -115,8 +115,12 @@ export interface BlockPiece {
   layers: number;
   /** Kleur (steentype) bij gekleurde objecten, anders null. */
   color: number | null;
-  /** Vrij te gebruiken teller per spelelement (bijv. altaar brandt = 1). */
+  /** Vrij te gebruiken teller per spelelement (bijv. altaar brandt = 1, meter van een pers). */
   counter: number;
+  /** Richting (stekelbol: 0 rij, 1 kolom; waterklok: 0 boven, 1 rechts, 2 onder, 3 links) of variant. */
+  dir: number;
+  /** Groep of index per spelelement (groot blok: groep; reiziger: pad). */
+  tag: number;
   m: Motion;
 }
 
@@ -205,6 +209,7 @@ export type GameEvent =
   | { readonly type: 'SpecialTriggered'; readonly at: Pos; readonly special: Special }
   | { readonly type: 'Explosion'; readonly cells: readonly Pos[]; readonly res: number }
   | { readonly type: 'Collected'; readonly at: Pos; readonly mech: MechanicId }
+  | { readonly type: 'Spread'; readonly at: Pos; readonly mech: MechanicId }
   | { readonly type: 'HammerUsed'; readonly level: 1 | 2 | 3; readonly at: Pos; readonly res: number }
   | { readonly type: 'TurnEndStarted'; readonly res: number }
   | { readonly type: 'TurnEndFinished'; readonly res: number }
@@ -241,11 +246,48 @@ export interface LevelParams {
 
 /** Een object dat de levelgenerator op een vakje zet. */
 export type PlacedObject =
-  | { readonly kind: 'block'; readonly mech: MechanicId; readonly layers: number; readonly color: number | null }
+  | {
+      readonly kind: 'block';
+      readonly mech: MechanicId;
+      readonly layers: number;
+      readonly color: number | null;
+      readonly counter?: number;
+      readonly dir?: number;
+      readonly tag?: number;
+    }
   | { readonly kind: 'fall'; readonly mech: MechanicId };
 
+/** Een gewone steen met een spelelement erop (tijdbom, klimmer), met een teller. */
+export interface TileMark {
+  readonly mech: MechanicId;
+  readonly counter: number;
+}
+
+/** Portaal: wat onderuit `from` valt, komt bovenin `to` weer tevoorschijn. */
+export interface Portal {
+  readonly id: number;
+  readonly from: Pos;
+  readonly to: Pos;
+}
+
+/** Lopende band: vakjes in de looprichting. Een lus schuift rond, een lijn (rivier) niet. */
+export interface Belt {
+  readonly id: number;
+  readonly cells: readonly Pos[];
+  readonly loop: boolean;
+}
+
+/** Extra bordonderdelen die niet in één vakje passen. */
+export interface BoardExtras {
+  readonly marks: readonly (TileMark | null)[];
+  readonly portals: readonly Portal[];
+  readonly belts: readonly Belt[];
+  /** Pad van elke reiziger, van start tot uitgang (de index is `tag` van de reiziger). */
+  readonly paths: readonly (readonly Pos[])[];
+}
+
 /** Uitkomst van de levelgenerator: alles om een spel te starten. */
-export interface LevelLayout {
+export interface LevelLayout extends Partial<BoardExtras> {
   readonly params: LevelParams;
   readonly rows: number;
   readonly cols: number;
@@ -311,6 +353,11 @@ export interface GameState {
   hammer: number;
   /** Wissels van speciale stenen die afgaan zodra de wissel klaar is. */
   combos: Combo[];
+  readonly portals: readonly Portal[];
+  readonly belts: readonly Belt[];
+  readonly paths: readonly (readonly Pos[])[];
+  /** Zetten (reeks-id's) die olie opruimden; voor de verspreidingsregel bij het beurteinde. */
+  oilCleared: number[];
 }
 
 /** Een wissel met een kleurenster of van twee speciale stenen. Posities zijn na de wissel. */

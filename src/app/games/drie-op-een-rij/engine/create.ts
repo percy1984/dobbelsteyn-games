@@ -8,6 +8,7 @@ import type {
   LevelLayout,
   Piece,
   PlacedObject,
+  TileMark,
 } from './types';
 
 /** Wat nodig is om de vakjes van een bord op te bouwen. */
@@ -22,6 +23,8 @@ export interface CellPlan {
   readonly chains: readonly number[];
   readonly resin: readonly boolean[];
   readonly tiles: readonly number[];
+  /** Tijdbommen en klimmers op stenen (optioneel). */
+  readonly marks?: readonly (TileMark | null)[];
 }
 
 /** Bouwt de vakjes met stukken. Id's worden rij voor rij uitgedeeld vanaf `firstId`. */
@@ -39,7 +42,9 @@ export function buildCells(plan: CellPlan, firstId = 1): { cells: Cell[]; nextId
               mech: object.mech,
               layers: object.layers,
               color: object.color,
-              counter: 0,
+              counter: object.counter ?? 0,
+              dir: object.dir ?? 0,
+              tag: object.tag ?? 0,
               m: stableMotion(),
             }
           : { id: nextId++, kind: 'fall', mech: object.mech, m: stableMotion() };
@@ -51,8 +56,8 @@ export function buildCells(plan: CellPlan, firstId = 1): { cells: Cell[]; nextId
         special: null,
         chain: plan.chains[i],
         resin: plan.resin[i],
-        mech: null,
-        counter: 0,
+        mech: plan.marks?.[i]?.mech ?? null,
+        counter: plan.marks?.[i]?.counter ?? 0,
         m: stableMotion(),
       };
     }
@@ -102,5 +107,9 @@ export function createGame(layout: LevelLayout, options: EngineOptions): GameSta
     moves: 0,
     hammer: 0,
     combos: [],
+    portals: layout.portals ?? [],
+    belts: layout.belts ?? [],
+    paths: layout.paths ?? [],
+    oilCleared: [],
   };
 }

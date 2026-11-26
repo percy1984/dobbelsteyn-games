@@ -1,7 +1,7 @@
 import type { RngState } from '../../rng/rng';
 import type { Ctx } from '../context';
 import type { MatchGroup } from '../matcher';
-import type { GameState, GoalKind, MechanicId, Piece, PlacedObject, Pos } from '../types';
+import type { Belt, GameState, GoalKind, MechanicId, Piece, PlacedObject, Portal, Pos, TileMark } from '../types';
 
 /** Waardoor een object geraakt wordt. */
 export type HitCause =
@@ -26,6 +26,14 @@ export interface PlaceContext {
   readonly objects: (PlacedObject | null)[];
   readonly chains: number[];
   readonly resin: boolean[];
+  /** Tijdbommen en klimmers op stenen. */
+  readonly marks: (TileMark | null)[];
+  readonly portals: Portal[];
+  readonly belts: Belt[];
+  /** Paden van reizigers. */
+  readonly paths: Pos[][];
+  /** Vakjes die vrij moeten blijven van objecten, kettingen en hars (pad, band, portaal). */
+  readonly reserved: boolean[];
   /** Doelen die dit element toevoegt. */
   readonly goals: { kind: GoalKind; target: number }[];
   /** Maximaal aantal vakjes met een blokkade in dit level (samen voor alle elementen). */
