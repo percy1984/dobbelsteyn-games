@@ -106,6 +106,25 @@ function facetTile(kind) {
   return svg(body.join(''), defs);
 }
 
+/** Goudrand: warm en afgerond, met een dikke gouden rand en een zachte glans. */
+function goudrandTile(kind) {
+  const [light, mid, dark] = COLORS[kind];
+  const id = `r${kind}`;
+  const rim = `m${kind}`;
+  const defs =
+    `<radialGradient id="${id}" cx=".38" cy=".34" r=".75"><stop offset="0" stop-color="${light}"/>` +
+    `<stop offset=".6" stop-color="${mid}"/><stop offset="1" stop-color="${dark}"/></radialGradient>` +
+    `<linearGradient id="${rim}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1b8"/>` +
+    `<stop offset=".5" stop-color="#e3a92b"/><stop offset="1" stop-color="#8a5a00"/></linearGradient>`;
+  const inner = 'transform="translate(50 50) scale(.78) translate(-50 -50)"';
+  const body = [
+    outline(kind, `fill="url(#${rim})" stroke="#5c3d0a" stroke-width="3" stroke-linejoin="round"`),
+    `<g ${inner}>${outline(kind, `fill="url(#${id})" stroke="#5c3d0a" stroke-opacity=".6" stroke-width="3" stroke-linejoin="round"`)}</g>`,
+    `<ellipse cx="40" cy="36" rx="13" ry="8" fill="#fff" fill-opacity=".45" transform="rotate(-25 40 36)"/>`,
+  ];
+  return svg(body.join(''), defs);
+}
+
 /** Objecten van het basisthema (spelelementen). */
 const OBJECTS = {
   rotsblok: svg(
@@ -195,6 +214,7 @@ function write(theme, name, content) {
 for (let k = 0; k < COLORS.length; k++) {
   write('base', `steen-${k}`, baseTile(k));
   write('facet', `steen-${k}`, facetTile(k));
+  write('goudrand', `steen-${k}`, goudrandTile(k));
 }
 for (const [name, content] of Object.entries(OBJECTS)) {
   write('base', name, content);
