@@ -4,15 +4,21 @@
 
 Options -Indexes -MultiViews
 
+# Geen automatische redirect naar "map/": een route van de app kan dezelfde naam hebben als een map
+# met afbeeldingen (games/drie-op-een-rij). Mappen gaan hieronder naar de app.
+<IfModule mod_dir.c>
+    DirectorySlash Off
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
     # De API heeft zijn eigen .htaccess en front controller.
     RewriteRule ^api/ - [L]
 
-    # Bestaande bestanden en mappen gewoon serveren.
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
+    # Bestaande bestanden gewoon serveren. Mappen niet: die hebben geen index en een route van de
+    # app kan dezelfde naam hebben (games/drie-op-een-rij); die gaan naar index.html.
+    RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
     # Al het andere is een route van de app (deep link, bijvoorbeeld een lobby): index.html.
