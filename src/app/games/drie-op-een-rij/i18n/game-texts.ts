@@ -19,6 +19,12 @@ export class GameTexts {
       : text;
   }
 
+  /** Voor sleutels die pas in de template ontstaan (bijv. "modus." + modus). Onbekend: de sleutel zelf. */
+  text(key: string): string {
+    const dict: Record<string, string> = this.i18n.lang() === 'en' ? EN : NL;
+    return dict[key] ?? key;
+  }
+
   mechanicName(id: MechanicId): string {
     return this.t(`mech.${id}.naam` as GameTextKey);
   }

@@ -4,6 +4,7 @@ import { I18n } from '../../../core/i18n/i18n';
 import { findHint } from '../engine';
 import { boardFromText } from '../engine/test-helpers';
 import { GameStore } from '../game-store';
+import { HAMMER } from '../engine/config';
 import { DEFAULT_SETTINGS } from '../settings/settings';
 import { markSeen } from '../storage/local';
 import { FACET } from '../themes/themes';
@@ -95,6 +96,45 @@ describe('GameStore', () => {
     expect(store.selected()).toBeNull();
     store.resume();
     expect(store.paused()).toBe(false);
+  });
+
+  it('hamer: knop pas bruikbaar bij een volle meter, daarna een vakje kiezen', () => {
+    expect(store.hammerUsable()).toBe(false);
+    store.toggleHammer();
+    expect(store.hammerMode()).toBe(false);
+    store.state.update((s) => (s ? { ...s, hammer: HAMMER.perLevel } : s));
+    expect(store.hammerLevel()).toBe(1);
+    store.toggleHammer();
+    expect(store.hammerMode()).toBe(true);
+    const moves = store.state()?.movesLeft;
+    store.tap({ r: 3, c: 3 });
+    expect(store.hammerMode()).toBe(false);
+    expect(store.state()?.hammer).toBe(0);
+    expect(store.state()?.movesLeft).toBe(moves);
+    expect(store.busy()).toBe(true);
+  });
+
+  it('hamer annuleren laat alles zoals het was', () => {
+    store.state.update((s) => (s ? { ...s, hammer: HAMMER.perLevel } : s));
+    const before = store.state();
+    store.toggleHammer();
+    store.cancelHammer();
+    expect(store.hammerMode()).toBe(false);
+    expect(store.state()).toBe(before);
+  });
+
+  it('zet terugnemen kan alleen in Ontspannen en zet het bord terug', () => {
+    expect(store.canUndo()).toBe(false);
+    store.start({ ...SETUP, settings: { ...DEFAULT_SETTINGS, mode: 'ontspannen' } });
+    const start = store.state();
+    const hint = start && findHint(start);
+    if (!start || !hint) throw new Error();
+    store.swap(hint.a, hint.b);
+    expect(store.canUndo()).toBe(true);
+    expect(store.undoCount()).toBe(1);
+    store.undo();
+    expect(store.state()).toBe(start);
+    expect(store.canUndo()).toBe(false);
   });
 
   it('toont de hint pas bij een rustmoment', () => {

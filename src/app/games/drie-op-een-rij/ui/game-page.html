@@ -10,6 +10,12 @@
         [seed]="setup.seed"
         [level]="setup.level"
         [busy]="store.busy()"
+        [hammerLevel]="store.hammerLevel()"
+        [hammerUsable]="store.hammerUsable()"
+        [hammerMode]="store.hammerMode()"
+        [canUndo]="store.canUndo()"
+        (hammerRequested)="store.toggleHammer()"
+        (undoRequested)="askUndo()"
         (hintRequested)="store.showHint()"
         (pauseRequested)="store.pause()"
       />
@@ -21,6 +27,7 @@
         [selected]="store.selected()"
         [hint]="store.hint()"
         [busy]="store.busy()"
+        [hammer]="store.hammerMode()"
         (tapped)="onTap($event)"
         (swiped)="onSwipe($event)"
       />
@@ -44,6 +51,17 @@
     }
   </dg-modal>
 }
+
+<dg-modal [open]="undoAsked()" [title]="texts.t('terug.titel')" (closed)="undoAsked.set(false)">
+  <p class="dialog__text">{{ texts.t('terug.uitleg') }}</p>
+  @if (store.undoCount() > 1) {
+    <p class="dialog__text"><strong>{{ texts.t('terug.meer', { n: store.undoCount() }) }}</strong></p>
+  }
+  <div class="dialog__stack">
+    <button type="button" class="button" (click)="confirmUndo()">{{ texts.t('terug.ja') }}</button>
+    <button type="button" class="button button--secondary" (click)="undoAsked.set(false)">{{ texts.t('terug.nee') }}</button>
+  </div>
+</dg-modal>
 
 <dg-modal [open]="store.paused() && !card()" [title]="texts.t('pauze.titel')" (closed)="resume()">
   <div class="dialog__stack">

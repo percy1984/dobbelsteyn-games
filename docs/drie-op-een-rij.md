@@ -36,6 +36,14 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 - Meldingen gaan via een rustige aria-live-regio. Bij `prefers-reduced-motion` vallen alleen gloed en pop weg; bewegingsduren in de engine blijven gelijk.
 - De tekeningen maakt `scripts/generate-drie-op-een-rij-svgs.mjs` (zelf getekend, uitvoer gecommit). Elke steensoort heeft een eigen vorm én kleur.
 
+## Speciale stenen, hamer en modi
+
+- 4 op een rij geeft een bom (3x3), een L- of T-vorm een kruis (rij en kolom), 5 op een rij een kleurenster. Combinaties: bom + bom 5x5, kruis + bom drie rijen en kolommen, ster + ster het hele bord ().
+- Hamer (): de meter vult bij elke match; niveau 1 ontploft op één vakje, niveau 2 haalt alles in een vakje weg, niveau 3 laat een hele soort verdwijnen. Kost geen beurt.
+- Unlocked: elke zet een eigen afhandelingsreeks; de conflictregels staan in ,  en .
+- Modi via de URL (, ). Ontspannen: zet terugnemen naar het laatste rustmoment (bij Unlocked soms meerdere zetten; de UI meldt dat vooraf).
+- Balans:  (overgeslagen) meet hoeveel zetten een testspeler nodig heeft.
+
 ## Getallen aanpassen
 
 Alle getallen staan in `engine/config.ts`: animatieduren per snelheid, score, bordgrenzen, moeilijkheid, hoeveel goud, beurten en tijd per level.

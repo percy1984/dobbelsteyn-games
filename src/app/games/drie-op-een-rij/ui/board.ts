@@ -3,7 +3,7 @@ import { Component, ElementRef, computed, inject, input, output, signal } from '
 import type { GameState, Move, Pos } from '../engine';
 import { samePos } from '../engine/board';
 import { GameTexts } from '../i18n/game-texts';
-import { mechanicImage, tileImage, tileLabel, type ThemeManifest } from '../themes/themes';
+import { mechanicImage, specialImage, tileImage, tileLabel, type ThemeManifest } from '../themes/themes';
 
 interface CellView {
   readonly r: number;
@@ -24,6 +24,7 @@ interface PieceView {
   readonly img: string;
   readonly kind: 'tile' | 'fall' | 'block';
   readonly overlay: string | null;
+  readonly specialImg: string | null;
   readonly colorImg: string | null;
   readonly badge: number | null;
   readonly state: string;
@@ -55,6 +56,8 @@ export class Board {
   readonly selected = input<Pos | null>(null);
   readonly hint = input<Move | null>(null);
   readonly busy = input(false);
+  /** Hamer actief: het bord laat duidelijk zien dat je een vakje kiest. */
+  readonly hammer = input(false);
   readonly tapped = output<Pos>();
   readonly swiped = output<{ a: Pos; b: Pos }>();
 
@@ -131,8 +134,9 @@ export class Board {
         out.push({
           ...base,
           kind: 'tile',
-          img: tileImage(theme, piece.type),
+          img: piece.special === 'ster' ? specialImage(theme, 'ster') : tileImage(theme, piece.type),
           overlay: piece.chain > 0 ? mechanicImage(theme, 'ketting', piece.chain - 1) : null,
+          specialImg: piece.special && piece.special !== 'ster' ? specialImage(theme, piece.special) : null,
           colorImg: null,
           badge: null,
           lit: false,
@@ -143,6 +147,7 @@ export class Board {
           kind: 'fall',
           img: mechanicImage(theme, piece.mech) ?? tileImage(theme, 0),
           overlay: null,
+          specialImg: null,
           colorImg: null,
           badge: null,
           lit: false,
@@ -154,6 +159,7 @@ export class Board {
           kind: 'block',
           img: mechanicImage(theme, piece.mech, lit ? 1 : 0) ?? tileImage(theme, 0),
           overlay: null,
+          specialImg: null,
           colorImg: piece.color !== null ? tileImage(theme, piece.color) : null,
           badge: piece.mech === 'rotsblok' && piece.layers > 1 ? piece.layers : null,
           lit,
@@ -177,7 +183,12 @@ export class Board {
     if (!piece) {
       parts.push(t.t('cel.leeg'));
     } else if (piece.kind === 'tile') {
-      parts.push(t.t(tileLabel(theme, piece.type)));
+      if (piece.special === 'ster') {
+        parts.push(t.t('cel.ster'));
+      } else {
+        parts.push(t.t(tileLabel(theme, piece.type)));
+        if (piece.special) parts.push(t.t(piece.special === 'bom' ? 'cel.bom' : 'cel.kruis'));
+      }
       if (piece.chain > 0) {
         parts.push(t.t('cel.ketting', { n: piece.chain }));
       }

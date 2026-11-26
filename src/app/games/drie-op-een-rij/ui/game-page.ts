@@ -5,7 +5,7 @@ import type { MechanicId, Pos } from '../engine';
 import { GameStore } from '../game-store';
 import { GameTexts } from '../i18n/game-texts';
 import { parseBoardNumber } from '../rng/rng';
-import { DEFAULT_SETTINGS } from '../settings/settings';
+import { DEFAULT_SETTINGS, type GameSettings } from '../settings/settings';
 import { markSeen, seen } from '../storage/local';
 import { Board } from './board';
 import { Hud } from './hud';
@@ -36,10 +36,25 @@ export class GamePage {
   /** Uit de URL: `?seed=...&level=...`. */
   readonly seed = input<string>();
   readonly level = input<string>();
+  readonly mode = input<string>();
+  /** Query-parameter `input`: locked of unlocked. */
+  readonly input = input<string>();
+
+  /** Instellingen voor dit spel: standaard, aangevuld met wat in de URL staat. */
+  protected readonly settings = computed<GameSettings>(() => {
+    const mode = this.mode();
+    const inputMode = this.input();
+    return {
+      ...DEFAULT_SETTINGS,
+      mode: mode === 'tijd' || mode === 'ontspannen' ? mode : 'beurten',
+      input: inputMode === 'unlocked' ? 'unlocked' : 'locked',
+    };
+  });
 
   protected readonly cards = signal<Card[]>([]);
   protected readonly card = computed(() => this.cards()[0] ?? null);
   protected readonly resultClosed = signal(false);
+  protected readonly undoAsked = signal(false);
 
   protected readonly seedValue = computed(() => parseBoardNumber(this.seed() ?? '')?.seed ?? null);
   protected readonly levelValue = computed(() => {
@@ -53,23 +68,25 @@ export class GamePage {
     effect(() => {
       const seed = this.seedValue();
       const level = this.levelValue();
+      const settings = this.settings();
       untracked(() => {
         if (!seed) {
           void this.router.navigate([], {
             relativeTo: this.route,
             queryParams: { seed: randomSeed(), level },
+            queryParamsHandling: 'merge',
             replaceUrl: true,
           });
           return;
         }
-        this.startLevel(seed, level);
+        this.startLevel(seed, level, settings);
       });
     });
   }
 
-  private startLevel(seed: string, level: number): void {
+  private startLevel(seed: string, level: number, settings: GameSettings): void {
     this.resultClosed.set(false);
-    this.store.start({ seed, level, settings: DEFAULT_SETTINGS });
+    this.store.start({ seed, level, settings });
     const queue: Card[] = [];
     if (!seen('intro')) {
       queue.push({ kind: 'intro' });
@@ -103,9 +120,23 @@ export class GamePage {
     this.store.swap(move.a, move.b);
   }
 
-  /** Esc pauzeert; in een open dialoog sluit Esc de dialoog zelf. */
+  /** Zet terugnemen: eerst bevestigen (bij Unlocked kan het meerdere zetten zijn). */
+  protected askUndo(): void {
+    this.undoAsked.set(true);
+  }
+
+  protected confirmUndo(): void {
+    this.undoAsked.set(false);
+    this.store.undo();
+  }
+
+  /** Esc annuleert de hamer of pauzeert; in een open dialoog sluit Esc de dialoog zelf. */
   protected onEscape(): void {
-    if (!this.card() && !this.showResult()) {
+    if (this.store.hammerMode()) {
+      this.store.cancelHammer();
+      return;
+    }
+    if (!this.card() && !this.showResult() && !this.undoAsked()) {
       this.store.pause();
     }
   }
@@ -130,6 +161,7 @@ export class GamePage {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { seed: this.seedValue(), level: this.levelValue() + 1 },
+      queryParamsHandling: 'merge',
     });
   }
 

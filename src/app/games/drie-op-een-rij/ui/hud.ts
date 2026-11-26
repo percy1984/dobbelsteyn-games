@@ -1,11 +1,11 @@
 import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import type { GameState, GoalKind } from '../engine';
-import { TICKS_PER_SECOND, TIMING } from '../engine/config';
+import { HAMMER, TICKS_PER_SECOND, TIMING } from '../engine/config';
 import { GameTexts } from '../i18n/game-texts';
 import type { GameTextKey } from '../i18n/nl';
 import { formatBoardNumber } from '../rng/rng';
-import { mechanicImage, type ThemeManifest } from '../themes/themes';
+import { hammerImage, mechanicImage, type ThemeManifest } from '../themes/themes';
 
 interface GoalView {
   readonly kind: GoalKind;
@@ -49,10 +49,28 @@ const GOAL_MECH = {
           </li>
         }
       </ul>
+      <div class="hammer">
+        <img class="hammer__icon" [ngSrc]="hammerImg()" width="100" height="100" alt="" />
+        <div class="hammer__info">
+          <span class="hammer__label">{{ hammerLevel() > 0 ? texts.t('hamer.niveau', { n: hammerLevel() }) : texts.t('hamer.laden') }}</span>
+          <progress class="hammer__meter" [attr.aria-label]="texts.t('hamer.knop')" [value]="hammerFill()" max="100"></progress>
+        </div>
+      </div>
+      @if (hammerMode()) {
+        <p class="hud__hint">{{ hammerLevel() === 3 ? texts.t('hamer.kiesSteen') : texts.t('hamer.kies', { n: hammerLevel() }) }}</p>
+        <button type="button" class="button button--big" (click)="hammerRequested.emit()">{{ texts.t('hamer.annuleren') }}</button>
+      } @else {
+        <button type="button" class="button" [disabled]="!hammerUsable()" (click)="hammerRequested.emit()">
+          {{ texts.t('hamer.knop') }}
+        </button>
+      }
       <p class="hud__busy" [class.hud__busy--on]="busy()" aria-hidden="true">{{ texts.t('hud.bezig') }}</p>
       <div class="hud__actions">
         <button type="button" class="button button--secondary" (click)="hintRequested.emit()" [disabled]="busy()">{{ texts.t('hud.hint') }}</button>
         <button type="button" class="button" (click)="pauseRequested.emit()">{{ texts.t('hud.pauze') }}</button>
+        @if (canUndo()) {
+          <button type="button" class="button button--secondary" (click)="undoRequested.emit()">{{ texts.t('terug.knop') }}</button>
+        }
       </div>
       <p class="hud__board">
         <span>{{ texts.t('hud.bord', { nummer: boardNumber() }) }}</span>
@@ -72,6 +90,20 @@ export class Hud {
   readonly seed = input.required<string>();
   readonly level = input.required<number>();
   readonly busy = input(false);
+  readonly hammerLevel = input(0);
+  readonly hammerUsable = input(false);
+  readonly hammerMode = input(false);
+  readonly canUndo = input(false);
+  readonly hammerRequested = output<void>();
+  readonly undoRequested = output<void>();
+
+  protected readonly hammerImg = computed(() => hammerImage(this.theme()));
+  /** Vulling naar het volgende niveau, in procenten (vol bij het hoogste niveau). */
+  protected readonly hammerFill = computed(() => {
+    const value = this.state().hammer;
+    if (value >= HAMMER.perLevel * HAMMER.maxLevel) return 100;
+    return Math.round(((value % HAMMER.perLevel) / HAMMER.perLevel) * 100);
+  });
   readonly hintRequested = output<void>();
   readonly pauseRequested = output<void>();
 
