@@ -33,7 +33,9 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/@fontsource/atkinson-hyperlegible/latin-400.css",
+              "node_modules/@fontsource/atkinson-hyperlegible/latin-700.css"
             ],
             "allowedCommonJsDependencies": [
               "qrcode",

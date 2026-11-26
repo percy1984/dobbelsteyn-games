@@ -1,0 +1,97 @@
+:host {
+  display: block;
+}
+
+.hud {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+
+p {
+  margin: 0;
+}
+
+.hud__level {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.hud__big {
+  font-weight: 700;
+}
+
+.hud__warn {
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.4rem;
+  background: var(--dg-danger);
+  color: var(--dg-on-accent);
+}
+
+.hud__goals {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.goal--done {
+  text-decoration: line-through;
+  color: var(--dg-muted);
+}
+
+.goal__icon {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+}
+
+.goal__icon--gold {
+  border-radius: 0.4rem;
+  background: repeating-linear-gradient(45deg, #e0b43a 0 0.3rem, #ecd089 0.3rem 0.6rem);
+  box-shadow: inset 0 0 0 3px #8a6400;
+}
+
+.hud__busy {
+  visibility: hidden;
+  color: var(--dg-muted);
+  font-style: italic;
+}
+
+.hud__busy--on {
+  visibility: visible;
+}
+
+.hud__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hud__board {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.125rem;
+  color: var(--dg-muted);
+}
+
+// Grote, goed leesbare knoppen.
+.button {
+  min-height: 3rem;
+  font-size: 1.25rem;
+}
+
+.button--small {
+  min-height: 2.75rem;
+  font-size: 1.125rem;
+}
