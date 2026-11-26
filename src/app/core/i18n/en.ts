@@ -111,7 +111,7 @@ export const EN = {
   'game.canasta-1v1.name': 'Canasta 1v1',
   'game.canasta-2v2.name': 'Canasta 2v2',
   'game.canasta-1v1v1.name': 'Canasta 1v1v1',
-  'game.jewel-match.name': 'Jewel Match',
+  'game.drie-op-een-rij.name': 'Match Three',
   'game.love-letters.name': 'Love Letter',
   'game.machiavelli.name': 'Machiavelli',
   'game.takenoko.name': 'Takenoko',
