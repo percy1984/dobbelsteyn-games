@@ -2,6 +2,8 @@ import { NgOptimizedImage } from '@angular/common';
 import { Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
 import type { GameState, Move, Pos } from '../engine';
 import { samePos } from '../engine/board';
+import { MECH } from '../engine/config';
+import { WALL_BOTTOM, WALL_LEFT, WALL_RIGHT, WALL_TOP, type BlockPiece } from '../engine/types';
 import { GameTexts } from '../i18n/game-texts';
 import { mechanicImage, specialImage, tileImage, tileLabel, type ThemeManifest } from '../themes/themes';
 
@@ -26,11 +28,55 @@ interface PieceView {
   readonly overlay: string | null;
   readonly specialImg: string | null;
   readonly colorImg: string | null;
-  readonly badge: number | null;
+  readonly badge: string | null;
   readonly state: string;
   readonly opacity: number;
   readonly selected: boolean;
   readonly lit: boolean;
+}
+
+/** Markeringen boven de stukken: muren, portalen, banden en het pad van de reiziger. */
+interface MarkView {
+  readonly key: number;
+  readonly walls: readonly [boolean, boolean, boolean, boolean];
+  readonly portalIn: number | null;
+  readonly portalOut: number | null;
+  /** Richting van de band: 0 boven, 1 rechts, 2 onder, 3 links. */
+  readonly belt: number | null;
+  readonly path: boolean;
+  readonly exit: boolean;
+}
+
+const ARROWS = ['↑', '→', '↓', '←'] as const;
+
+/** Richting van a naar b (0 boven, 1 rechts, 2 onder, 3 links). */
+function direction(a: Pos, b: Pos): number {
+  if (b.r < a.r) return 0;
+  if (b.c > a.c) return 1;
+  if (b.r > a.r) return 2;
+  return 3;
+}
+
+function blockBadge(p: BlockPiece): string | null {
+  switch (p.mech) {
+    case 'rotsblok':
+    case 'kleurblok':
+      return p.layers > 1 ? String(p.layers) : null;
+    case 'pers':
+      return p.counter + '/' + MECH.persCapacity;
+    case 'waterklok':
+      return ARROWS[p.dir % 4] + ' ' + p.counter + '/' + MECH.waterklokCapacity;
+    case 'grootBlok':
+      return p.dir === 0 ? null : String(p.layers);
+    default:
+      return null;
+  }
+}
+
+function blockVariant(p: BlockPiece): number {
+  if (p.mech === 'altaar') return p.counter === 1 ? 1 : 0;
+  if (p.mech === 'stekelbol' || p.mech === 'grootBlok') return p.dir;
+  return 0;
 }
 
 /** Drempel voor slepen/swipen, als deel van een vakje. */
@@ -131,14 +177,28 @@ export class Board {
         selected: !!sel && sel.r === r && sel.c === c,
       };
       if (piece.kind === 'tile') {
+        const img =
+          piece.special === 'ster'
+            ? specialImage(theme, 'ster')
+            : piece.mech === 'goudzakje'
+              ? (mechanicImage(theme, 'goudzakje') ?? tileImage(theme, 0))
+              : tileImage(theme, piece.type);
+        const overlay =
+          piece.chain > 0
+            ? mechanicImage(theme, 'ketting', piece.chain - 1)
+            : piece.resin
+              ? mechanicImage(theme, 'hars')
+              : piece.mech === 'tijdbom' || piece.mech === 'klimmer'
+                ? mechanicImage(theme, piece.mech)
+                : null;
         out.push({
           ...base,
           kind: 'tile',
-          img: piece.special === 'ster' ? specialImage(theme, 'ster') : tileImage(theme, piece.type),
-          overlay: piece.chain > 0 ? mechanicImage(theme, 'ketting', piece.chain - 1) : null,
+          img,
+          overlay,
           specialImg: piece.special && piece.special !== 'ster' ? specialImage(theme, piece.special) : null,
           colorImg: null,
-          badge: null,
+          badge: piece.mech === 'tijdbom' ? String(piece.counter) : null,
           lit: false,
         });
       } else if (piece.kind === 'fall') {
@@ -157,16 +217,67 @@ export class Board {
         out.push({
           ...base,
           kind: 'block',
-          img: mechanicImage(theme, piece.mech, lit ? 1 : 0) ?? tileImage(theme, 0),
+          img: mechanicImage(theme, piece.mech, blockVariant(piece)) ?? tileImage(theme, 0),
           overlay: null,
           specialImg: null,
           colorImg: piece.color !== null ? tileImage(theme, piece.color) : null,
-          badge: piece.mech === 'rotsblok' && piece.layers > 1 ? piece.layers : null,
+          badge: blockBadge(piece),
           lit,
         });
       }
     });
     return out;
+  });
+
+  /** Muren, portalen, banden en het pad van de reiziger per vakje. */
+  protected readonly marks = computed<MarkView[]>(() => {
+    const s = this.state();
+    const views = s.cells.map(
+      (cell, i): MarkView => ({
+        key: i,
+        walls: [
+          (cell.walls & WALL_TOP) !== 0,
+          (cell.walls & WALL_RIGHT) !== 0,
+          (cell.walls & WALL_BOTTOM) !== 0,
+          (cell.walls & WALL_LEFT) !== 0,
+        ],
+        portalIn: null,
+        portalOut: null,
+        belt: null,
+        path: false,
+        exit: false,
+      }),
+    );
+    const at = (p: Pos) => p.r * s.cols + p.c;
+    const set = (p: Pos, change: Partial<MarkView>) => {
+      views[at(p)] = { ...views[at(p)], ...change };
+    };
+    for (const portal of s.portals) {
+      set(portal.from, { portalIn: portal.id });
+      set(portal.to, { portalOut: portal.id });
+    }
+    for (const belt of s.belts) {
+      const n = belt.cells.length;
+      belt.cells.forEach((p, k) => {
+        const dir = k < n - 1 || belt.loop ? direction(p, belt.cells[(k + 1) % n]) : direction(belt.cells[k - 1] ?? p, p);
+        set(p, { belt: dir });
+      });
+    }
+    for (const path of s.paths) {
+      path.forEach((p, k) => set(p, k === path.length - 1 ? { exit: true } : { path: true }));
+    }
+    return views;
+  });
+
+  protected readonly markImg = computed(() => {
+    const theme = this.theme();
+    return {
+      portalIn: mechanicImage(theme, 'portaal', 0) ?? '',
+      portalOut: mechanicImage(theme, 'portaal', 1) ?? '',
+      belt: mechanicImage(theme, 'lopendeBand') ?? '',
+      exit: mechanicImage(theme, 'reiziger', 1) ?? '',
+      path: mechanicImage(theme, 'reiziger', 2) ?? '',
+    };
   });
 
   /** "rij 3, kolom 5, rode cirkel, gouden vakje" */
@@ -185,6 +296,8 @@ export class Board {
     } else if (piece.kind === 'tile') {
       if (piece.special === 'ster') {
         parts.push(t.t('cel.ster'));
+      } else if (piece.mech === 'goudzakje') {
+        parts.push(t.mechanicName('goudzakje'));
       } else {
         parts.push(t.t(tileLabel(theme, piece.type)));
         if (piece.special) parts.push(t.t(piece.special === 'bom' ? 'cel.bom' : 'cel.kruis'));
@@ -192,19 +305,19 @@ export class Board {
       if (piece.chain > 0) {
         parts.push(t.t('cel.ketting', { n: piece.chain }));
       }
+      if (piece.resin) parts.push(t.t('cel.hars'));
+      if (piece.mech === 'tijdbom') parts.push(t.t('cel.tijdbom', { n: piece.counter }));
+      if (piece.mech === 'klimmer') parts.push(t.t('cel.klimmer'));
     } else {
       parts.push(t.mechanicName(piece.mech));
       if (piece.kind === 'block') {
         if (piece.color !== null) {
           parts.push(t.t('cel.kleur', { steen: t.t(tileLabel(theme, piece.color)) }));
         }
-        if (piece.mech === 'altaar') {
-          if (piece.counter === 1) parts.push(t.t('cel.brandt'));
-        } else {
-          parts.push(t.t('cel.lagen', { n: piece.layers }));
-        }
+        parts.push(...this.blockLabel(piece));
       }
     }
+    parts.push(...this.markLabel(i));
     if (cell.floor === 1) parts.push(t.t('cel.goud'));
     if (cell.floor === 2) parts.push(t.t('cel.zilver'));
     if (cell.treasure >= 0) parts.push(t.t('cel.schat'));
@@ -214,6 +327,49 @@ export class Board {
     const hint = this.hint();
     if (hint && (samePos(hint.a, pos) || samePos(hint.b, pos))) parts.push(t.t('cel.hint'));
     return parts.join(', ');
+  }
+
+  private blockLabel(piece: BlockPiece): string[] {
+    const t = this.texts;
+    const dir = (d: number) => t.text('richting.' + (d % 4));
+    switch (piece.mech) {
+      case 'altaar':
+        return piece.counter === 1 ? [t.t('cel.brandt')] : [];
+      case 'pers':
+        return [t.t('cel.meter', { n: piece.counter, max: MECH.persCapacity })];
+      case 'waterklok':
+        return [
+          t.t('cel.meter', { n: piece.counter, max: MECH.waterklokCapacity }),
+          t.t('cel.uitloop', { richting: dir(piece.dir) }),
+        ];
+      case 'stekelbol':
+        return [t.t(piece.dir === 0 ? 'cel.stekelRij' : 'cel.stekelKolom')];
+      case 'grootBlok': {
+        const variant = t.t((['cel.taart', 'cel.emmer', 'cel.doos'] as const)[piece.dir] ?? 'cel.taart');
+        if (piece.dir === 1) return [variant, t.t('cel.lagen', { n: piece.layers })];
+        if (piece.dir === 2) return [variant, t.t('cel.nogStenen', { n: piece.layers })];
+        return [variant];
+      }
+      case 'oliebron':
+      case 'reiziger':
+        return [];
+      default:
+        return [t.t('cel.lagen', { n: piece.layers })];
+    }
+  }
+
+  private markLabel(i: number): string[] {
+    const t = this.texts;
+    const m = this.marks()[i];
+    const out: string[] = [];
+    const sides = m.walls.flatMap((on, k) => (on ? [t.text('kant.' + k)] : []));
+    if (sides.length > 0) out.push(t.t('cel.muur', { kanten: sides.join(', ') }));
+    if (m.portalIn !== null) out.push(t.t('cel.portaalIn', { n: m.portalIn }));
+    if (m.portalOut !== null) out.push(t.t('cel.portaalUit', { n: m.portalOut }));
+    if (m.belt !== null) out.push(t.t('cel.band', { richting: t.text('richting.' + m.belt) }));
+    if (m.path) out.push(t.t('cel.pad'));
+    if (m.exit) out.push(t.t('cel.uitgang'));
+    return out;
   }
 
   protected tabIndex(cell: CellView): number {

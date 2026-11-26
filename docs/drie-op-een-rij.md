@@ -53,6 +53,24 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 - Aparte sleutels: `voortgang` (Verder spelen), `highscores` (top 5 per modus × invoer × preset), `gezien` (uitlegkaarten).
 - Pauzemenu: thema, Locked/Unlocked (gaat in bij het eerstvolgende rustmoment) en geluid. Geluid: zachte tonen via Web Audio (`sound/sound.ts`), zonder bestanden.
 
+## Alle spelelementen
+
+Alle 25 spelelementen uit de spec zijn gebouwd. Per categorie een bestand in `engine/mechanics/`:
+
+| Bestand | Spelelementen |
+| --- | --- |
+| `floors.ts`, `treasure.ts`, `fallers.ts` | goud, zilver, verborgen schat, amulet, veer |
+| `blockers.ts`, `layers.ts` | ketting, rotsblok, muntblok, altaar, kleurblok, hars, schild, muur |
+| `spreaders.ts` | olie, oliebron, goudzakje (spawnen in `gravity.ts`, goud leggen in `resolve.ts`) |
+| `flow.ts` | portaal (doorvallen in `gravity.ts`), lopende band |
+| `helpers.ts` | stekelbol, pers, waterklok |
+| `goals.ts` | reiziger, groot blok (taart, emmer, doos) |
+| `lose.ts` | tijdbom, klimmer |
+
+- Portalen, banden en paden van reizigers staan in de state (`portals`, `belts`, `paths`); tijdbommen en klimmers zijn gewone stenen met `mech` en `counter`.
+- Getallen (kans op een goudzakje, meters, starttelling tijdbom, emmer en doos) staan in `MECH` in `engine/config.ts`.
+- Tests: `engine/mechanics/extra.spec.ts`, met per element een rooktest die twintig zetten speelt zonder vast te lopen.
+
 ## Getallen aanpassen
 
 Alle getallen staan in `engine/config.ts`: animatieduren per snelheid, score, bordgrenzen, moeilijkheid, hoeveel goud, beurten en tijd per level.
@@ -60,7 +78,7 @@ Alle getallen staan in `engine/config.ts`: animatieduren per snelheid, score, bo
 ## Een spelelement toevoegen
 
 1. Schrijf een `MechanicModule` in `engine/mechanics/` (`place`, `onHit`, `afterTick`, `onTurnEnd`, `loseCheck`; alles optioneel).
-2. Zet hem in `MODULES` (`engine/mechanics/index.ts`). Pas dan komt het element in levels voor.
+2. Zet hem in `MODULES` (`engine/mechanics/index.ts`). Pas dan komt het element in levels voor en is de schakelaar in het spelelementenpaneel te gebruiken.
 3. Voeg tests toe. De naam en uitleg staan al in `i18n/nl.ts` en `i18n/en.ts`.
 
 Het register zelf verandert niet: de volgorde en `bitIndex` liggen vast vanwege gedeelde bordnummers.

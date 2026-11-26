@@ -205,6 +205,114 @@ const OBJECTS = {
   ),
 };
 
+/** Spelelementen uit de uitbreiding (fase 5). Gekleurde objecten krijgen in het spel de steen van hun kleur erbij. */
+Object.assign(OBJECTS, {
+  muur: svg(
+    `<rect x="6" y="20" width="88" height="60" fill="#b5653a" stroke="#4a220a" stroke-width="5"/>` +
+      `<path d="M6 40 L94 40 M6 60 L94 60 M36 20 L36 40 M66 20 L66 40 M22 40 L22 60 M52 40 L52 60 M80 40 L80 60 M36 60 L36 80 M66 60 L66 80" stroke="#4a220a" stroke-width="4"/>`,
+  ),
+  kleurblok: svg(
+    `<rect x="8" y="8" width="84" height="84" rx="14" fill="#5b6270" stroke="#22262e" stroke-width="5"/>` +
+      `<rect x="18" y="18" width="64" height="64" rx="10" fill="none" stroke="#c4c8d0" stroke-width="3" stroke-dasharray="7 5"/>`,
+  ),
+  hars: svg(
+    `<path d="M10 40 C10 16 34 8 50 12 C70 6 92 18 90 42 C96 62 84 90 56 88 C34 94 8 82 12 60 C6 52 8 46 10 40 Z" fill="#f0a020" fill-opacity=".55" stroke="#8a4d00" stroke-width="4"/>` +
+      `<path d="M26 26 Q34 20 44 22" stroke="#fff" stroke-opacity=".8" stroke-width="5" stroke-linecap="round" fill="none"/>`,
+  ),
+  schild: svg(
+    `<path d="M50 6 L86 18 L82 56 C78 74 64 86 50 94 C36 86 22 74 18 56 L14 18 Z" fill="#7d93b5" stroke="#1f2d47" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M50 18 L74 26 L71 54 C68 66 60 74 50 80 Z" fill="#a9bbd6"/>` +
+      `<circle cx="50" cy="48" r="9" fill="#1f2d47"/>`,
+  ),
+  olie: svg(
+    `<path d="M10 62 C6 44 24 34 40 38 C46 24 70 22 76 36 C92 34 98 52 88 62 C96 76 78 88 62 82 C52 92 30 90 26 80 C10 82 2 70 10 62 Z" fill="#1b1b22" stroke="#000" stroke-width="4" stroke-linejoin="round"/>` +
+      `<path d="M30 52 Q40 44 54 46" stroke="#8a8aff" stroke-opacity=".8" stroke-width="5" stroke-linecap="round" fill="none"/>` +
+      `<circle cx="70" cy="58" r="5" fill="#3fc1d9" fill-opacity=".6"/>`,
+  ),
+  oliebron: svg(
+    `<path d="M24 92 L38 30 L62 30 L76 92 Z" fill="#6b4a2a" stroke="#2b1a0a" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M30 70 L70 70 M34 50 L66 50 M38 30 L62 92 M62 30 L38 92" stroke="#2b1a0a" stroke-width="3"/>` +
+      `<path d="M50 4 C58 14 62 20 58 26 L42 26 C38 20 42 14 50 4 Z" fill="#1b1b22"/>`,
+  ),
+  goudzakje: svg(
+    `<path d="M30 30 C14 46 12 86 50 90 C88 86 86 46 70 30 Z" fill="#c99a3b" stroke="#5c3d0a" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M32 30 L68 30 L60 14 L40 14 Z" fill="#e0b85a" stroke="#5c3d0a" stroke-width="5" stroke-linejoin="round"/>` +
+      `<rect x="30" y="26" width="40" height="8" rx="3" fill="#8a5a00"/>` +
+      `<circle cx="50" cy="62" r="14" fill="#ffd54a" stroke="#8a6400" stroke-width="4"/>` +
+      `<text x="50" y="69" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="20" fill="#8a6400">G</text>`,
+  ),
+  portaalIn: svg(
+    `<ellipse cx="50" cy="82" rx="42" ry="14" fill="#7a3cff" stroke="#2a0a66" stroke-width="5"/>` +
+      `<ellipse cx="50" cy="82" rx="26" ry="7" fill="#d4b0ff"/>` +
+      `<path d="M50 30 L50 66 M36 54 L50 68 L64 54" stroke="#2a0a66" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  ),
+  portaalUit: svg(
+    `<ellipse cx="50" cy="18" rx="42" ry="14" fill="#7a3cff" stroke="#2a0a66" stroke-width="5"/>` +
+      `<ellipse cx="50" cy="18" rx="26" ry="7" fill="#d4b0ff"/>` +
+      `<path d="M50 34 L50 70 M36 58 L50 72 L64 58" stroke="#2a0a66" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  ),
+  band: svg(
+    `<rect x="2" y="30" width="96" height="40" rx="8" fill="#4a5466" stroke="#1b2130" stroke-width="4"/>` +
+      `<path d="M22 38 L40 50 L22 62 M50 38 L68 50 L50 62" stroke="#ffd54a" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  ),
+  stekelbol: svg(
+    `<g stroke="#22262e" stroke-width="4" stroke-linejoin="round" fill="#cfd5df">` +
+      `<polygon points="2,50 22,40 22,60"/><polygon points="98,50 78,40 78,60"/></g>` +
+      `<circle cx="50" cy="50" r="30" fill="#9aa0aa" stroke="#22262e" stroke-width="5"/>`,
+  ),
+  stekelbolV: svg(
+    `<g stroke="#22262e" stroke-width="4" stroke-linejoin="round" fill="#cfd5df">` +
+      `<polygon points="50,2 40,22 60,22"/><polygon points="50,98 40,78 60,78"/></g>` +
+      `<circle cx="50" cy="50" r="30" fill="#9aa0aa" stroke="#22262e" stroke-width="5"/>`,
+  ),
+  pers: svg(
+    `<rect x="10" y="8" width="80" height="16" rx="4" fill="#6c7380" stroke="#22262e" stroke-width="4"/>` +
+      `<rect x="44" y="24" width="12" height="22" fill="#9aa0aa" stroke="#22262e" stroke-width="3"/>` +
+      `<rect x="18" y="46" width="64" height="16" rx="4" fill="#6c7380" stroke="#22262e" stroke-width="4"/>` +
+      `<rect x="10" y="80" width="80" height="12" rx="3" fill="#4a5060" stroke="#22262e" stroke-width="4"/>`,
+  ),
+  waterklok: svg(
+    `<path d="M24 8 L76 8 L76 18 C76 40 56 44 56 50 C56 56 76 60 76 82 L76 92 L24 92 L24 82 C24 60 44 56 44 50 C44 44 24 40 24 18 Z" fill="#e8f6ff" stroke="#1f4d6b" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M30 86 C30 72 46 66 50 62 C54 66 70 72 70 86 Z" fill="#3fa9e0"/>`,
+  ),
+  reiziger: svg(
+    `<circle cx="50" cy="22" r="13" fill="#ffd6a8" stroke="#5c3d0a" stroke-width="4"/>` +
+      `<path d="M30 92 L36 52 C36 42 64 42 64 52 L70 92 Z" fill="#2f9e48" stroke="#145226" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M34 10 Q50 -2 66 10 L62 14 L38 14 Z" fill="#c0392b" stroke="#5c1a12" stroke-width="3"/>` +
+      `<path d="M70 40 L82 92" stroke="#8a5a2a" stroke-width="6" stroke-linecap="round"/>`,
+  ),
+  uitgang: svg(
+    `<path d="M20 92 L20 30 Q50 4 80 30 L80 92 Z" fill="#4cd964" stroke="#0b3d1a" stroke-width="6"/>` +
+      `<path d="M50 40 L50 74 M36 62 L50 76 L64 62" stroke="#145226" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  ),
+  pad: svg(`<circle cx="50" cy="50" r="22" fill="#4cd964" stroke="#0b3d1a" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0b3d1a"/>`),
+  taart: svg(
+    `<rect x="10" y="40" width="80" height="48" rx="8" fill="#f3c1d6" stroke="#7a2a4a" stroke-width="5"/>` +
+      `<path d="M10 52 Q20 62 30 52 Q40 62 50 52 Q60 62 70 52 Q80 62 90 52" fill="none" stroke="#fff" stroke-width="6"/>` +
+      `<rect x="46" y="16" width="8" height="24" fill="#ffd54a" stroke="#8a6400" stroke-width="3"/>` +
+      `<path d="M50 4 C55 10 55 14 50 16 C45 14 45 10 50 4 Z" fill="#ff9a1f"/>`,
+  ),
+  emmer: svg(
+    `<path d="M16 26 L84 26 L74 92 L26 92 Z" fill="#6c95c9" stroke="#1f3d66" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M16 26 Q50 -4 84 26" fill="none" stroke="#1f3d66" stroke-width="5"/>` +
+      `<path d="M22 44 L78 44" stroke="#a9c6ea" stroke-width="5"/>`,
+  ),
+  doos: svg(
+    `<rect x="10" y="30" width="80" height="60" rx="4" fill="#c79a5b" stroke="#5c3d0a" stroke-width="5"/>` +
+      `<path d="M10 30 L24 12 L76 12 L90 30" fill="#ddb57a" stroke="#5c3d0a" stroke-width="5" stroke-linejoin="round"/>` +
+      `<path d="M50 30 L50 90" stroke="#5c3d0a" stroke-width="4"/>`,
+  ),
+  tijdbom: svg(
+    `<circle cx="50" cy="50" r="44" fill="none" stroke="#111" stroke-width="10"/>` +
+      `<circle cx="50" cy="50" r="44" fill="none" stroke="#ff5a3c" stroke-width="5"/>` +
+      `<path d="M50 6 L50 18" stroke="#111" stroke-width="6" stroke-linecap="round"/>`,
+  ),
+  klimmer: svg(
+    `<path d="M50 4 L74 30 L60 30 L60 46 L40 46 L40 30 L26 30 Z" fill="#fff" stroke="#111" stroke-width="4" stroke-linejoin="round"/>` +
+      `<path d="M14 64 L26 58 M86 64 L74 58" stroke="#111" stroke-width="6" stroke-linecap="round"/>`,
+  ),
+});
+
 function write(theme, name, content) {
   const file = join(root, theme, `${name}.svg`);
   mkdirSync(dirname(file), { recursive: true });

@@ -24,6 +24,7 @@
 }
 
 .floors,
+.marks,
 .cells {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
@@ -73,6 +74,98 @@
 
 .pieces {
   pointer-events: none;
+}
+
+// Muren, portalen, banden en het pad: boven de stukken, klein in de hoeken.
+.marks {
+  pointer-events: none;
+}
+
+.mark {
+  position: relative;
+}
+
+.mark--wall-top {
+  border-top: 6px solid var(--dor-wall, #f2f2f2);
+}
+
+.mark--wall-right {
+  border-right: 6px solid var(--dor-wall, #f2f2f2);
+}
+
+.mark--wall-bottom {
+  border-bottom: 6px solid var(--dor-wall, #f2f2f2);
+}
+
+.mark--wall-left {
+  border-left: 6px solid var(--dor-wall, #f2f2f2);
+}
+
+.mark__belt,
+.mark__path,
+.mark__exit {
+  position: absolute;
+  width: 32%;
+  height: 32%;
+}
+
+.mark__belt {
+  left: 2%;
+  bottom: 2%;
+}
+
+.mark__path {
+  left: -4%;
+  top: -4%;
+  width: 40%;
+  height: 40%;
+}
+
+.mark__exit {
+  right: -2%;
+  bottom: -2%;
+  width: 56%;
+  height: 56%;
+}
+
+.mark__portal {
+  position: absolute;
+  left: 15%;
+  width: 70%;
+  height: 35%;
+}
+
+.mark__portal--in {
+  bottom: -6%;
+  object-fit: cover;
+  object-position: bottom;
+}
+
+.mark__portal--out {
+  top: -6%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.mark__num {
+  position: absolute;
+  left: 2%;
+  min-width: 1.4em;
+  border-radius: 999px;
+  background: #2a0a66;
+  color: #fff;
+  font-size: max(12px, min(1.1rem, 4cqw));
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.mark__num--in {
+  bottom: 2%;
+}
+
+.mark__num--out {
+  top: 2%;
 }
 
 .piece {
