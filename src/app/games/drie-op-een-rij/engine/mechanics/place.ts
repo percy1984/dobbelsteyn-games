@@ -7,7 +7,15 @@ export function freeCells(ctx: PlaceContext, filter: (r: number, c: number, i: n
   for (let r = 0; r < ctx.rows; r++) {
     for (let c = 0; c < ctx.cols; c++) {
       const i = r * ctx.cols + c;
-      if (ctx.shape[i] && !ctx.objects[i] && ctx.chains[i] === 0 && !ctx.resin[i] && filter(r, c, i)) {
+      if (
+        ctx.shape[i] &&
+        !ctx.objects[i] &&
+        ctx.chains[i] === 0 &&
+        !ctx.resin[i] &&
+        !ctx.reserved[i] &&
+        !ctx.marks[i] &&
+        filter(r, c, i)
+      ) {
         out.push(i);
       }
     }

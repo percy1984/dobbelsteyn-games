@@ -10,7 +10,7 @@ import { BOARD, DIFFICULTY, LEVEL } from '../engine/config';
 import { isImplemented, moduleFor } from '../engine/mechanics';
 import type { PlaceContext } from '../engine/mechanics/module';
 import { introductionLevels, normalizeMechanics } from '../engine/mechanics/registry';
-import type { GoalKind, LevelLayout, LevelParams, MechanicId, PlacedObject } from '../engine/types';
+import type { GoalKind, LevelLayout, LevelParams, MechanicId, PlacedObject, TileMark } from '../engine/types';
 import { generateStartTiles } from './board-generator';
 
 function clamp(value: number, min: number, max: number): number {
@@ -141,6 +141,11 @@ export function generateLevel(params: LevelParams): LevelLayout {
     objects: new Array<PlacedObject | null>(size).fill(null),
     chains: new Array<number>(size).fill(0),
     resin: new Array<boolean>(size).fill(false),
+    marks: new Array<TileMark | null>(size).fill(null),
+    portals: [],
+    belts: [],
+    paths: [],
+    reserved: new Array<boolean>(size).fill(false),
     goals,
     blockerBudget: { left: Math.floor(shape.filter(Boolean).length * BOARD.maxBlockerShare) },
   };
@@ -182,6 +187,10 @@ export function generateLevel(params: LevelParams): LevelLayout {
     objects: ctx.objects,
     chains: ctx.chains,
     resin: ctx.resin,
+    marks: ctx.marks,
+    portals: ctx.portals,
+    belts: ctx.belts,
+    paths: ctx.paths,
     tiles,
     goals: allGoals,
     moves,

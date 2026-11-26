@@ -2,6 +2,7 @@ import type { MechanicId } from '../types';
 import { ALTAAR, KETTING, MUNTBLOK, ROTSBLOK } from './blockers';
 import { AMULET, VEER } from './fallers';
 import { GOUD, ZILVER } from './floors';
+import { HARS, KLEURBLOK, MUUR, SCHILD } from './layers';
 import type { MechanicModule } from './module';
 import { VERBORGEN_SCHAT } from './treasure';
 
@@ -18,6 +19,10 @@ export const MODULES: Partial<Record<MechanicId, MechanicModule>> = {
   rotsblok: ROTSBLOK,
   muntblok: MUNTBLOK,
   veer: VEER,
+  kleurblok: KLEURBLOK,
+  hars: HARS,
+  schild: SCHILD,
+  muur: MUUR,
   altaar: ALTAAR,
 };
 

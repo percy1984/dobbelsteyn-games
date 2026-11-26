@@ -101,6 +101,10 @@ export function boardFromText(rowsText: readonly string[], opts: BoardOptions = 
     moves: 0,
     hammer: 0,
     combos: [],
+    portals: [],
+    belts: [],
+    paths: [],
+    oilCleared: [],
   };
 }
 
