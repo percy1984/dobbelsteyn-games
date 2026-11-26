@@ -206,3 +206,19 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+// Hamer actief: duidelijke rand en een eigen cursor; geen knipperen.
+.board--hammer {
+  outline: 6px solid var(--dor-accent);
+  outline-offset: -6px;
+
+  .cell {
+    cursor: crosshair;
+  }
+
+  .cell:hover {
+    box-shadow:
+      inset 0 0 0 5px #fff,
+      inset 0 0 0 8px #000;
+  }
+}

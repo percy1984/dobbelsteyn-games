@@ -3,6 +3,7 @@ import { goalsComplete, updateGoals } from './hits';
 import { applyGravity } from './gravity';
 import { moduleFor } from './mechanics';
 import { advanceMotion } from './motion';
+import { runCombos } from './specials';
 import { resolveMatches } from './resolve';
 import { isStill, onStill } from './settle';
 import type { GameEvent, GameState } from './types';
@@ -22,6 +23,7 @@ export function step(state: GameState): StepResult {
   const ctx: Ctx = { s, ev: [] };
   s.tick++;
   advanceMotion(ctx);
+  runCombos(ctx);
   applyGravity(ctx);
   for (const id of s.mechanics) {
     moduleFor(id)?.afterTick?.(ctx);

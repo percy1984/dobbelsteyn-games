@@ -170,7 +170,8 @@ export type RejectReason =
   | 'not-swappable'
   | 'tile-not-stable'
   | 'no-match'
-  | 'not-available';
+  | 'not-available'
+  | 'invalid-target';
 
 export type GameAction =
   | { readonly type: 'swap'; readonly a: Pos; readonly b: Pos }
@@ -204,6 +205,7 @@ export type GameEvent =
   | { readonly type: 'SpecialTriggered'; readonly at: Pos; readonly special: Special }
   | { readonly type: 'Explosion'; readonly cells: readonly Pos[]; readonly res: number }
   | { readonly type: 'Collected'; readonly at: Pos; readonly mech: MechanicId }
+  | { readonly type: 'HammerUsed'; readonly level: 1 | 2 | 3; readonly at: Pos; readonly res: number }
   | { readonly type: 'TurnEndStarted'; readonly res: number }
   | { readonly type: 'TurnEndFinished'; readonly res: number }
   | { readonly type: 'Shuffled' }
@@ -305,4 +307,17 @@ export interface GameState {
   loseReason: LoseReason | null;
   /** Aantal geaccepteerde zetten. */
   moves: number;
+  /** Hamermeter (0 tot 3 x HAMMER.perLevel). */
+  hammer: number;
+  /** Wissels van speciale stenen die afgaan zodra de wissel klaar is. */
+  combos: Combo[];
+}
+
+/** Een wissel met een kleurenster of van twee speciale stenen. Posities zijn na de wissel. */
+export interface Combo {
+  readonly res: number;
+  /** Waar de steen nu ligt die de speler verplaatste. */
+  readonly at: Pos;
+  /** De andere steen. */
+  readonly other: Pos;
 }

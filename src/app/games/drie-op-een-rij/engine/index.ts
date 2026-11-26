@@ -4,4 +4,6 @@ export { createGame } from './create';
 export { findHint, findMoves, type Move } from './matcher';
 export { needsTicks, runUntilSettled, step, type StepResult } from './step';
 export { isStill } from './settle';
+export { hammerLevel } from './specials';
+export { hammerProblem } from './hammer';
 export * from './types';

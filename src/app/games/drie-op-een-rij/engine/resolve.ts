@@ -13,8 +13,9 @@
 import { cellAt, isTile, neighbors } from './board';
 import { SCORE } from './config';
 import { newResolution, resolutionById, type Ctx } from './context';
-import { addScore, hitFloor, hitObject, markForClear } from './hits';
+import { addScore, clearTile, hitFloor, hitObject } from './hits';
 import { findMatchGroups, type MatchGroup } from './matcher';
+import { chargeHammer, specialFor, specialTarget } from './specials';
 import type { Pos, Resolution, TilePiece } from './types';
 
 export function matchPoints(group: MatchGroup, depth: number): number {
@@ -76,9 +77,23 @@ function processGroup(ctx: Ctx, group: MatchGroup, res: number, depth: number): 
   ctx.ev.push({ type: 'Matched', res, depth, cells: group.cells, tileType: group.type, points });
   addScore(ctx, points, res);
 
+  chargeHammer(ctx, group.cells.length, depth);
+
+  // 4 op een rij, L/T of 5 op een rij: één steen wordt speciaal en blijft liggen.
+  const special = specialFor(group);
+  const target = special ? specialTarget(ctx, group) : null;
+
   const inGroup = new Set(group.cells.map((p) => `${p.r},${p.c}`));
   for (const at of group.cells) {
     hitFloor(ctx, at, res);
+    if (special && target && target.r === at.r && target.c === at.c) {
+      const piece = cellAt(ctx.s, at.r, at.c)?.piece ?? null;
+      if (isTile(piece)) {
+        piece.special = special;
+        ctx.ev.push({ type: 'SpecialCreated', at, special });
+      }
+      continue;
+    }
     const piece = cellAt(ctx.s, at.r, at.c)?.piece ?? null;
     if (!isTile(piece) || piece.m.state !== 'stabiel') {
       // Al geraakt door een explosie van een eerdere match in deze tick.
@@ -91,7 +106,7 @@ function processGroup(ctx: Ctx, group: MatchGroup, res: number, depth: number): 
       piece.resin = false;
       ctx.ev.push({ type: 'Hit', at, target: 'hars', left: 0 });
     } else {
-      markForClear(ctx, piece, res);
+      clearTile(ctx, at, piece, res);
     }
   }
 

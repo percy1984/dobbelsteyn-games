@@ -100,5 +100,7 @@ export function createGame(layout: LevelLayout, options: EngineOptions): GameSta
     result: null,
     loseReason: null,
     moves: 0,
+    hammer: 0,
+    combos: [],
   };
 }

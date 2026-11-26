@@ -1,5 +1,5 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { GameTexts } from '../i18n/game-texts';
 import { themeById, tileImage } from '../themes/themes';
@@ -19,6 +19,30 @@ import { randomSeed, todaySeed } from './seeds';
         }
       </div>
       <p class="start__intro">{{ texts.t('start.intro') }}</p>
+      <fieldset class="choice-group">
+        <legend>{{ texts.t('modus.label') }}</legend>
+        @for (m of modes; track m) {
+          <label class="choice">
+            <input type="radio" name="dor-mode" [value]="m" [checked]="mode() === m" (change)="mode.set(m)" />
+            <span>
+              <strong>{{ texts.text('modus.' + m) }}</strong>
+              <span class="choice__hint">{{ texts.text('modus.' + m + '.uitleg') }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+      <fieldset class="choice-group">
+        <legend>{{ texts.t('invoer.label') }}</legend>
+        @for (i of inputs; track i) {
+          <label class="choice">
+            <input type="radio" name="dor-input" [value]="i" [checked]="input() === i" (change)="input.set(i)" />
+            <span>
+              <strong>{{ texts.text('invoer.' + i) }}</strong>
+              <span class="choice__hint">{{ texts.text('invoer.' + i + '.uitleg') }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
       <div class="start__actions">
         <button type="button" class="button" (click)="play(random())">{{ texts.t('start.nieuw') }}</button>
         <button type="button" class="button button--secondary" (click)="play(today())">
@@ -64,6 +88,37 @@ import { randomSeed, todaySeed } from './seeds';
       margin: 0;
       font-size: 1.25rem;
     }
+    .choice-group {
+      display: grid;
+      gap: 0.5rem;
+      width: min(100%, 30rem);
+      margin: 0;
+      padding: 1rem;
+      border: 2px solid var(--dg-border);
+      border-radius: 1rem;
+      text-align: left;
+    }
+    .choice-group legend {
+      padding: 0 0.25rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .choice {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      cursor: pointer;
+    }
+    .choice input {
+      width: 1.5rem;
+      height: 1.5rem;
+      margin-top: 0.15rem;
+      accent-color: var(--dg-accent);
+    }
+    .choice__hint {
+      display: block;
+      color: var(--dg-muted);
+    }
     .start__actions {
       display: grid;
       gap: 0.75rem;
@@ -87,7 +142,14 @@ export class StartPage {
   protected readonly random = randomSeed;
   protected readonly today = () => todaySeed();
 
+  protected readonly modes = ['beurten', 'tijd', 'ontspannen'] as const;
+  protected readonly inputs = ['locked', 'unlocked'] as const;
+  protected readonly mode = signal<(typeof this.modes)[number]>('beurten');
+  protected readonly input = signal<(typeof this.inputs)[number]>('locked');
+
   protected play(seed: string): void {
-    void this.router.navigate(['/games/drie-op-een-rij/spel'], { queryParams: { seed, level: 1 } });
+    void this.router.navigate(['/games/drie-op-een-rij/spel'], {
+      queryParams: { seed, level: 1, mode: this.mode(), input: this.input() },
+    });
   }
 }

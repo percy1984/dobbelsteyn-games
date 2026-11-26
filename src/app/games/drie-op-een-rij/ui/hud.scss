@@ -95,3 +95,39 @@ p {
   min-height: 2.75rem;
   font-size: 1.125rem;
 }
+
+.hammer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.hammer__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.hammer__info {
+  display: grid;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.hammer__label {
+  font-weight: 600;
+}
+
+.hammer__meter {
+  width: 100%;
+  height: 0.9rem;
+  accent-color: var(--dg-accent);
+}
+
+.hud__hint {
+  font-weight: 700;
+}
+
+.button--big {
+  min-height: 3.5rem;
+  font-size: 1.375rem;
+}

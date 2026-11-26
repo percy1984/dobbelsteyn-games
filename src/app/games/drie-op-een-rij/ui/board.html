@@ -1,5 +1,5 @@
 <p class="visually-hidden" id="dor-board-help">{{ texts.t('bord.uitleg') }}</p>
-<div class="board" [class.board--busy]="busy()" [style]="cssVars()">
+<div class="board" [class.board--busy]="busy()" [class.board--hammer]="hammer()" [style]="cssVars()">
   <div class="layer floors" aria-hidden="true">
     @for (cell of cells(); track cell.key) {
       <div
@@ -26,6 +26,9 @@
       >
         <div class="piece__body">
           <img class="piece__img" [ngSrc]="piece.img" width="100" height="100" alt="" />
+          @if (piece.specialImg) {
+            <img class="piece__overlay" [ngSrc]="piece.specialImg" width="100" height="100" alt="" />
+          }
           @if (piece.overlay) {
             <img class="piece__overlay" [ngSrc]="piece.overlay" width="100" height="100" alt="" />
           }

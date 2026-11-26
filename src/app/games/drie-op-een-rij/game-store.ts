@@ -3,6 +3,8 @@ import {
   applyAction,
   createGame,
   findHint,
+  hammerLevel,
+  hammerProblem,
   isStill,
   needsTicks,
   step,
@@ -61,6 +63,31 @@ export class GameStore {
   });
   readonly result = computed(() => this.state()?.result ?? null);
 
+  /** Hamer: gekozen en wachtend op een vakje. */
+  readonly hammerMode = signal(false);
+  readonly hammerLevel = computed(() => hammerLevel(this.state()?.hammer ?? 0));
+  /** Mag de hamerknop nu? Locked: alleen bij een rustmoment. Unlocked: niveau 1 en 2 ook tijdens afhandeling. */
+  readonly hammerUsable = computed(() => {
+    const s = this.state();
+    const level = this.hammerLevel();
+    if (!s || level === 0 || s.result || this.paused()) return false;
+    if (s.locked) return false;
+    return level < 3 || (s.settled && isStill(s));
+  });
+
+  /** Ontspannen: het bord bij het laatste rustmoment vóór de laatste zet(ten). */
+  private readonly undoStack = signal<GameState[]>([]);
+  private lastSettled: GameState | null = null;
+  readonly canUndo = computed(
+    () => this.setup()?.settings.mode === 'ontspannen' && this.undoStack().length > 0 && !this.result(),
+  );
+  /** Hoeveel zetten "terugnemen" tegelijk terugdraait (bij Unlocked soms meer dan één). */
+  readonly undoCount = computed(() => {
+    const top = this.undoStack().at(-1);
+    const s = this.state();
+    return top && s ? Math.max(1, s.moves - top.moves) : 0;
+  });
+
   private rafId: number | null = null;
   private last: number | null = null;
   private acc = 0;
@@ -101,6 +128,9 @@ export class GameStore {
     this.selected.set(null);
     this.hint.set(null);
     this.paused.set(false);
+    this.hammerMode.set(false);
+    this.undoStack.set([]);
+    this.lastSettled = this.state();
     this.banner.set('');
     this.announcement.set('');
     this.scheduleHint();
@@ -151,6 +181,10 @@ export class GameStore {
     }
     this.hint.set(null);
     this.scheduleHint();
+    if (this.hammerMode()) {
+      this.strike(pos);
+      return;
+    }
     if (s.locked) {
       this.announce('melding.vergrendeld');
       return;
@@ -185,6 +219,9 @@ export class GameStore {
     this.hint.set(null);
     this.scheduleHint();
     const out = applyAction(s, { type: 'swap', a, b });
+    if (out.result.kind === 'accepted') {
+      this.rememberForUndo();
+    }
     if (out.state !== s) {
       this.state.set(out.state);
     }
@@ -193,6 +230,63 @@ export class GameStore {
     }
     this.handleEvents(out.events);
     this.ensureLoop();
+  }
+
+  /** Hamerknop: aan of uit. */
+  toggleHammer(): void {
+    if (this.hammerMode()) {
+      this.hammerMode.set(false);
+      return;
+    }
+    if (this.hammerUsable()) {
+      this.selected.set(null);
+      this.hint.set(null);
+      this.hammerMode.set(true);
+      this.announce(this.hammerLevel() === 3 ? 'hamer.kiesSteen' : 'hamer.kies', { n: this.hammerLevel() });
+    }
+  }
+
+  cancelHammer(): void {
+    this.hammerMode.set(false);
+  }
+
+  private strike(at: Pos): void {
+    const s = this.state();
+    if (!s) return;
+    const level = this.hammerLevel();
+    if (level === 0 || hammerProblem(s, level, at)) {
+      this.announce('melding.hamerNiet');
+      return;
+    }
+    this.rememberForUndo();
+    const out = applyAction(s, { type: 'hammer', level, at });
+    this.hammerMode.set(false);
+    this.state.set(out.state);
+    this.handleEvents(out.events);
+    this.ensureLoop();
+  }
+
+  /** Zet terugnemen (alleen Ontspannen): terug naar het laatste rustmoment. */
+  undo(): void {
+    const stack = this.undoStack();
+    const previous = stack.at(-1);
+    if (!this.canUndo() || !previous) return;
+    this.stopLoop();
+    this.undoStack.set(stack.slice(0, -1));
+    this.state.set(previous);
+    this.lastSettled = previous;
+    this.selected.set(null);
+    this.hint.set(null);
+    this.hammerMode.set(false);
+    this.scheduleHint();
+  }
+
+  /** Bewaart het laatste rustmoment, één keer per rustmoment (bij Unlocked dus soms meerdere zetten). */
+  private rememberForUndo(): void {
+    if (this.setup()?.settings.mode !== 'ontspannen' || !this.lastSettled) return;
+    const snapshot = this.lastSettled;
+    this.lastSettled = null;
+    this.undoStack.update((stack) => [...stack.slice(-19), snapshot]);
   }
 
   /** Hintknop: laat direct een mogelijke zet oplichten (alleen bij een rustmoment). */
@@ -240,6 +334,12 @@ export class GameStore {
         case 'Collected':
           this.announceGoals();
           break;
+        case 'SpecialCreated':
+          this.announce(event.special === 'bom' ? 'melding.bom' : event.special === 'kruis' ? 'melding.kruis' : 'melding.ster');
+          break;
+        case 'Settled':
+          this.lastSettled = this.state();
+          break;
       }
     }
   }
@@ -275,6 +375,7 @@ export class GameStore {
     if (!s || this.paused()) {
       return;
     }
+    const levelBefore = hammerLevel(s.hammer);
     if (this.last === null) {
       this.last = now - STEP_MS;
     }
@@ -292,6 +393,10 @@ export class GameStore {
       }
     }
     this.state.set(s);
+    const levelAfter = hammerLevel(s.hammer);
+    if (levelAfter > levelBefore) {
+      this.announce('melding.hamerKlaar', { n: levelAfter });
+    }
     // Unlocked: een selectie vervalt zodra de gekozen steen niet meer stabiel is.
     const sel = this.selected();
     if (sel && !this.selectable(sel)) {
