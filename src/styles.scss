@@ -29,6 +29,15 @@
   }
 }
 
+/* Drie op een rij met "Groot scherm": de bovenbalk maakt plaats voor het bord. */
+:root:has(.dor-groot) {
+  --dg-bar-height: 0rem;
+
+  dg-shell > .bar {
+    display: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --dg-bg: #12151f;

@@ -10,6 +10,8 @@ import { hammerImage, mechanicImage, type ThemeManifest } from '../themes/themes
 interface GoalView {
   readonly kind: GoalKind;
   readonly text: string;
+  /** Korte vorm voor Groot scherm: "3" (goud over) of "2/5". */
+  readonly short: string;
   readonly img: string | null;
   readonly done: boolean;
 }
@@ -23,11 +25,55 @@ const GOAL_MECH = {
   klimmer: 'klimmer',
 } as const;
 
-/** Score, doelen, beurten of tijd, bordnummer en de knoppen Hint en Pauze. */
+/**
+ * Score, doelen, beurten of tijd, bordnummer en de knoppen Hint en Pauze. Met `compact` (Groot
+ * scherm) alleen beurten of tijd, de doelen kort en de knoppen, zodat het bord zo groot mogelijk wordt.
+ */
 @Component({
   selector: 'dg-dor-hud',
   imports: [NgOptimizedImage],
   template: `
+    @if (compact()) {
+      <section class="mini" [attr.aria-label]="texts.t('hud.doelen')">
+        <div class="mini__stats">
+          @if (state().movesLeft !== null) {
+            <p class="mini__stat">{{ texts.t('hud.beurten', { n: state().movesLeft ?? 0 }) }}</p>
+          }
+          @if (time(); as t) {
+            <p class="mini__stat" [class.hud__warn]="t.warn">{{ texts.t('hud.tijd', { t: t.text }) }}</p>
+          }
+          <ul class="mini__goals">
+            @for (goal of goals(); track goal.kind) {
+              <li class="goal" [class.goal--done]="goal.done">
+                @if (goal.img) {
+                  <img class="goal__icon" [ngSrc]="goal.img" width="100" height="100" alt="" />
+                } @else {
+                  <span class="goal__icon goal__icon--gold" aria-hidden="true"></span>
+                }
+                <span class="visually-hidden">{{ goal.text }}</span>
+                <span aria-hidden="true">{{ goal.short }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+        @if (hammerMode()) {
+          <p class="hud__hint">{{ hammerLevel() === 3 ? texts.t('hamer.kiesSteen') : texts.t('hamer.kies', { n: hammerLevel() }) }}</p>
+        }
+        <div class="mini__actions">
+          @if (hammerMode()) {
+            <button type="button" class="button" (click)="hammerRequested.emit()">{{ texts.t('hamer.annuleren') }}</button>
+          } @else if (hammerUsable()) {
+            <button type="button" class="button" (click)="hammerRequested.emit()">{{ texts.t('hamer.knop') }}</button>
+          }
+          <button type="button" class="button button--secondary" (click)="hintRequested.emit()" [disabled]="busy()">{{ texts.t('hud.hint') }}</button>
+          @if (canUndo()) {
+            <button type="button" class="button button--secondary" (click)="undoRequested.emit()">{{ texts.t('terug.knop') }}</button>
+          }
+          <button type="button" class="button" (click)="pauseRequested.emit()">{{ texts.t('hud.pauze') }}</button>
+          <button type="button" class="button button--secondary" (click)="sizeToggled.emit()">{{ texts.t('scherm.klein') }}</button>
+        </div>
+      </section>
+    } @else {
     <section class="hud" [attr.aria-label]="texts.t('hud.doelen')">
       <p class="hud__level">{{ texts.t('hud.level', { n: level() }) }}</p>
       <p class="hud__line">{{ texts.t('hud.punten', { n: state().score }) }}</p>
@@ -71,6 +117,7 @@ const GOAL_MECH = {
         @if (canUndo()) {
           <button type="button" class="button button--secondary" (click)="undoRequested.emit()">{{ texts.t('terug.knop') }}</button>
         }
+        <button type="button" class="button button--secondary" (click)="sizeToggled.emit()">{{ texts.t('scherm.groot') }}</button>
       </div>
       <p class="hud__board">
         <span>{{ texts.t('hud.bord', { nummer: boardNumber() }) }}</span>
@@ -79,6 +126,7 @@ const GOAL_MECH = {
         </button>
       </p>
     </section>
+    }
   `,
   styleUrl: './hud.scss',
 })
@@ -94,6 +142,10 @@ export class Hud {
   readonly hammerUsable = input(false);
   readonly hammerMode = input(false);
   readonly canUndo = input(false);
+  /** Groot scherm: een smalle balk in plaats van de volledige HUD. */
+  readonly compact = input(false);
+  /** Wisselen tussen groot en klein scherm. */
+  readonly sizeToggled = output<void>();
   readonly hammerRequested = output<void>();
   readonly undoRequested = output<void>();
 
@@ -130,6 +182,7 @@ export class Hud {
       return {
         kind: goal.kind,
         text,
+        short: goal.kind === 'goud' ? String(goal.target - goal.done) : `${goal.done}/${goal.target}`,
         img: mech ? mechanicImage(this.theme(), mech, goal.kind === 'schat' ? 1 : 0) : null,
         done: goal.done >= goal.target,
       };

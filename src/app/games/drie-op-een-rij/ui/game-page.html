@@ -1,6 +1,6 @@
 @let s = store.state();
 @let setup = store.setup();
-<main class="game">
+<main class="game" [class.game--groot]="large()">
   <h1 class="visually-hidden">{{ texts.t('titel') }}</h1>
   @if (s && setup) {
     <div class="game__hud">
@@ -14,6 +14,8 @@
         [hammerUsable]="store.hammerUsable()"
         [hammerMode]="store.hammerMode()"
         [canUndo]="store.canUndo()"
+        [compact]="large()"
+        (sizeToggled)="toggleLarge()"
         (hammerRequested)="store.toggleHammer()"
         (undoRequested)="askUndo()"
         (hintRequested)="store.showHint()"

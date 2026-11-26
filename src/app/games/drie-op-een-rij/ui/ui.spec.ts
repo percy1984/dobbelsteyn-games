@@ -268,6 +268,25 @@ describe('GamePage', () => {
     expect(el.querySelector('dialog[open]')?.textContent).toContain('Verder spelen');
   });
 
+  it('Groot scherm: smalle balk in plaats van de HUD, onthouden, en terug naar klein', async () => {
+    markSeen('intro');
+    const { fixture, el } = await render();
+    const button = (label: string) =>
+      [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === label) as HTMLButtonElement;
+    expect(el.textContent).toContain('Bordnummer:');
+    button('Groot scherm').click();
+    await fixture.whenStable();
+    expect((fixture.nativeElement as HTMLElement).classList).toContain('dor-groot');
+    expect(el.textContent).not.toContain('Bordnummer:');
+    expect(el.textContent).toContain('Beurten over:');
+    expect(el.querySelectorAll('button.cell').length).toBe(64);
+    expect(localStorage.getItem('drie-op-een-rij.grootScherm')).toBe('true');
+    button('Klein scherm').click();
+    await fixture.whenStable();
+    expect((fixture.nativeElement as HTMLElement).classList).not.toContain('dor-groot');
+    expect(el.textContent).toContain('Bordnummer:');
+  });
+
   it('heeft een rustige aria-live-regio voor meldingen', async () => {
     markSeen('intro');
     const { el } = await render();
