@@ -196,3 +196,73 @@ describe('levels met de nieuwe spelelementen', () => {
     },
   );
 });
+
+describe('verspreiders', () => {
+  const oilCount = (s: GameState) =>
+    s.cells.filter((cell) => cell.piece?.kind === 'block' && cell.piece.mech === 'olie').length;
+
+  it('olie: een aangrenzende match haalt hem weg, en dan verspreidt hij niet', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'olie'] });
+    putBlock(s, 3, 0, 'olie');
+    const { state, events } = play(s);
+    expect(events).toContainEqual({ type: 'ObjectDestroyed', at: { r: 3, c: 0 }, mech: 'olie' });
+    expect(events.some((e) => e.type === 'Spread')).toBe(false);
+    expect(oilCount(state)).toBe(0);
+    expect(state.oilCleared).toEqual([]);
+  });
+
+  it('olie: een zet zonder opgeruimde olie laat hem één vakje overnemen', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'olie'] });
+    putBlock(s, 0, 0, 'olie');
+    const { state, events } = play(s);
+    const spreads = events.filter((e) => e.type === 'Spread');
+    expect(spreads).toHaveLength(1);
+    expect(oilCount(state)).toBe(2);
+    const at = spreads[0].type === 'Spread' ? spreads[0].at : null;
+    expect(at && Math.abs(at.r - 0) + Math.abs(at.c - 0)).toBe(1);
+  });
+
+  it('olie: dezelfde zet geeft dezelfde verspreiding (deelreeks "verspreiding")', () => {
+    const make = () => {
+      const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'olie'], seed: 'olie' });
+      putBlock(s, 1, 4, 'olie');
+      return play(s).events.filter((e) => e.type === 'Spread');
+    };
+    expect(make()).toEqual(make());
+  });
+
+  it('oliebron: onverwoestbaar en verspreidt ook zonder olie op het bord', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'olie', 'oliebron'] });
+    putBlock(s, 3, 0, 'oliebron');
+    const { state, events } = play(s);
+    expect(pieceAt(state, 3, 0)?.kind === 'block' && (pieceAt(state, 3, 0) as BlockPiece).mech).toBe('oliebron');
+    expect(events.filter((e) => e.type === 'Spread')).toHaveLength(1);
+  });
+
+  it('goudzakje: een match van drie goudzakjes legt goud op die vakjes', () => {
+    // Soort 5 is bij kinds = 5 het goudzakje.
+    const s = boardFromText(['123x41', '234x02', '342x13', '412x23', '551x32'], { mechanics: ['goud', 'goudzakje'] });
+    for (const c of [0, 1]) tileAt(s, 4, c).mech = 'goudzakje';
+    const bag = tileAt(s, 3, 2);
+    bag.type = 5;
+    bag.mech = 'goudzakje';
+    const { state, events } = play(s, MOVE_A);
+    expect(events.filter((e) => e.type === 'Spread' && e.mech === 'goudzakje')).toHaveLength(3);
+    for (const c of [0, 1, 2]) expect(state.cells[4 * state.cols + c].floor).toBe(1);
+  });
+
+  it('goudzakje: komt alleen uit spawnpunten als het element in het level zit', () => {
+    const run = (mechanics: MechanicId[]) => {
+      let s = boardFromText(rows('410x23'), { mechanics, seed: 'zakjes' });
+      let bags = 0;
+      for (let k = 0; k < 40; k++) {
+        const out = applyAction(s, { type: 'hammer', level: 1, at: { r: 0, c: 0 } });
+        s = runUntilSettled({ ...out.state, hammer: 60 }).state;
+        s.hammer = 60;
+        bags += s.cells.filter((cell) => cell.piece?.kind === 'tile' && cell.piece.mech === 'goudzakje').length;
+      }
+      return bags;
+    };
+    expect(run(['goud'])).toBe(0);
+  });
+});

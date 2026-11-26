@@ -116,3 +116,19 @@ export const TIMING = {
 
 /** Schudden: pogingen per ronde voordat er een blokkade weg gaat. */
 export const SHUFFLE_ATTEMPTS = 60;
+
+/** Getallen van de spelelementen uit de uitbreiding. */
+export const MECH = {
+  /** Kans dat een nieuwe steen een goudzakje is (als het goudzakje in het level zit). */
+  goldbagChance: 0.06,
+  /** Meter van een pers en van een waterklok. */
+  persCapacity: 12,
+  waterklokCapacity: 9,
+  /** Zoveel stenen krijgen de kleur van een volle waterklok. */
+  waterklokSpout: 3,
+  /** Starttelling van een tijdbom (plus extra per moeilijkheid via de sterkte). */
+  tijdbomStart: 14,
+  /** Groot blok: treffers voor een emmer, stenen voor een doos. */
+  emmerHits: 4,
+  doosStones: 12,
+} as const;

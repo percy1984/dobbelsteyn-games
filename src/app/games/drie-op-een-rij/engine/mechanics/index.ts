@@ -4,6 +4,7 @@ import { AMULET, VEER } from './fallers';
 import { GOUD, ZILVER } from './floors';
 import { HARS, KLEURBLOK, MUUR, SCHILD } from './layers';
 import type { MechanicModule } from './module';
+import { GOUDZAKJE, OLIE, OLIEBRON } from './spreaders';
 import { VERBORGEN_SCHAT } from './treasure';
 
 /**
@@ -23,6 +24,9 @@ export const MODULES: Partial<Record<MechanicId, MechanicModule>> = {
   hars: HARS,
   schild: SCHILD,
   muur: MUUR,
+  olie: OLIE,
+  oliebron: OLIEBRON,
+  goudzakje: GOUDZAKJE,
   altaar: ALTAAR,
 };
 

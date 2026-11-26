@@ -12,7 +12,8 @@
  * verplaatst. De lege vakjes eronder wachten tot het klaar is ("een steen die wisselt maakt zijn
  * wissel af voordat de zwaartekracht hem kan verplaatsen").
  */
-import { randInt } from '../rng/rng';
+import { chance, randInt } from '../rng/rng';
+import { MECH } from './config';
 import { blocksFall, index, wallBetween } from './board';
 import { rngStream, stableMotion, unsettle, type Ctx } from './context';
 import type { Piece, TilePiece } from './types';
@@ -95,6 +96,7 @@ function spawnInto(ctx: Ctx, c: number, empties: number[]): void {
   const { s } = ctx;
   const top = Math.min(...empties);
   const rng = rngStream(s, `spawn:${top}:${c}`);
+  const goldbags = s.mechanics.includes('goudzakje');
   // Start boven het hoogste stuk dat in deze kolom nog onderweg is, zodat niets overlapt.
   let highest = top * 1000;
   for (let r = top; r < s.rows; r++) {
@@ -109,14 +111,19 @@ function spawnInto(ctx: Ctx, c: number, empties: number[]): void {
   empties.forEach((row, j) => {
     const cell = s.cells[index(s, row, c)];
     const startRow = highest - 1000 * (j + 1);
+    let type = randInt(rng, s.kinds);
+    const goldbag = goldbags && chance(rng, MECH.goldbagChance);
+    if (goldbag) {
+      type = s.kinds;
+    }
     const tile: TilePiece = {
       id: s.nextId++,
       kind: 'tile',
-      type: randInt(rng, s.kinds),
+      type,
       special: null,
       chain: 0,
       resin: false,
-      mech: null,
+      mech: goldbag ? 'goudzakje' : null,
       counter: 0,
       m: { ...stableMotion(cell.res, s.tick), state: 'vallend', offR: startRow - row * 1000 },
     };

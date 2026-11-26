@@ -84,8 +84,19 @@ function processGroup(ctx: Ctx, group: MatchGroup, res: number, depth: number): 
   const target = special ? specialTarget(ctx, group) : null;
 
   const inGroup = new Set(group.cells.map((p) => `${p.r},${p.c}`));
+  // Goudzakjes: de vakjes van de match krijgen een goudlaag in plaats van een treffer.
+  const goldbags = group.type >= ctx.s.kinds;
   for (const at of group.cells) {
-    hitFloor(ctx, at, res);
+    if (goldbags) {
+      const cell = cellAt(ctx.s, at.r, at.c);
+      if (cell && cell.floor === 0) {
+        cell.floor = 1;
+        ctx.ev.push({ type: 'Spread', at, mech: 'goudzakje' });
+        addScore(ctx, SCORE.floorHit, res);
+      }
+    } else {
+      hitFloor(ctx, at, res);
+    }
     if (special && target && target.r === at.r && target.c === at.c) {
       const piece = cellAt(ctx.s, at.r, at.c)?.piece ?? null;
       if (isTile(piece)) {

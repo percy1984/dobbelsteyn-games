@@ -27,7 +27,7 @@ export function specialTarget(ctx: Ctx, group: MatchGroup): Pos | null {
   let best: { at: Pos; piece: TilePiece } | null = null;
   for (const at of group.cells) {
     const piece = cellAt(ctx.s, at.r, at.c)?.piece ?? null;
-    if (!isTile(piece) || piece.m.state !== 'stabiel' || piece.chain > 0 || piece.resin || piece.special) {
+    if (!isTile(piece) || piece.m.state !== 'stabiel' || piece.chain > 0 || piece.resin || piece.special || piece.mech) {
       continue;
     }
     if (!best || piece.m.movedAt > best.piece.m.movedAt) {
