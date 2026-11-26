@@ -228,6 +228,12 @@
   filter: brightness(1.35) drop-shadow(0 0 0.4rem #fff);
 }
 
+// Geraakte speciale steen: licht fel op en wordt iets groter, en gaat daarna af.
+.piece--ontstekend .piece__body {
+  transform: scale(1.18);
+  filter: brightness(1.5) drop-shadow(0 0 0.6rem #ffd23f);
+}
+
 .piece--lit .piece__body {
   filter: drop-shadow(0 0 0.5rem #ff9a1f);
 }
@@ -284,6 +290,11 @@
   .piece--gemarkeerd .piece__body,
   .piece--lit .piece__body {
     filter: none;
+  }
+
+  // Geen groei, wel de gloed: anders is niet te zien welke steen zo afgaat.
+  .piece--ontstekend .piece__body {
+    transform: none;
   }
 
   .cell--hint {

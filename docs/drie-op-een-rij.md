@@ -46,7 +46,7 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 
 ## Speciale stenen, hamer en modi
 
-- 4 op een rij geeft een bom (3x3), een L- of T-vorm een kruis (rij en kolom), 5 op een rij een kleurenster. Combinaties: bom + bom 5x5, kruis + bom drie rijen en kolommen, ster + ster het hele bord (`engine/specials.ts`).
+- 4 op een rij geeft een bom (3x3), een L- of T-vorm een kruis (rij en kolom), 5 op een rij een kleurenster. Een geraakte speciale steen licht eerst kort op (toestand `ontstekend`, duur `trigger` in `SPEEDS`) en gaat daarna af, zodat een kettingreactie stap voor stap te volgen is. Combinaties: bom + bom 5x5, kruis + bom drie rijen en kolommen, ster + ster het hele bord (`engine/specials.ts`).
 - Hamer (`engine/hammer.ts`): de meter vult bij elke match. Niveau 1 ontploft op één vakje, niveau 2 haalt alles in een vakje weg, niveau 3 laat een hele soort verdwijnen. Kost geen beurt.
 - Unlocked: elke zet heeft een eigen afhandelingsreeks. De conflictregels staan in `resolve.ts` en `gravity.ts`, met een test per regel in `unlocked.spec.ts`.
 - Modi via de URL (`mode=beurten|tijd|ontspannen`, `input=locked|unlocked`). Ontspannen: zet terugnemen naar het laatste rustmoment. Bij Unlocked kunnen dat meerdere zetten zijn; de UI meldt dat vooraf.
@@ -54,7 +54,7 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 
 ## Instellingen, opslag en URL
 
-- `settings/settings.ts`: `GameSettings` (met `schemaVersion`), `DEFAULT_SETTINGS` en de presets. `settings/validate.ts`: laden met validatie per veld, migraties per versie (`MIGRATIONS`), presets kiezen en spelelementen aan/uit.
+- `settings/settings.ts`: `GameSettings` (met `schemaVersion`), `DEFAULT_SETTINGS` en de presets. Standaard: Ontspannen, moeilijkheid Uitdagend, Unlocked, spelelementen van Standaard plus het goudzakje (preset "eigen"). `settings/validate.ts`: laden met validatie per veld, migraties per versie (`MIGRATIONS`), presets kiezen en spelelementen aan/uit.
 - `SettingsStore` bewaart in localStorage onder `drie-op-een-rij.settings` (300 ms debounce; direct bij de start van een spel). Werkt opslag niet, dan alleen in het geheugen. "Standaardinstellingen herstellen" raakt scores en voortgang niet.
 - URL (`settings/url.ts`): `?seed&level&mode&diff&size&kinds&input&mech`, met `mech` als bitmasker in base36. Instellingen uit een link gelden alleen voor dat spel; in het pauzemenu staat dan "Deze instellingen bewaren".
 - Het instellingenscherm gebruikt Signal Forms (`settings/lobby-form.ts`); het spelelementenpaneel (`ui/mechanics-panel.ts`) beheert presets en afhankelijkheden zelf.

@@ -16,12 +16,14 @@ export interface SpeedConfig {
   readonly fallPerCell: number;
   /** Verschuiven (schudden, lopende band, klimmer). */
   readonly shift: number;
+  /** Een geraakte speciale steen licht zo lang op voordat hij afgaat. */
+  readonly trigger: number;
 }
 
 export const SPEEDS: Readonly<Record<AnimationSpeed, SpeedConfig>> = {
-  rustig: { swap: 18, mark: 12, clear: 18, fallPerCell: 9, shift: 30 },
-  normaal: { swap: 12, mark: 8, clear: 12, fallPerCell: 6, shift: 20 },
-  snel: { swap: 8, mark: 5, clear: 8, fallPerCell: 4, shift: 12 },
+  rustig: { swap: 18, mark: 12, clear: 18, fallPerCell: 9, shift: 30, trigger: 20 },
+  normaal: { swap: 12, mark: 8, clear: 12, fallPerCell: 6, shift: 20, trigger: 14 },
+  snel: { swap: 8, mark: 5, clear: 8, fallPerCell: 4, shift: 12, trigger: 9 },
 };
 
 export const SCORE = {

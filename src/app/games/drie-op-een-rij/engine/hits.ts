@@ -82,17 +82,33 @@ export function hitObject(ctx: Ctx, at: Pos, cause: HitCause, res: number): void
 export type ExplosionCause = Extract<HitCause, { kind: 'explosion' } | { kind: 'hammer' }>;
 
 /**
- * Laat een steen verdwijnen. Een speciale steen gaat daarbij af: een bom raakt het 3x3-vlak eromheen,
- * een kruis de hele rij en kolom. Een kleurenster die door een explosie geraakt wordt, ruimt alle
+ * Laat een steen verdwijnen. Een speciale steen licht eerst even op (ontstekend) en gaat daarna af
+ * (`detonate`): een bom raakt het 3x3-vlak eromheen, een kruis de hele rij en kolom. Een kleurenster die door een explosie geraakt wordt, ruimt alle
  * stenen van de meest voorkomende soort op (bij gelijkspel de laagste soort).
  */
 export function clearTile(ctx: Ctx, at: Pos, piece: TilePiece, res: number): void {
+  if (piece.special) {
+    // Speciale steen: eerst even ontstekend, daarna gaat hij af (zie detonate in motion.ts).
+    piece.m.state = 'ontstekend';
+    piece.m.timer = speed(ctx.s).trigger;
+    piece.m.dur = piece.m.timer;
+    piece.m.res = res;
+    piece.m.bounce = false;
+    unsettle(ctx.s);
+    return;
+  }
   markForClear(ctx, piece, res);
   if (piece.mech === 'klimmer') {
     // Klimmer gevangen.
     collectGoal(ctx, 'klimmer', 'klimmer', at, res);
   }
+}
+
+/** Een ontstoken speciale steen gaat af: hij verdwijnt en zijn explosie volgt. */
+export function detonate(ctx: Ctx, at: Pos, piece: TilePiece): void {
   const special = piece.special;
+  const res = piece.m.res;
+  markForClear(ctx, piece, res);
   if (!special) {
     return;
   }

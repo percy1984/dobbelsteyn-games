@@ -50,6 +50,8 @@ export type PieceState =
   | 'wisselend'
   | 'terugwisselend'
   | 'gemarkeerd'
+  /** Geraakte speciale steen: licht even op en gaat daarna af (kettingreacties stap voor stap). */
+  | 'ontstekend'
   | 'verdwijnend'
   | 'vallend'
   | 'verschuivend'

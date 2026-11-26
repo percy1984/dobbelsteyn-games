@@ -65,14 +65,17 @@ export const PRESETS: Readonly<Record<Exclude<PresetId, 'eigen'>, Readonly<Recor
   allesAan: mechanicsFrom(MECHANICS.map((info) => info.id)),
 };
 
+/** Standaard: de spelelementen van de preset Standaard, plus het goudzakje. */
+const DEFAULT_MECHANICS: Readonly<Record<MechanicId, boolean>> = { ...PRESETS.standaard, goudzakje: true };
+
 export const DEFAULT_SETTINGS: GameSettings = {
   schemaVersion: 1,
-  mode: 'beurten',
-  difficulty: 'normaal',
+  mode: 'ontspannen',
+  difficulty: 'uitdagend',
   size: BOARD.defaultSize,
   kinds: BOARD.defaultKinds,
   theme: DEFAULT_THEME,
-  input: 'locked',
+  input: 'unlocked',
   speed: 'rustig',
   pauseTimeDuringResolution: false,
   hintSeconds: TIMING.hintSeconds,
@@ -80,8 +83,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   volume: 30,
   board: 'willekeurig',
   boardNumber: '',
-  preset: 'standaard',
-  mechanics: PRESETS.standaard,
+  preset: 'eigen',
+  mechanics: DEFAULT_MECHANICS,
 };
 
 /** De actieve spelelementen uit de instellingen. */
