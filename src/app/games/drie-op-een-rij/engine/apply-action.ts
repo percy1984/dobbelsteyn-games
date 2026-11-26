@@ -1,4 +1,5 @@
-import { cellAt, isAdjacent, isStable, isSwappable, wallBetween } from './board';
+import { cellAt, isAdjacent, isStable, isSwappable, isTile, wallBetween } from './board';
+import { hammerProblem, strikeHammer } from './hammer';
 import { newResolution, speed, type Ctx } from './context';
 import { isValidSwap } from './matcher';
 import type { ActionResult, GameAction, GameEvent, GameState, Piece, Pos, RejectReason } from './types';
@@ -15,7 +16,8 @@ function reject(state: GameState, reason: RejectReason): ActionOutcome {
 }
 
 /**
- * Verwerkt een wissel of hamerslag op de huidige tick (de tick loopt niet door).
+ * Verwerkt een wissel of hamerslag op de huidige tick (de tick loopt niet door). Een hamerslag is
+ * een actie, geen zet: hij kost geen beurt (zie hammer.ts).
  *
  * Locked: vanaf een geaccepteerde zet tot het volgende rustmoment staat de invoervergrendeling aan.
  * Alles wat dan binnenkomt wordt geweigerd met 'input-locked'; er komt niets in een wachtrij.
@@ -30,7 +32,14 @@ export function applyAction(state: GameState, action: GameAction): ActionOutcome
     return reject(state, 'input-locked');
   }
   if (action.type === 'hammer') {
-    return reject(state, 'not-available');
+    const problem = hammerProblem(state, action.level, action.at);
+    if (problem) {
+      return reject(state, problem);
+    }
+    const s = structuredClone(state);
+    const ctx: Ctx = { s, ev: [] };
+    const res = strikeHammer(ctx, action.level, action.at);
+    return { state: s, result: { kind: 'accepted', res }, events: ctx.ev };
   }
   if (state.mode === 'beurten' && state.movesLeft === 0) {
     return reject(state, 'no-moves-left');
@@ -78,6 +87,10 @@ export function applyAction(state: GameState, action: GameAction): ActionOutcome
     s.movesLeft--;
   }
   s.pendingTurnEnds.push(res.id);
+  // Kleurenster of twee speciale stenen: gaat af zodra de wissel klaar is.
+  if (isTile(pa) && isTile(pb) && (pa.special === 'ster' || pb.special === 'ster' || (pa.special && pb.special))) {
+    s.combos.push({ res: res.id, at: b, other: a });
+  }
   s.settled = false;
   if (s.options.input === 'locked') {
     s.locked = true;

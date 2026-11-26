@@ -94,6 +94,19 @@ export const LEVEL = {
   maxMechanicsPerLevel: 3,
 } as const;
 
+/**
+ * Hamer. De meter vult bij elke match: per steen `perTile` plus `perDepth` per cascadediepte.
+ * Elke `perLevel` punten is een niveau (maximaal 3). Na gebruik staat de meter weer op 0.
+ */
+export const HAMMER = {
+  perTile: 2,
+  perDepth: 1,
+  perLevel: 60,
+  maxLevel: 3,
+  /** Extra bij het breken van een muntblok. */
+  coinBlock: 20,
+} as const;
+
 export const TIMING = {
   /** Laatste seconden van Op tijd met een rustige waarschuwing. */
   warnSeconds: 15,

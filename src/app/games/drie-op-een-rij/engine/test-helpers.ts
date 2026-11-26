@@ -99,6 +99,8 @@ export function boardFromText(rowsText: readonly string[], opts: BoardOptions = 
     result: null,
     loseReason: null,
     moves: 0,
+    hammer: 0,
+    combos: [],
   };
 }
 

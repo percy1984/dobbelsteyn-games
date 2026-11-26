@@ -1,6 +1,6 @@
 import { chance, randInt } from '../../rng/rng';
 import { ring } from '../board';
-import { SCORE } from '../config';
+import { HAMMER, SCORE } from '../config';
 import { addScore, destroyObject, explode } from '../hits';
 import type { BlockPiece } from '../types';
 import type { MechanicModule, PlaceContext } from './module';
@@ -55,8 +55,7 @@ export const ROTSBLOK: MechanicModule = {
 };
 
 /**
- * Muntblok: blokkade met 1 laag. Bij breken: bonuspunten. (Het stuk hamermeter komt erbij zodra de
- * hamer er is.)
+ * Muntblok: blokkade met 1 laag. Bij breken: bonuspunten en een stuk hamermeter.
  */
 export const MUNTBLOK: MechanicModule = {
   id: 'muntblok',
@@ -73,6 +72,7 @@ export const MUNTBLOK: MechanicModule = {
     if (piece.layers <= 0) {
       destroyObject(ctx, at, res);
       addScore(ctx, SCORE.coinBlock, res);
+      ctx.s.hammer = Math.min(HAMMER.perLevel * HAMMER.maxLevel, ctx.s.hammer + HAMMER.coinBlock);
     }
     return true;
   },
@@ -111,7 +111,7 @@ export const ALTAAR: MechanicModule = {
         piece.counter = 0;
         const at = { r: Math.floor(i / s.cols), c: i % s.cols };
         ctx.ev.push({ type: 'Hit', at, target: 'altaar', left: 0 });
-        explode(ctx, ring(at), systemRes(), false);
+        explode(ctx, ring(at), systemRes(), { kind: 'explosion', special: false });
       }
     }
   },
