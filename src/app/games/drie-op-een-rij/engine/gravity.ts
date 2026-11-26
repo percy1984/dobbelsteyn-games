@@ -16,7 +16,20 @@ import { chance, randInt } from '../rng/rng';
 import { MECH } from './config';
 import { blocksFall, index, wallBetween } from './board';
 import { rngStream, stableMotion, unsettle, type Ctx } from './context';
-import type { Piece, TilePiece } from './types';
+import type { GameState, Piece, Portal, TilePiece } from './types';
+
+/** Valt een stuk in (r, c) niet naar (r + 1, c)? Bij een muur, een portaalingang of boven een portaaluitgang. */
+function stopsBelow(s: GameState, r: number, c: number): boolean {
+  return (
+    wallBetween(s, { r, c }, { r: r + 1, c }) ||
+    s.portals.some((p) => (p.from.r === r && p.from.c === c) || (p.to.r === r + 1 && p.to.c === c))
+  );
+}
+
+/** Het portaal waarvan dit vakje de uitgang is. */
+function portalInto(s: GameState, r: number, c: number): Portal | null {
+  return s.portals.find((p) => p.to.r === r && p.to.c === c) ?? null;
+}
 
 type Slot = 'barrier' | 'wait' | 'movable' | 'empty';
 
@@ -36,8 +49,8 @@ export function applyGravity(ctx: Ctx): void {
     /** Lege vakjes die op een stuk wachten, onderste eerst. */
     let empties: number[] = [];
     for (let r = s.rows - 1; r >= -1; r--) {
-      if (r >= 0 && r < s.rows - 1 && wallBetween(s, { r, c }, { r: r + 1, c })) {
-        // Muur onder dit vakje: het stuk erboven valt er niet doorheen.
+      if (r >= 0 && r < s.rows - 1 && stopsBelow(s, r, c)) {
+        // Muur of portaal onder dit vakje: het stuk erboven valt er niet doorheen.
         spawnInto(ctx, c, empties);
         empties = [];
       }
@@ -86,6 +99,47 @@ function moveDown(ctx: Ctx, c: number, from: number, to: number): void {
 }
 
 /**
+ * Portaal: de stukken die in en boven de ingang liggen, vallen door naar de lege vakjes onder de
+ * uitgang (onderste eerst). Is de ingang leeg of nog in beweging, dan wacht de uitgang (geeft true).
+ * Ligt er iets vasts in de ingang, dan werkt de uitgang als gewoon spawnpunt (geeft false).
+ */
+function pullThroughPortal(ctx: Ctx, portal: Portal, c: number, empties: number[]): boolean {
+  const { s } = ctx;
+  const top = Math.min(...empties);
+  const sources: number[] = [];
+  for (let r = portal.from.r; r >= 0 && sources.length < empties.length; r--) {
+    if (r < portal.from.r && stopsBelow(s, r, portal.from.c)) break;
+    const cell = s.cells[index(s, r, portal.from.c)];
+    if (!cell.exists || !cell.piece) break;
+    if (blocksFall(cell.piece)) {
+      if (sources.length === 0 && r === portal.from.r) return false;
+      break;
+    }
+    if (cell.piece.m.state !== 'stabiel') break;
+    sources.push(r);
+  }
+  if (sources.length === 0) {
+    return true;
+  }
+  sources.forEach((fromRow, j) => {
+    const source = s.cells[index(s, fromRow, portal.from.c)];
+    const row = empties[j];
+    const target = s.cells[index(s, row, c)];
+    const piece = source.piece as Piece;
+    source.piece = null;
+    source.res = piece.m.res;
+    target.piece = piece;
+    // Komt bovenin de uitgang tevoorschijn, als een stapel die naar binnen schuift.
+    piece.m.offR = (top - 1 - j) * 1000 - row * 1000;
+    piece.m.offC = 0;
+    piece.m.state = 'vallend';
+    ctx.ev.push({ type: 'FallStarted', id: piece.id });
+  });
+  unsettle(s);
+  return true;
+}
+
+/**
  * Vult de lege vakjes onder een spawnpunt met nieuwe stenen. Ze komen van boven het bord (of boven
  * de barrière) en vallen allemaal even ver, zodat ze netjes als een stapel naar binnen schuiven.
  */
@@ -95,6 +149,12 @@ function spawnInto(ctx: Ctx, c: number, empties: number[]): void {
   }
   const { s } = ctx;
   const top = Math.min(...empties);
+  const portal = portalInto(s, top, c);
+  if (portal) {
+    if (pullThroughPortal(ctx, portal, c, empties)) {
+      return;
+    }
+  }
   const rng = rngStream(s, `spawn:${top}:${c}`);
   const goldbags = s.mechanics.includes('goudzakje');
   // Start boven het hoogste stuk dat in deze kolom nog onderweg is, zodat niets overlapt.

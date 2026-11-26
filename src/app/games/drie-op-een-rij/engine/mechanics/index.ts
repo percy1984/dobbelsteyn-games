@@ -3,6 +3,7 @@ import { ALTAAR, KETTING, MUNTBLOK, ROTSBLOK } from './blockers';
 import { AMULET, VEER } from './fallers';
 import { GOUD, ZILVER } from './floors';
 import { HARS, KLEURBLOK, MUUR, SCHILD } from './layers';
+import { LOPENDE_BAND, PORTAAL } from './flow';
 import type { MechanicModule } from './module';
 import { GOUDZAKJE, OLIE, OLIEBRON } from './spreaders';
 import { VERBORGEN_SCHAT } from './treasure';
@@ -27,6 +28,8 @@ export const MODULES: Partial<Record<MechanicId, MechanicModule>> = {
   olie: OLIE,
   oliebron: OLIEBRON,
   goudzakje: GOUDZAKJE,
+  portaal: PORTAAL,
+  lopendeBand: LOPENDE_BAND,
   altaar: ALTAAR,
 };
 

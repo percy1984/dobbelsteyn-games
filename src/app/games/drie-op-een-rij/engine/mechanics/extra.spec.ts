@@ -266,3 +266,56 @@ describe('verspreiders', () => {
     expect(run(['goud'])).toBe(0);
   });
 });
+
+describe('bordstroom', () => {
+  it('portaal: wat onderuit de ingang valt, komt bovenin de uitgang tevoorschijn', () => {
+    // Match op de onderste rij in kolom 4-5... eenvoudiger: hamer op de uitgang maakt die leeg.
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'portaal'] });
+    const portals = [{ id: 1, from: { r: 1, c: 0 }, to: { r: 3, c: 5 } }];
+    const t: GameState = { ...s, portals, hammer: 60 };
+    const fromId = tileAt(t, 1, 0).id;
+    const aboveId = tileAt(t, 0, 0).id;
+    const out = applyAction(t, { type: 'hammer', level: 1, at: { r: 3, c: 5 } });
+    const { state } = runUntilSettled(out.state);
+    // De steen uit de ingang ligt nu in de uitgang; de kolom van de ingang is aangevuld.
+    expect(pieceAt(state, 3, 5)?.id).toBe(fromId);
+    expect(pieceAt(state, 1, 0)?.id).toBe(aboveId);
+    expect(state.cells.every((cell) => !cell.exists || cell.piece)).toBe(true);
+  });
+
+  it('portaal: stenen vallen niet onderuit de ingang naar het vakje eronder', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'portaal'] });
+    const t: GameState = { ...s, portals: [{ id: 1, from: { r: 1, c: 0 }, to: { r: 3, c: 5 } }], hammer: 60 };
+    const fromId = tileAt(t, 1, 0).id;
+    const out = applyAction(t, { type: 'hammer', level: 1, at: { r: 2, c: 0 } });
+    const { state } = runUntilSettled(out.state);
+    expect(pieceAt(state, 1, 0)?.id).toBe(fromId);
+  });
+
+  it('lopende band (lijn): schuift bij het beurteinde één vakje op; aan het begin komt een nieuwe steen', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'lopendeBand'] });
+    // Kolom 4 en 5 bewegen niet door zet A.
+    const cells = [4, 5].map((c) => ({ r: 0, c }));
+    const t: GameState = { ...s, belts: [{ id: 1, cells, loop: false }] };
+    const ids = cells.map((p) => tileAt(t, p.r, p.c).id);
+    const { state, events } = play(t);
+    expect(pieceAt(state, 0, 5)?.id).toBe(ids[0]);
+    expect(ids).not.toContain(pieceAt(state, 0, 4)?.id);
+    expect(events).toContainEqual({ type: 'Cleared', id: ids[1], at: { r: 0, c: 5 } });
+  });
+
+  it('lopende band (lus): alles schuift rond, er gaat niets verloren', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'lopendeBand'] });
+    const cells = [
+      { r: 0, c: 4 },
+      { r: 0, c: 5 },
+      { r: 1, c: 5 },
+      { r: 1, c: 4 },
+    ];
+    const t: GameState = { ...s, belts: [{ id: 1, cells, loop: true }] };
+    const ids = cells.map((p) => pieceAt(t, p.r, p.c)?.id);
+    const { state } = play(t);
+    const after = cells.map((p) => pieceAt(state, p.r, p.c)?.id);
+    expect(after).toEqual([ids[3], ids[0], ids[1], ids[2]]);
+  });
+});

@@ -25,6 +25,7 @@ function spread(ctx: Ctx, res: number): void {
     s.oilCleared.splice(cleared, 1);
     return;
   }
+  const onBelt = new Set(s.belts.flatMap((belt) => belt.cells.map((p) => p.r * s.cols + p.c)));
   const candidates = new Set<number>();
   s.cells.forEach((cell, i) => {
     if (!isSource(cell.piece)) return;
@@ -35,6 +36,7 @@ function spread(ctx: Ctx, res: number): void {
       const target = s.cells[j];
       const tile = target.piece;
       if (
+        !onBelt.has(j) &&
         target.exists &&
         tile?.kind === 'tile' &&
         tile.m.state === 'stabiel' &&

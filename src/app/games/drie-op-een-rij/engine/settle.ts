@@ -132,7 +132,7 @@ export function shuffle(ctx: Ctx): void {
   recolor(ctx, free.map((f) => f.piece));
 }
 
-function startShift(ctx: Ctx, piece: Piece, baseR: number, baseC: number): void {
+export function startShift(ctx: Ctx, piece: Piece, baseR: number, baseC: number): void {
   const m = piece.m;
   m.state = 'verschuivend';
   m.timer = speed(ctx.s).shift;
