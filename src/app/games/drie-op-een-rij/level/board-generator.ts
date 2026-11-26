@@ -7,16 +7,16 @@ import { findMatchGroups, findMoves } from '../engine/matcher';
 /**
  * Startbord: vult vakje voor vakje (rij voor rij) en kiest steeds een soort die geen drie op een rij
  * maakt. Daarna moet het bord minstens `BOARD.minStartMoves` geldige zetten hebben; lukt dat niet,
- * dan genereert het deterministisch opnieuw (de deelreeks loopt gewoon door).
+ * dan genereert het deterministisch opnieuw (de deelreeks loopt gewoon door). Lukt het helemaal
+ * niet (te veel obstakels), dan geeft het null en haalt de levelgenerator obstakels weg.
  */
 export function generateStartTiles(
   rng: RngState,
   plan: Omit<CellPlan, 'tiles'>,
   kinds: number,
-): number[] {
+): number[] | null {
   const { rows, cols } = plan;
   const hasTile = (i: number) => plan.shape[i] && plan.objects[i] === null;
-  let last: number[] = [];
   for (let attempt = 0; attempt < BOARD.maxAttempts; attempt++) {
     const tiles: number[] = new Array(rows * cols).fill(-1);
     for (let r = 0; r < rows; r++) {
@@ -36,7 +36,6 @@ export function generateStartTiles(
         tiles[i] = allowed.length > 0 ? pick(rng, allowed) : randInt(rng, kinds);
       }
     }
-    last = tiles;
     const board = { rows, cols, cells: buildCells({ ...plan, tiles }).cells };
     if (
       findMatchGroups(board).length === 0 &&
@@ -45,5 +44,5 @@ export function generateStartTiles(
       return tiles;
     }
   }
-  return last;
+  return null;
 }

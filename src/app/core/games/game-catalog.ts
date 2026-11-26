@@ -24,7 +24,7 @@ export const GAMES: readonly GameInfo[] = [
   { slug: 'canasta-1v1', playable: false },
   { slug: 'canasta-2v2', playable: false },
   { slug: 'canasta-1v1v1', playable: false },
-  { slug: 'jewel-match', playable: false },
+  { slug: 'drie-op-een-rij', playable: true },
   { slug: 'love-letters', playable: false },
   { slug: 'machiavelli', playable: false },
   { slug: 'takenoko', playable: false },

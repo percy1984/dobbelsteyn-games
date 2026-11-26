@@ -1,0 +1,89 @@
+@let s = store.state();
+@let setup = store.setup();
+<main class="game">
+  <h1 class="visually-hidden">{{ texts.t('titel') }}</h1>
+  @if (s && setup) {
+    <div class="game__hud">
+      <dg-dor-hud
+        [state]="s"
+        [theme]="store.theme()"
+        [seed]="setup.seed"
+        [level]="setup.level"
+        [busy]="store.busy()"
+        (hintRequested)="store.showHint()"
+        (pauseRequested)="store.pause()"
+      />
+    </div>
+    <div class="game__board">
+      <dg-dor-board
+        [state]="s"
+        [theme]="store.theme()"
+        [selected]="store.selected()"
+        [hint]="store.hint()"
+        [busy]="store.busy()"
+        (tapped)="onTap($event)"
+        (swiped)="onSwipe($event)"
+      />
+      @if (store.banner()) {
+        <p class="game__banner" aria-hidden="true">{{ store.banner() }}</p>
+      }
+    </div>
+  }
+  <p class="visually-hidden" aria-live="polite" aria-atomic="true">{{ store.announcement() }}</p>
+</main>
+
+@if (card(); as c) {
+  <dg-modal [open]="true" [title]="c.kind === 'intro' ? texts.t('intro.titel') : texts.t('nieuw.titel', { naam: texts.mechanicName(c.id) })" (closed)="closeCard()">
+    @if (c.kind === 'intro') {
+      <dg-dor-intro-steps [theme]="store.theme()" (done)="closeCard()" />
+    } @else {
+      <dg-dor-mechanic-card [mechanic]="c.id" [theme]="store.theme()" [showName]="false" />
+      <div class="dialog__actions">
+        <button type="button" class="button" (click)="closeCard()">{{ texts.t('nieuw.ok') }}</button>
+      </div>
+    }
+  </dg-modal>
+}
+
+<dg-modal [open]="store.paused() && !card()" [title]="texts.t('pauze.titel')" (closed)="resume()">
+  <div class="dialog__stack">
+    <button type="button" class="button" (click)="resume()">{{ texts.t('pauze.verder') }}</button>
+    <button type="button" class="button button--secondary" (click)="restart()">{{ texts.t('pauze.opnieuw') }}</button>
+    <button type="button" class="button button--secondary" (click)="stop()">{{ texts.t('pauze.stoppen') }}</button>
+  </div>
+</dg-modal>
+
+@if (s) {
+  <dg-modal
+    [open]="showResult()"
+    [title]="s.result === 'gewonnen' ? texts.t('uitslag.gewonnen') : texts.t('uitslag.verloren')"
+    (closed)="resultClosed.set(true)"
+  >
+    <p class="dialog__big">{{ texts.t('uitslag.punten', { n: s.score }) }}</p>
+    @if (s.result === 'verloren') {
+      <p class="dialog__text">
+        @switch (s.loseReason) {
+          @case ('beurten') {
+            {{ texts.t('uitslag.redenBeurten') }}
+          }
+          @case ('tijd') {
+            {{ texts.t('uitslag.redenTijd') }}
+          }
+          @default {
+            @if (s.loseReason) {
+              {{ texts.t('uitslag.redenElement', { naam: texts.mechanicName(s.loseReason) }) }}
+            }
+          }
+        }
+      </p>
+    }
+    <div class="dialog__stack">
+      @if (s.result === 'gewonnen') {
+        <button type="button" class="button" (click)="nextLevel()">{{ texts.t('uitslag.volgende') }}</button>
+      } @else {
+        <button type="button" class="button" (click)="restart()">{{ texts.t('uitslag.opnieuw') }}</button>
+      }
+      <button type="button" class="button button--secondary" (click)="stop()">{{ texts.t('uitslag.stoppen') }}</button>
+    </div>
+  </dg-modal>
+}

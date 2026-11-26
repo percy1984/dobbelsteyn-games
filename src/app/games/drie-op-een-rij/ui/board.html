@@ -1,0 +1,73 @@
+<p class="visually-hidden" id="dor-board-help">{{ texts.t('bord.uitleg') }}</p>
+<div class="board" [class.board--busy]="busy()" [style]="cssVars()">
+  <div class="layer floors" aria-hidden="true">
+    @for (cell of cells(); track cell.key) {
+      <div
+        class="floor"
+        [class.floor--hole]="!cell.exists"
+        [class.floor--gold]="cell.floor === 1"
+        [class.floor--silver]="cell.floor === 2"
+      >
+        @if (cell.treasure) {
+          <img class="floor__treasure" [ngSrc]="treasureImg()" width="100" height="100" alt="" />
+        }
+      </div>
+    }
+  </div>
+
+  <div class="layer pieces" aria-hidden="true">
+    @for (piece of pieces(); track piece.id) {
+      <div
+        [class]="'piece piece--' + piece.kind + ' piece--' + piece.state"
+        [class.piece--selected]="piece.selected"
+        [class.piece--lit]="piece.lit"
+        [style.transform]="'translate(' + piece.x * 100 + '%, ' + piece.y * 100 + '%)'"
+        [style.opacity]="piece.opacity"
+      >
+        <div class="piece__body">
+          <img class="piece__img" [ngSrc]="piece.img" width="100" height="100" alt="" />
+          @if (piece.overlay) {
+            <img class="piece__overlay" [ngSrc]="piece.overlay" width="100" height="100" alt="" />
+          }
+          @if (piece.colorImg) {
+            <img class="piece__color" [ngSrc]="piece.colorImg" width="100" height="100" alt="" />
+          }
+          @if (piece.badge !== null) {
+            <span class="piece__badge">{{ piece.badge }}</span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div
+    class="layer cells"
+    role="group"
+    [attr.aria-label]="boardLabel()"
+    aria-describedby="dor-board-help"
+    (keydown)="onKeydown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerEnd()"
+    (pointercancel)="onPointerEnd()"
+    (pointerleave)="onPointerEnd()"
+  >
+    @for (cell of cells(); track cell.key) {
+      @if (cell.exists) {
+        <button
+          type="button"
+          class="cell"
+          [class.cell--selected]="cell.selected"
+          [class.cell--hint]="cell.hint"
+          [attr.data-cell]="cell.key"
+          [attr.aria-label]="cell.label"
+          [attr.aria-pressed]="cell.selected"
+          [tabIndex]="tabIndex(cell)"
+          (click)="onClick(cell)"
+          (pointerdown)="onPointerDown($event, cell)"
+        ></button>
+      } @else {
+        <span class="cell cell--hole"></span>
+      }
+    }
+  </div>
+</div>
