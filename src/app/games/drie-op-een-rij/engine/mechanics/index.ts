@@ -6,6 +6,7 @@ import { HARS, KLEURBLOK, MUUR, SCHILD } from './layers';
 import { LOPENDE_BAND, PORTAAL } from './flow';
 import { PERS, STEKELBOL, WATERKLOK } from './helpers';
 import { GROOT_BLOK, REIZIGER } from './goals';
+import { KLIMMER, TIJDBOM } from './lose';
 import type { MechanicModule } from './module';
 import { GOUDZAKJE, OLIE, OLIEBRON } from './spreaders';
 import { VERBORGEN_SCHAT } from './treasure';
@@ -37,6 +38,8 @@ export const MODULES: Partial<Record<MechanicId, MechanicModule>> = {
   waterklok: WATERKLOK,
   reiziger: REIZIGER,
   grootBlok: GROOT_BLOK,
+  tijdbom: TIJDBOM,
+  klimmer: KLIMMER,
   altaar: ALTAAR,
 };
 

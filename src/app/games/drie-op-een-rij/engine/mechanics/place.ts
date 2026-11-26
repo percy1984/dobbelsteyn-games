@@ -25,6 +25,7 @@ export function freeCells(ctx: PlaceContext, filter: (r: number, c: number, i: n
 
 /**
  * Kiest `count` vakjes, bij voorkeur in gespiegelde paren (links/rechts) zodat het bord rustig oogt.
+ * Blijft er één over (oneven aantal), dan komt er één los vakje bij.
  * Geeft de gekozen vakjes terug.
  */
 export function pickMirrored(ctx: PlaceContext, candidates: readonly number[], count: number): number[] {
@@ -41,13 +42,23 @@ export function pickMirrored(ctx: PlaceContext, candidates: readonly number[], c
     }
   }
   const out: number[] = [];
-  for (const pair of shuffled(ctx.rng, pairs)) {
+  const order = shuffled(ctx.rng, pairs);
+  for (const pair of order) {
     if (out.length + pair.length > count) {
       continue;
     }
     out.push(...pair);
     if (out.length >= count) {
       break;
+    }
+  }
+  // Oneven aantal op een even bord: vul aan met één vakje uit het eerstvolgende paar (geen extra toeval).
+  for (const pair of order) {
+    if (out.length >= count) {
+      break;
+    }
+    if (!out.includes(pair[0])) {
+      out.push(pair[0]);
     }
   }
   return out;

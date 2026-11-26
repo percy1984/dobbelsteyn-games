@@ -88,6 +88,10 @@ export type ExplosionCause = Extract<HitCause, { kind: 'explosion' } | { kind: '
  */
 export function clearTile(ctx: Ctx, at: Pos, piece: TilePiece, res: number): void {
   markForClear(ctx, piece, res);
+  if (piece.mech === 'klimmer') {
+    // Klimmer gevangen.
+    collectGoal(ctx, 'klimmer', 'klimmer', at, res);
+  }
   const special = piece.special;
   if (!special) {
     return;

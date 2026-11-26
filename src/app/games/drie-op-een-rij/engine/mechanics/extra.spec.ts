@@ -178,23 +178,72 @@ describe('levels met de nieuwe spelelementen', () => {
     mechanics,
   });
 
-  it.each<MechanicId>(['kleurblok', 'hars', 'schild', 'muur'])(
-    '%s: komt voor, het startbord heeft geen matches en minstens drie zetten',
-    (id) => {
-      const layout = generateLevel(params(['goud', id], 2));
-      expect(layout.mechanics).toContain(id);
-      const s = createGame(layout, LOCKED);
-      expect(findMatchGroups(s)).toHaveLength(0);
-      expect(findMoves(s, 3).length).toBeGreaterThanOrEqual(3);
-      const present =
-        id === 'hars'
-          ? s.cells.some((cell) => cell.piece?.kind === 'tile' && cell.piece.resin)
-          : id === 'muur'
-            ? s.cells.some((cell) => cell.walls !== 0)
-            : s.cells.some((cell) => cell.piece?.kind === 'block' && cell.piece.mech === id);
-      expect(present).toBe(true);
-    },
-  );
+  const NEW: MechanicId[] = [
+    'kleurblok',
+    'hars',
+    'schild',
+    'muur',
+    'olie',
+    'oliebron',
+    'goudzakje',
+    'portaal',
+    'lopendeBand',
+    'stekelbol',
+    'pers',
+    'waterklok',
+    'reiziger',
+    'grootBlok',
+    'tijdbom',
+    'klimmer',
+  ];
+
+  const present = (s: GameState, id: MechanicId): boolean => {
+    switch (id) {
+      case 'hars':
+        return s.cells.some((cell) => cell.piece?.kind === 'tile' && cell.piece.resin);
+      case 'muur':
+        return s.cells.some((cell) => cell.walls !== 0);
+      case 'portaal':
+        return s.portals.length > 0;
+      case 'lopendeBand':
+        return s.belts.length > 0;
+      case 'goudzakje':
+        return true;
+      case 'tijdbom':
+      case 'klimmer':
+        return s.cells.some((cell) => cell.piece?.kind === 'tile' && cell.piece.mech === id);
+      default:
+        return s.cells.some((cell) => cell.piece?.kind === 'block' && cell.piece.mech === id);
+    }
+  };
+
+  it.each(NEW)('%s: komt voor, het startbord heeft geen matches en minstens drie zetten', (id) => {
+    const mechanics: MechanicId[] = id === 'oliebron' ? ['goud', 'olie', 'oliebron'] : ['goud', id];
+    const layout = generateLevel(params(mechanics, id === 'oliebron' ? 4 : 2));
+    expect(layout.mechanics).toContain(id);
+    const s = createGame(layout, LOCKED);
+    expect(findMatchGroups(s)).toHaveLength(0);
+    expect(findMoves(s, 3).length).toBeGreaterThanOrEqual(3);
+    expect(present(s, id)).toBe(true);
+  });
+
+  it.each(NEW)('%s: twintig zetten spelen loopt nooit vast', (id) => {
+    const mechanics: MechanicId[] = id === 'oliebron' ? ['goud', 'olie', 'oliebron'] : ['goud', id];
+    for (const seed of ['a', 'b']) {
+      let s = createGame(generateLevel({ ...params(mechanics, id === 'oliebron' ? 4 : 2), seed }), LOCKED);
+      for (let k = 0; k < 20 && !s.result; k++) {
+        const move = findMoves(s, 1)[0];
+        if (!move) break;
+        const out = applyAction(s, { type: 'swap', a: move.a, b: move.b });
+        expect(out.result.kind).toBe('accepted');
+        const settled = runUntilSettled(out.state);
+        s = settled.state;
+        if (s.result) break;
+        expect(s.settled).toBe(true);
+        expect(s.cells.every((cell) => !cell.exists || cell.piece !== null)).toBe(true);
+      }
+    }
+  });
 });
 
 describe('verspreiders', () => {
@@ -431,5 +480,57 @@ describe('doelen (uitbreiding)', () => {
     expect(pieceAt(state, 3, 0)?.kind === 'block' && (pieceAt(state, 3, 0) as BlockPiece).mech === 'grootBlok').toBe(
       false,
     );
+  });
+});
+
+describe('verliesmechanieken', () => {
+  it('tijdbom: telt bij elk beurteinde af; op 0 is het level verloren', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'tijdbom'], floors: ['000000', '000000', '000000', '000000', '000001'] });
+    const bomb = tileAt(s, 0, 5);
+    bomb.mech = 'tijdbom';
+    bomb.counter = 1;
+    const { state } = play(s);
+    expect(state.result).toBe('verloren');
+    expect(state.loseReason).toBe('tijdbom');
+  });
+
+  it('tijdbom: weggehaald voordat hij op 0 staat, dan gebeurt er niets', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'tijdbom'], floors: ['000000', '000000', '000000', '000000', '000001'] });
+    const bomb = tileAt(s, 4, 0);
+    bomb.mech = 'tijdbom';
+    bomb.counter = 1;
+    const { state } = play(s);
+    expect(state.result).toBeNull();
+  });
+
+  it('klimmer: klimt bij het beurteinde één vakje omhoog; een blokkade erboven laat hem wachten', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'klimmer'], floors: ['000000', '000000', '000000', '000000', '000001'] });
+    const climber = tileAt(s, 3, 5);
+    climber.mech = 'klimmer';
+    const { state } = play(s);
+    expect(pieceAt(state, 2, 5)?.id).toBe(climber.id);
+
+    const t = boardFromText(rows('410x23'), { mechanics: ['goud', 'klimmer'], floors: ['000000', '000000', '000000', '000000', '000001'] });
+    tileAt(t, 3, 5).mech = 'klimmer';
+    const id = tileAt(t, 3, 5).id;
+    putBlock(t, 2, 5, 'rotsblok');
+    const waited = play(t);
+    expect(pieceAt(waited.state, 3, 5)?.id).toBe(id);
+  });
+
+  it('klimmer: bereikt hij de bovenste rij, dan is het level verloren; gevangen telt als doel', () => {
+    const s = boardFromText(rows('410x23'), { mechanics: ['goud', 'klimmer'], floors: ['000000', '000000', '000000', '000000', '000001'] });
+    tileAt(s, 1, 5).mech = 'klimmer';
+    const { state } = play(s);
+    expect(state.loseReason).toBe('klimmer');
+
+    const t = boardFromText(rows('410x23'), {
+      mechanics: ['goud', 'klimmer'],
+      goals: [{ kind: 'klimmer', target: 1, done: 0 }],
+    });
+    tileAt(t, 4, 0).mech = 'klimmer';
+    const caught = play(t);
+    expect(caught.state.goals[0].done).toBe(1);
+    expect(caught.state.result).toBe('gewonnen');
   });
 });
