@@ -3,7 +3,7 @@
  * steentypes 0..n-1 en spelelementen eruitzien, en heeft geen invloed op het bord.
  * Ontbreekt een afbeelding in een thema, dan valt het spel terug op het basisthema.
  */
-import type { MechanicId } from '../engine/types';
+import type { MechanicId, Special } from '../engine/types';
 import type { GameTextKey } from '../i18n/nl';
 
 export type ThemeId = 'facet' | 'goudrand' | 'halloween' | 'xmas' | 'easter' | 'dice';
@@ -22,6 +22,9 @@ export interface ThemeManifest {
   readonly tiles: readonly string[];
   /** Voor de schermlezer, bijvoorbeeld "rode cirkel". */
   readonly tileLabels: readonly GameTextKey[];
+  /** Speciale stenen (ontbreekt: basisthema). Bom en kruis liggen als laag over de steen. */
+  readonly specials?: Readonly<Record<Special, string>>;
+  readonly hammer?: string;
   /** Afbeeldingen van spelelementen; meerdere voor varianten (bijv. ketting 1 en 2, altaar uit en aan). */
   readonly mechanics?: Partial<Record<MechanicId, string | readonly string[]>>;
   /** Bordkleur, goud, zilver, accent, tekst (CSS-variabelen op het bord). */
@@ -57,6 +60,12 @@ export const BASE_THEME: ThemeManifest = {
   nameKey: 'thema.base',
   tiles: range(7, (k) => `${DIR}/base/steen-${k}.svg`),
   tileLabels: LABELS,
+  specials: {
+    bom: `${DIR}/base/bom.svg`,
+    kruis: `${DIR}/base/kruis.svg`,
+    ster: `${DIR}/base/ster.svg`,
+  },
+  hammer: `${DIR}/base/hamer.svg`,
   mechanics: {
     rotsblok: `${DIR}/base/rotsblok.svg`,
     muntblok: `${DIR}/base/muntblok.svg`,
@@ -114,4 +123,12 @@ export function tileImage(theme: ThemeManifest, type: number): string {
 
 export function tileLabel(theme: ThemeManifest, type: number): GameTextKey {
   return theme.tileLabels[type] ?? BASE_THEME.tileLabels[type] ?? 'steen.0';
+}
+
+export function specialImage(theme: ThemeManifest, special: Special): string {
+  return theme.specials?.[special] ?? BASE_THEME.specials?.[special] ?? BASE_THEME.tiles[0];
+}
+
+export function hammerImage(theme: ThemeManifest): string {
+  return theme.hammer ?? BASE_THEME.hammer ?? BASE_THEME.tiles[0];
 }

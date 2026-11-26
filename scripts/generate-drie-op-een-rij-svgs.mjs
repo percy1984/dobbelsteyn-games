@@ -150,6 +150,34 @@ const OBJECTS = {
     `<g fill="none" stroke="#5c3d0a" stroke-width="5" stroke-dasharray="8 6" stroke-linejoin="round">` +
       `<rect x="14" y="40" width="72" height="44" rx="6"/><path d="M14 52 Q50 14 86 52"/><rect x="42" y="50" width="16" height="14"/></g>`,
   ),
+  // Speciale stenen: bom en kruis liggen als laag over de steen, de kleurenster vervangt hem.
+  bom: svg(
+    `<circle cx="50" cy="50" r="44" fill="none" stroke="#111" stroke-width="9"/>` +
+      `<circle cx="50" cy="50" r="44" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="10 7"/>` +
+      `<circle cx="80" cy="20" r="14" fill="#222" stroke="#fff" stroke-width="3"/>` +
+      `<path d="M80 6 L84 14 L93 12 L87 19 L94 25 L84 24" fill="#ffb000" stroke="#7a3d00" stroke-width="2" stroke-linejoin="round"/>`,
+  ),
+  kruis: svg(
+    `<g stroke-linejoin="round">` +
+      [0, 90, 180, 270]
+        .map(
+          (a) =>
+            `<polygon transform="rotate(${a} 50 50)" points="50,2 64,18 56,18 56,34 44,34 44,18 36,18" fill="#fff" stroke="#111" stroke-width="3"/>`,
+        )
+        .join('') +
+      `</g>`,
+  ),
+  ster: svg(
+    `<polygon points="${polygon(star(46, 20, 50, 52))}" fill="url(#r)" stroke="#111" stroke-width="5" stroke-linejoin="round"/>` +
+      `<circle cx="50" cy="52" r="10" fill="#fff" stroke="#111" stroke-width="3"/>`,
+    `<linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff5a5a"/><stop offset=".25" stop-color="#ffd54a"/>` +
+      `<stop offset=".5" stop-color="#4cd964"/><stop offset=".75" stop-color="#4aa8ff"/><stop offset="1" stop-color="#b76bff"/></linearGradient>`,
+  ),
+  hamer: svg(
+    `<rect x="44" y="38" width="12" height="56" rx="5" fill="#b07a3a" stroke="#4a2c0a" stroke-width="4"/>` +
+      `<rect x="14" y="12" width="72" height="30" rx="7" fill="#9aa0aa" stroke="#2b2f36" stroke-width="5"/>` +
+      `<rect x="20" y="16" width="20" height="8" rx="3" fill="#d5dae3"/>`,
+  ),
   schatOpen: svg(
     `<rect x="14" y="40" width="72" height="44" rx="6" fill="#b8862c" stroke="#5c3d0a" stroke-width="5"/>` +
       `<path d="M14 40 Q50 6 86 40 Z" fill="#d9a441" stroke="#5c3d0a" stroke-width="5" stroke-linejoin="round"/>` +
