@@ -5,6 +5,7 @@
  * - `.`: leeg vakje
  * - ` ` (spatie) of `x`: gat in de bordvorm
  * Hoofdletters `A`..`G` zijn stenen 0..6 met een ketting.
+ * `*` amulet, `~` veer, `m` muntblok, `a`..`g` altaar in kleur 0..6.
  */
 import { buildCells } from './create';
 import type { EngineOptions, GameMode, GameState, MechanicId, PlacedObject } from './types';
@@ -20,6 +21,16 @@ export interface BoardOptions {
   readonly movesLeft?: number | null;
   readonly seed?: string;
   readonly mechanics?: readonly MechanicId[];
+  readonly goals?: GameState['goals'];
+}
+
+function objectFor(ch: string): PlacedObject | null {
+  if (ch === '#') return { kind: 'block', mech: 'rotsblok', layers: 1, color: null };
+  if (ch === 'm') return { kind: 'block', mech: 'muntblok', layers: 1, color: null };
+  if (ch === '*') return { kind: 'fall', mech: 'amulet' };
+  if (ch === '~') return { kind: 'fall', mech: 'veer' };
+  if (/[a-g]/.test(ch)) return { kind: 'block', mech: 'altaar', layers: 1, color: ch.charCodeAt(0) - 97 };
+  return null;
 }
 
 export function boardFromText(rowsText: readonly string[], opts: BoardOptions = {}): GameState {
@@ -35,7 +46,7 @@ export function boardFromText(rowsText: readonly string[], opts: BoardOptions = 
     for (let c = 0; c < cols; c++) {
       const ch = rowsText[r][c];
       shape.push(ch !== ' ' && ch !== 'x');
-      objects.push(ch === '#' ? { kind: 'block', mech: 'rotsblok', layers: 1, color: null } : null);
+      objects.push(objectFor(ch));
       if (/[0-6]/.test(ch)) {
         tiles.push(Number(ch));
         chains.push(0);
@@ -84,7 +95,7 @@ export function boardFromText(rowsText: readonly string[], opts: BoardOptions = 
     movesLeft: mode === 'beurten' ? (opts.movesLeft === undefined ? 20 : opts.movesLeft) : null,
     ticksLeft: null,
     timeUp: false,
-    goals: floorCount > 0 ? [{ kind: 'goud', target: floorCount, done: 0 }] : [],
+    goals: opts.goals ?? (floorCount > 0 ? [{ kind: 'goud', target: floorCount, done: 0 }] : []),
     result: null,
     loseReason: null,
     moves: 0,

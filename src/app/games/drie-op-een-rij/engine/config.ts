@@ -35,6 +35,8 @@ export const SCORE = {
   cascadeFactor: 0.5,
   floorHit: 25,
   blockerHit: 20,
+  /** Extra bij het breken van een muntblok. */
+  coinBlock: 300,
   collected: 250,
   /** Bonus per overgebleven beurt bij winst. */
   moveLeft: 100,
@@ -76,13 +78,14 @@ export const DIFFICULTY: Readonly<Record<Difficulty, DifficultyConfig>> = {
 export const LEVEL = {
   /** Aandeel vakjes met goud in level 1, plus de groei per level, tot het maximum. */
   goldShareStart: 0.22,
-  goldShareStep: 0.03,
-  goldShareMax: 0.55,
+  goldShareStep: 0.02,
+  goldShareMax: 0.45,
   /** Vanaf dit level kunnen gaten in de bordvorm voorkomen. */
   holesFromLevel: 3,
   /** Aantal beurten: basis + per goudvakje + per overig doelonderdeel, maal de moeilijkheid. */
   movesBase: 12,
-  movesPerGold: 0.4,
+  // Gemeten met een testspeler zonder speciale stenen: level 1 had een mediaan van ~28 zetten nodig.
+  movesPerGold: 1.6,
   movesPerGoalUnit: 3,
   /** Op tijd: basis + seconden per doelonderdeel. */
   secondsBase: 60,

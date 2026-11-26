@@ -83,6 +83,38 @@ function generateShape(rng: RngState, rows: number, cols: number, level: number)
   return shape;
 }
 
+/**
+ * Startbord met minstens drie zetten. Lukt dat niet omdat er te veel obstakels liggen, dan haalt de
+ * generator ze deterministisch in stappen weg: eerst kettingen, dan blokkades en veren (geen
+ * altaren en amuletten, die horen bij de opzet of een doel).
+ */
+function startTiles(rng: RngState, ctx: PlaceContext, kinds: number): number[] {
+  const plan = () => ({ ...ctx, rows: ctx.rows, cols: ctx.cols });
+  const strip: (() => void)[] = [
+    () => ctx.chains.fill(0),
+    () =>
+      ctx.objects.forEach((object, i) => {
+        if (object && object.mech !== 'altaar' && object.mech !== 'amulet') {
+          ctx.objects[i] = null;
+        }
+      }),
+  ];
+  for (let round = 0; ; round++) {
+    const tiles = generateStartTiles(rng, plan(), kinds);
+    if (tiles) {
+      return tiles;
+    }
+    if (round >= strip.length) {
+      // Laatste redmiddel: geen obstakels meer behalve amuletten.
+      ctx.objects.forEach((object, i) => {
+        if (object && object.mech !== 'amulet') ctx.objects[i] = null;
+      });
+      return generateStartTiles(rng, plan(), kinds) ?? new Array<number>(ctx.rows * ctx.cols).fill(-1);
+    }
+    strip[round]();
+  }
+}
+
 export function generateLevel(params: LevelParams): LevelLayout {
   const seed = levelSeed(params.seed, params.level);
   const layoutRng = stream(seed, 'layout');
@@ -120,7 +152,7 @@ export function generateLevel(params: LevelParams): LevelLayout {
   const allGoals = [{ kind: 'goud' as GoalKind, target: floorCount }, ...goals];
   const otherUnits = goals.reduce((sum, goal) => sum + goal.target, 0);
 
-  const tiles = generateStartTiles(stream(seed, 'bord'), { ...ctx, rows, cols }, kinds);
+  const tiles = startTiles(stream(seed, 'bord'), ctx, kinds);
 
   const moves =
     params.mode === 'beurten'
