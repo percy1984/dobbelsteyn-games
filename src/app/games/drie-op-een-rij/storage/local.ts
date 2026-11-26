@@ -11,9 +11,9 @@ export function readJson<T>(key: string, fallback: T): T {
   try {
     raw = localStorage.getItem(STORAGE_PREFIX + key);
   } catch {
-    raw = null;
+    // Opslag werkt niet: dan geldt wat deze sessie in het geheugen bewaarde.
+    raw = memory.get(key) ?? null;
   }
-  raw ??= memory.get(key) ?? null;
   if (raw === null) {
     return fallback;
   }
