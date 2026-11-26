@@ -127,8 +127,38 @@ export const GOUDRAND: ThemeManifest = {
   credits: [OWN_WORK],
 };
 
+/**
+ * Thema's die nog niet af zijn: de structuur staat klaar, de tekeningen nog niet. Tot dan gebruiken
+ * ze de stenen van het basisthema en zijn ze niet te kiezen (`todo`). Vullen:
+ * 1. Teken of kies per steensoort een plaatje in een eigen vorm én kleur (zie het voorstel per thema).
+ * 2. Zet ze in public/games/drie-op-een-rij/themes/<id>/ en vul `tiles`, `tileLabels` en `credits`.
+ * 3. Haal `todo` weg. Zet assets van anderen via scripts/fetch-assets.mjs neer (CREDITS.md).
+ */
+function todoTheme(id: ThemeId, nameKey: GameTextKey, kinds = 7): ThemeManifest {
+  return {
+    id,
+    nameKey,
+    // TODO: eigen stenen voor dit thema.
+    tiles: BASE_THEME.tiles.slice(0, kinds),
+    tileLabels: LABELS.slice(0, kinds),
+    cssVars: BASE_THEME.cssVars,
+    // TODO: naamsvermelding per gebruikt bestand (auteur, licentie, bron).
+    credits: [],
+    todo: true,
+  };
+}
+
+/** Halloween: pompoen, spookje, vleermuis, spin, snoepje, lolly, maan. */
+export const HALLOWEEN = todoTheme('halloween', 'thema.halloween');
+/** Kerst: kerstboom, cadeautje, ster, bel, sneeuwvlok, sneeuwpop, sok. */
+export const XMAS = todoTheme('xmas', 'thema.xmas');
+/** Pasen: zeven paaseieren, elk met een eigen kleur en patroon. */
+export const EASTER = todoTheme('easter', 'thema.easter');
+/** Dobbelstenen: vlakken 1 tot en met 6, elk vlak een eigen kleur. Maximaal 6 soorten. */
+export const DICE = todoTheme('dice', 'thema.dice', 6);
+
 /** Thema's in de lobby. Thema's met `todo` zijn nog niet af. */
-export const THEMES: readonly ThemeManifest[] = [FACET, GOUDRAND];
+export const THEMES: readonly ThemeManifest[] = [FACET, GOUDRAND, HALLOWEEN, XMAS, EASTER, DICE];
 
 /** Thema's die de speler kan kiezen. */
 export const SELECTABLE_THEMES: readonly ThemeManifest[] = THEMES.filter((theme) => !theme.todo);

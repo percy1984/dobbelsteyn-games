@@ -142,6 +142,10 @@ export const NL = {
   'thema.base': 'Basis',
   'thema.facet': 'Facet',
   'thema.goudrand': 'Goudrand',
+  'thema.halloween': 'Halloween',
+  'thema.xmas': 'Kerst',
+  'thema.easter': 'Pasen',
+  'thema.dice': 'Dobbelstenen',
 
   'cel.bom': 'bom',
   'cel.kruis': 'kruis',

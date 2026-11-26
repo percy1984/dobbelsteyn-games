@@ -1,1 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><polygon points="50.0,8.0 92.0,50.0 50.0,92.0 8.0,50.0" fill="#f2c230" stroke="#8a6400" stroke-width="6" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#f2c230" stroke="#8a6400" stroke-linejoin="round" stroke-width="6" d="m50 8 42 42-42 42L8 50z"/></svg>

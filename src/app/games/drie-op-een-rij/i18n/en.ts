@@ -141,6 +141,10 @@ export const EN: Record<GameTextKey, string> = {
   'thema.base': 'Basic',
   'thema.facet': 'Facet',
   'thema.goudrand': 'Gold rim',
+  'thema.halloween': 'Halloween',
+  'thema.xmas': 'Christmas',
+  'thema.easter': 'Easter',
+  'thema.dice': 'Dice',
 
   'cel.bom': 'bomb',
   'cel.kruis': 'cross',

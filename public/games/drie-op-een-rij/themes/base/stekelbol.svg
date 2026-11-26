@@ -1,1 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g stroke="#22262e" stroke-width="4" stroke-linejoin="round" fill="#cfd5df"><polygon points="2,50 22,40 22,60"/><polygon points="98,50 78,40 78,60"/></g><circle cx="50" cy="50" r="30" fill="#9aa0aa" stroke="#22262e" stroke-width="5"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#cfd5df" stroke="#22262e" stroke-linejoin="round" stroke-width="4" d="m2 50 20-10v20zm96 0L78 40v20z"/><circle cx="50" cy="50" r="30" fill="#9aa0aa" stroke="#22262e" stroke-width="5"/></svg>
