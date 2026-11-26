@@ -10,7 +10,11 @@ import { LanguageSwitcher } from './language-switcher';
   styleUrl: './shell.scss',
   template: `
     <header class="bar">
-      <a class="bar__home" routerLink="/" [attr.aria-label]="i18n.t('nav.home')">{{
+      <a
+        class="bar__home"
+        routerLink="/"
+        [attr.aria-label]="i18n.t('app.title') + ', ' + i18n.t('nav.home')"
+        >{{
         i18n.t('app.title')
       }}</a>
       <dg-language-switcher />
