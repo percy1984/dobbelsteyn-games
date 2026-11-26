@@ -34,6 +34,12 @@ Options -Indexes -MultiViews
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
+    # Content-Security-Policy: alles van dit domein, niets van buiten (geen CDN, analytics of externe
+    # scripts). 'unsafe-inline' alleen voor styles: Angular zet component-styles in <style>-tags.
+    # data: voor QR-codes (img) en lettertypen. Geen inline scripts: critical-CSS-inlining staat uit
+    # in angular.json (anders zet de build een inline script in index.html).
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+
     # index.html wijst naar bestanden met een hash in de naam: altijd opnieuw ophalen.
     <FilesMatch "^index\.html$">
         Header set Cache-Control "no-cache"

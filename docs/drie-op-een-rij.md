@@ -30,11 +30,18 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 
 ## Spelen in de browser
 
-- Routes: `/games/drie-op-een-rij` (start), `/spel?seed=<bordnummer>&level=<n>` (het spel), `/uitleg` (Hoe werkt het?).
+- Routes: `/games/drie-op-een-rij` (start en instellingen), `/spel?seed=<bordnummer>&level=<n>&...` (het spel), `/uitleg` (Hoe werkt het?), `/credits`.
 - De `GameStore` draait een requestAnimationFrame-lus met vaste tijdstap (60 ticks per seconde, accumulator) en stopt zodra het bord in rust is. De UI tekent stukken op hun engine-positie; CSS-animaties zijn alleen cosmetisch.
 - Het bord is een grid van knoppen met een label per vakje ("rij 3, kolom 5, rode cirkel, gouden vakje"). Klikken, slepen of swipen; pijltjestoetsen plus Enter of spatie. Esc pauzeert.
 - Meldingen gaan via een rustige aria-live-regio. Bij `prefers-reduced-motion` vallen alleen gloed en pop weg; bewegingsduren in de engine blijven gelijk.
 - De tekeningen maakt `scripts/generate-drie-op-een-rij-svgs.mjs` (zelf getekend, uitvoer gecommit). Elke steensoort heeft een eigen vorm én kleur.
+
+## Assets, credits en self-hosting
+
+- `node scripts/fetch-assets.mjs`: tekent de SVG's opnieuw, kopieert assets van anderen (lijst `EXTERNAL`, nu leeg), optimaliseert alles met SVGO en schrijft `public/games/drie-op-een-rij/CREDITS.md`. De uitvoer wordt gecommit.
+- Thema's Halloween, Kerst, Pasen en Dobbelstenen staan klaar als manifest met `todo: true` in `themes/themes.ts` (nog niet te kiezen). Vullen: zie het commentaar boven `todoTheme`.
+- Tijdens het spelen gaat er geen verzoek naar een ander domein. `npm run check:external` controleert de build (draait ook in `deploy:package`).
+- `public/.htaccess` zet een Content-Security-Policy (`default-src 'self'`, styles ook inline voor Angular, `data:` voor QR-codes). Daarvoor staat critical-CSS-inlining uit in `angular.json`, anders zet de build een inline script in `index.html`.
 
 ## Speciale stenen, hamer en modi
 
