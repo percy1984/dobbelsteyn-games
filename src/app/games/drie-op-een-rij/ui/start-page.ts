@@ -1,155 +1,165 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  signal,
+  untracked,
+} from '@angular/core';
+import { FormField, disabled, form, max, min, validate } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
+import { Modal } from '../../../shared/modal/modal';
+import { BOARD } from '../engine/config';
+import type { MechanicId } from '../engine';
 import { GameTexts } from '../i18n/game-texts';
-import { themeById, tileImage } from '../themes/themes';
-import { DEFAULT_SETTINGS } from '../settings/settings';
+import { formatBoardNumber, parseBoardNumber } from '../rng/rng';
+import { fromLobbyForm, sameSettings, toLobbyForm, type LobbyForm } from '../settings/lobby-form';
+import type { PresetId } from '../settings/settings';
+import { SettingsStore } from '../settings/settings-store';
+import { settingsToQuery, type GameQuery } from '../settings/url';
+import {
+  DIFFICULTIES,
+  HINT_CHOICES,
+  INPUTS,
+  MODES,
+  SPEEDS_LIST,
+  withMechanic,
+  withPreset,
+} from '../settings/validate';
+import { loadProgress, topScores } from '../storage/progress';
+import { SELECTABLE_THEMES, themeById, tileImage } from '../themes/themes';
+import { MechanicsPanel } from './mechanics-panel';
 import { randomSeed, todaySeed } from './seeds';
 
-/** Beginscherm van Drie op een rij. (Alle instellingen volgen in fase 4.) */
+const range = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, k) => String(from + k));
+
+/**
+ * Beginscherm van Drie op een rij met alle instellingen. Elke wijziging wordt bewaard (SettingsStore)
+ * en "Nieuw spel" start direct met deze instellingen.
+ */
 @Component({
   selector: 'dg-dor-start-page',
-  imports: [NgOptimizedImage, RouterLink],
-  template: `
-    <main class="start">
-      <h1 class="start__title">{{ texts.t('titel') }}</h1>
-      <div class="start__stones" aria-hidden="true">
-        @for (img of stones(); track $index) {
-          <img [ngSrc]="img" width="100" height="100" alt="" priority />
-        }
-      </div>
-      <p class="start__intro">{{ texts.t('start.intro') }}</p>
-      <fieldset class="choice-group">
-        <legend>{{ texts.t('modus.label') }}</legend>
-        @for (m of modes; track m) {
-          <label class="choice">
-            <input type="radio" name="dor-mode" [value]="m" [checked]="mode() === m" (change)="mode.set(m)" />
-            <span>
-              <strong>{{ texts.text('modus.' + m) }}</strong>
-              <span class="choice__hint">{{ texts.text('modus.' + m + '.uitleg') }}</span>
-            </span>
-          </label>
-        }
-      </fieldset>
-      <fieldset class="choice-group">
-        <legend>{{ texts.t('invoer.label') }}</legend>
-        @for (i of inputs; track i) {
-          <label class="choice">
-            <input type="radio" name="dor-input" [value]="i" [checked]="input() === i" (change)="input.set(i)" />
-            <span>
-              <strong>{{ texts.text('invoer.' + i) }}</strong>
-              <span class="choice__hint">{{ texts.text('invoer.' + i + '.uitleg') }}</span>
-            </span>
-          </label>
-        }
-      </fieldset>
-      <div class="start__actions">
-        <button type="button" class="button" (click)="play(random())">{{ texts.t('start.nieuw') }}</button>
-        <button type="button" class="button button--secondary" (click)="play(today())">
-          {{ texts.t('start.vandaag') }}
-        </button>
-        <a class="button button--secondary" routerLink="uitleg">{{ texts.t('start.uitleg') }}</a>
-      </div>
-    </main>
-  `,
-  styles: `
-    :host {
-      display: block;
-      font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
-      font-size: 1.125rem;
-    }
-    .start {
-      display: grid;
-      justify-items: center;
-      gap: 1.25rem;
-      max-width: 40rem;
-      margin: 0 auto;
-      padding: 2rem 1rem 3rem;
-      text-align: center;
-    }
-    .start__title {
-      margin: 0;
-      font-size: 2.25rem;
-    }
-    .start__stones {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      border-radius: 1rem;
-      background: #1f2638;
-    }
-    .start__stones img {
-      width: 3.5rem;
-      height: 3.5rem;
-    }
-    .start__intro {
-      margin: 0;
-      font-size: 1.25rem;
-    }
-    .choice-group {
-      display: grid;
-      gap: 0.5rem;
-      width: min(100%, 30rem);
-      margin: 0;
-      padding: 1rem;
-      border: 2px solid var(--dg-border);
-      border-radius: 1rem;
-      text-align: left;
-    }
-    .choice-group legend {
-      padding: 0 0.25rem;
-      font-size: 1.25rem;
-      font-weight: 700;
-    }
-    .choice {
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-start;
-      cursor: pointer;
-    }
-    .choice input {
-      width: 1.5rem;
-      height: 1.5rem;
-      margin-top: 0.15rem;
-      accent-color: var(--dg-accent);
-    }
-    .choice__hint {
-      display: block;
-      color: var(--dg-muted);
-    }
-    .start__actions {
-      display: grid;
-      gap: 0.75rem;
-      width: min(100%, 22rem);
-    }
-    .button {
-      min-height: 3.25rem;
-      font-size: 1.25rem;
-    }
-  `,
+  imports: [NgOptimizedImage, RouterLink, FormField, Modal, MechanicsPanel],
+  templateUrl: './start-page.html',
+  styleUrl: './start-page.scss',
 })
 export class StartPage {
   protected readonly texts = inject(GameTexts);
   private readonly router = inject(Router);
+  private readonly store = inject(SettingsStore);
 
+  protected readonly settings = this.store.settings;
+  protected readonly theme = computed(() => themeById(this.settings().theme));
   protected readonly stones = computed(() => {
-    const theme = themeById(DEFAULT_SETTINGS.theme);
+    const theme = this.theme();
     return theme.tiles.map((_, k) => tileImage(theme, k));
   });
 
-  protected readonly random = randomSeed;
-  protected readonly today = () => todaySeed();
-
-  protected readonly modes = ['beurten', 'tijd', 'ontspannen'] as const;
-  protected readonly inputs = ['locked', 'unlocked'] as const;
-  protected readonly mode = signal<(typeof this.modes)[number]>('beurten');
-  protected readonly input = signal<(typeof this.inputs)[number]>('locked');
-
-  protected play(seed: string): void {
-    void this.router.navigate(['/games/drie-op-een-rij/spel'], {
-      queryParams: { seed, level: 1, mode: this.mode(), input: this.input() },
+  /** Het formulier volgt de opgeslagen instellingen (ook na "herstellen"). */
+  protected readonly model = linkedSignal<LobbyForm>(() => toLobbyForm(this.settings()));
+  protected readonly f = form(this.model, (path) => {
+    disabled(path.pauseTimeDuringResolution, {
+      when: ({ valueOf }) => valueOf(path.mode) !== 'tijd' || valueOf(path.input) !== 'locked',
     });
+    disabled(path.volume, { when: ({ valueOf }) => !valueOf(path.sound) });
+    min(path.volume, 0);
+    max(path.volume, 100);
+    validate(path.boardNumber, ({ value, valueOf }) =>
+      valueOf(path.board) === 'nummer' && !parseBoardNumber(value())
+        ? { kind: 'bordnummer', message: this.texts.t('bordkeuze.nummerFout') }
+        : null,
+    );
+  });
+
+  protected readonly modes = MODES;
+  protected readonly difficulties = DIFFICULTIES;
+  protected readonly inputs = INPUTS;
+  protected readonly speeds = SPEEDS_LIST;
+  protected readonly boards = ['willekeurig', 'vandaag', 'nummer'] as const;
+  protected readonly themes = SELECTABLE_THEMES;
+  protected readonly sizes = range(BOARD.minSize, BOARD.maxSize);
+  protected readonly kindChoices = range(BOARD.minKinds, BOARD.maxKinds);
+  protected readonly hints = HINT_CHOICES.map(String);
+
+  protected readonly progress = signal<GameQuery | null>(loadProgress());
+  protected readonly progressLabel = computed(() => {
+    const p = this.progress();
+    return p
+      ? this.texts.t('start.verderUitleg', { level: p.level, nummer: formatBoardNumber(p.seed) })
+      : '';
+  });
+
+  protected readonly scores = computed(() => {
+    const { mode, input, preset } = this.settings();
+    return topScores({ mode, input, preset });
+  });
+  protected readonly scoresFor = computed(() => {
+    const { mode, input, preset } = this.settings();
+    return this.texts.t('scores.uitleg', {
+      modus: this.texts.text('modus.' + mode),
+      invoer: this.texts.text('invoer.' + input),
+      preset: this.texts.text('preset.' + preset),
+    });
+  });
+
+  protected readonly resetAsked = signal(false);
+  protected readonly status = signal('');
+
+  constructor() {
+    // Formulier gewijzigd: bewaren (de SettingsStore wacht 300 ms).
+    effect(() => {
+      const value = this.model();
+      untracked(() => {
+        const next = fromLobbyForm(value, this.settings());
+        if (!sameSettings(next, this.settings())) {
+          this.store.set(next);
+        }
+      });
+    });
+  }
+
+  protected choosePreset(preset: PresetId): void {
+    this.store.update((s) => withPreset(s, preset));
+  }
+
+  protected toggleMechanic(change: { id: MechanicId; on: boolean }): void {
+    this.store.update((s) => withMechanic(s, change.id, change.on));
+  }
+
+  protected confirmReset(): void {
+    this.resetAsked.set(false);
+    this.store.reset();
+    this.status.set(this.texts.t('reset.klaar'));
+  }
+
+  /** Seed volgens de bordkeuze, of null als het eigen bordnummer niet klopt. */
+  private chosenSeed(): string | null {
+    const s = this.settings();
+    if (s.board === 'vandaag') return todaySeed();
+    if (s.board === 'nummer') return parseBoardNumber(s.boardNumber)?.seed ?? null;
+    return randomSeed();
+  }
+
+  protected newGame(): void {
+    const seed = this.chosenSeed();
+    if (!seed) {
+      this.f.boardNumber().markAsTouched();
+      document.getElementById('dor-board-number')?.focus();
+      return;
+    }
+    this.store.saveNow();
+    void this.router.navigate(['/games/drie-op-een-rij/spel'], {
+      queryParams: settingsToQuery(this.settings(), seed, 1),
+    });
+  }
+
+  protected continueGame(): void {
+    const p = this.progress();
+    if (p) {
+      void this.router.navigate(['/games/drie-op-een-rij/spel'], { queryParams: p });
+    }
   }
 }

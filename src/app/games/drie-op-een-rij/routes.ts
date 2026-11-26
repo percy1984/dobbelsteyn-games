@@ -15,4 +15,8 @@ export const ROUTES: Routes = [
     path: 'uitleg',
     loadComponent: () => import('./ui/how-it-works').then((m) => m.HowItWorks),
   },
+  {
+    path: 'credits',
+    loadComponent: () => import('./ui/credits').then((m) => m.Credits),
+  },
 ];

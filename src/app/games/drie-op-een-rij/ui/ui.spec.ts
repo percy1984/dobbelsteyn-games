@@ -133,8 +133,29 @@ describe('GameStore', () => {
     expect(store.canUndo()).toBe(true);
     expect(store.undoCount()).toBe(1);
     store.undo();
-    expect(store.state()).toBe(start);
+    expect(store.state()).toEqual(start);
     expect(store.canUndo()).toBe(false);
+  });
+
+  it('thema wisselen tijdens het spel verandert het bord niet', () => {
+    const before = store.state();
+    store.changeSettings({ theme: 'goudrand' });
+    expect(store.theme().id).toBe('goudrand');
+    expect(store.state()).toBe(before);
+  });
+
+  it('Locked/Unlocked wisselen gaat in bij het eerstvolgende rustmoment', () => {
+    // In rust: direct.
+    store.changeSettings({ input: 'unlocked' });
+    expect(store.state()?.options.input).toBe('unlocked');
+    // Tijdens een afhandeling: pas bij het rustmoment.
+    const s = store.state();
+    const hint = s && findHint(s);
+    if (!s || !hint) throw new Error();
+    store.swap(hint.a, hint.b);
+    store.changeSettings({ input: 'locked' });
+    expect(store.state()?.options.input).toBe('unlocked');
+    expect(store.setup()?.settings.input).toBe('locked');
   });
 
   it('toont de hint pas bij een rustmoment', () => {

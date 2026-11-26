@@ -64,11 +64,47 @@
 </dg-modal>
 
 <dg-modal [open]="store.paused() && !card()" [title]="texts.t('pauze.titel')" (closed)="resume()">
+  @let current = store.setup()?.settings;
   <div class="dialog__stack">
     <button type="button" class="button" (click)="resume()">{{ texts.t('pauze.verder') }}</button>
     <button type="button" class="button button--secondary" (click)="restart()">{{ texts.t('pauze.opnieuw') }}</button>
     <button type="button" class="button button--secondary" (click)="stop()">{{ texts.t('pauze.stoppen') }}</button>
   </div>
+  @if (current) {
+    <fieldset class="dialog__group">
+      <legend>{{ texts.t('thema.label') }}</legend>
+      @for (th of themes; track th.id) {
+        <label class="dialog__choice">
+          <input type="radio" name="dor-pause-theme" [value]="th.id" [checked]="current.theme === th.id" (change)="chooseTheme(th.id)" />
+          <span>{{ texts.t(th.nameKey) }}</span>
+        </label>
+      }
+    </fieldset>
+    <fieldset class="dialog__group">
+      <legend>{{ texts.t('invoer.label') }}</legend>
+      @for (i of inputModes; track i) {
+        <label class="dialog__choice">
+          <input type="radio" name="dor-pause-input" [value]="i" [checked]="current.input === i" (change)="chooseInput(i)" />
+          <span>
+            <strong>{{ texts.text('invoer.' + i) }}</strong>
+            <span class="dialog__hint">{{ texts.text('invoer.' + i + '.uitleg') }}</span>
+          </span>
+        </label>
+      }
+      <p class="dialog__hint">{{ texts.t('pauze.later') }}</p>
+    </fieldset>
+    <label class="dialog__choice">
+      <input type="checkbox" [checked]="current.sound" (change)="toggleSound()" />
+      <strong>{{ texts.t('geluid.aan') }}</strong>
+    </label>
+    @if (fromLink()) {
+      <div class="dialog__group">
+        <p class="dialog__hint">{{ texts.t('url.uitleg') }}</p>
+        <button type="button" class="button button--secondary" (click)="keepSettings()">{{ texts.t('url.bewaren') }}</button>
+      </div>
+    }
+    <p class="dialog__hint" role="status">{{ keptMessage() }}</p>
+  }
 </dg-modal>
 
 @if (s) {
@@ -78,6 +114,9 @@
     (closed)="resultClosed.set(true)"
   >
     <p class="dialog__big">{{ texts.t('uitslag.punten', { n: s.score }) }}</p>
+    @if (store.rank(); as rank) {
+      <p class="dialog__text"><strong>{{ rank === 1 ? texts.t('uitslag.record') : texts.t('uitslag.plek', { n: rank }) }}</strong></p>
+    }
     @if (s.result === 'verloren') {
       <p class="dialog__text">
         @switch (s.loseReason) {
