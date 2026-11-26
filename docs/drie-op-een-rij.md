@@ -44,6 +44,14 @@ Een lint-regel verbiedt `Math.random`, `Date`, timers en Angular-imports in `eng
 - Modi via de URL (, ). Ontspannen: zet terugnemen naar het laatste rustmoment (bij Unlocked soms meerdere zetten; de UI meldt dat vooraf).
 - Balans:  (overgeslagen) meet hoeveel zetten een testspeler nodig heeft.
 
+## Speciale stenen, hamer en modi
+
+- 4 op een rij geeft een bom (3x3), een L- of T-vorm een kruis (rij en kolom), 5 op een rij een kleurenster. Combinaties: bom + bom 5x5, kruis + bom drie rijen en kolommen, ster + ster het hele bord (`engine/specials.ts`).
+- Hamer (`engine/hammer.ts`): de meter vult bij elke match. Niveau 1 ontploft op één vakje, niveau 2 haalt alles in een vakje weg, niveau 3 laat een hele soort verdwijnen. Kost geen beurt.
+- Unlocked: elke zet heeft een eigen afhandelingsreeks. De conflictregels staan in `resolve.ts` en `gravity.ts`, met een test per regel in `unlocked.spec.ts`.
+- Modi via de URL (`mode=beurten|tijd|ontspannen`, `input=locked|unlocked`). Ontspannen: zet terugnemen naar het laatste rustmoment. Bij Unlocked kunnen dat meerdere zetten zijn; de UI meldt dat vooraf.
+- Balans: `level/balance.spec.ts` (overgeslagen) meet hoeveel zetten een testspeler nodig heeft.
+
 ## Getallen aanpassen
 
 Alle getallen staan in `engine/config.ts`: animatieduren per snelheid, score, bordgrenzen, moeilijkheid, hoeveel goud, beurten en tijd per level.
