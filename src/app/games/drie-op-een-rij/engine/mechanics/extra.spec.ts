@@ -369,3 +369,67 @@ describe('hulpobjecten (uitbreiding)', () => {
     ]);
   });
 });
+
+describe('doelen (uitbreiding)', () => {
+  it('reiziger: een match in het volgende vakje laat hem bij het beurteinde één stap zetten', () => {
+    const s = boardFromText(rows('#10x23'), {
+      mechanics: ['goud', 'reiziger'],
+      goals: [{ kind: 'reiziger', target: 1, done: 0 }],
+    });
+    // Reiziger op (3,0) met pad (3,0) -> (4,0): de match in (4,0) laat hem naar de uitgang stappen.
+    const t: GameState = { ...s, paths: [[{ r: 3, c: 0 }, { r: 4, c: 0 }]] };
+    putBlock(t, 3, 0, 'reiziger', { tag: 0, dir: 0 });
+    const { state, events } = play(t);
+    expect(events).toContainEqual({ type: 'Collected', at: { r: 4, c: 0 }, mech: 'reiziger' });
+    expect(state.goals[0].done).toBe(1);
+    expect(state.result).toBe('gewonnen');
+  });
+
+  it('reiziger: explosies doen hem niets en zonder match in het volgende vakje blijft hij staan', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'reiziger'] });
+    const t: GameState = { ...s, paths: [[{ r: 3, c: 0 }, { r: 2, c: 0 }]] };
+    putBlock(t, 3, 0, 'reiziger', { tag: 0, dir: 0 });
+    tileAt(t, 4, 1).special = 'bom';
+    const { state } = play(t);
+    const traveler = pieceAt(state, 3, 0);
+    expect(traveler?.kind === 'block' && traveler.mech).toBe('reiziger');
+    expect(traveler?.kind === 'block' && traveler.dir).toBe(0);
+  });
+
+  it('groot blok (emmer): één treffer per match voor het hele blok, ook als de match meerdere delen raakt', () => {
+    const s = boardFromText(rows('##0x23'), {
+      mechanics: ['goud', 'grootBlok'],
+      goals: [{ kind: 'grootBlok', target: 1, done: 0 }],
+    });
+    // Zet A maakt 0 0 0 op rij 4, kolom 0-2: raakt beide delen op rij 3.
+    putBlock(s, 3, 0, 'grootBlok', { tag: 1, dir: 1, layers: 2 });
+    putBlock(s, 3, 1, 'grootBlok', { tag: 1, dir: 1, layers: 2 });
+    const out = applyAction(s, MOVE_A);
+    const { events } = runUntilSettled(out.state);
+    const first = events.find((e) => e.type === 'Hit' && e.target === 'grootBlok');
+    expect(first?.type === 'Hit' && first.left).toBe(1);
+  });
+
+  it('groot blok (doos): telt de stenen in aangrenzende matches; vol is weg en telt als doel', () => {
+    const s = boardFromText(rows('##0x23'), {
+      mechanics: ['goud', 'grootBlok'],
+      goals: [{ kind: 'grootBlok', target: 1, done: 0 }],
+    });
+    putBlock(s, 3, 0, 'grootBlok', { tag: 1, dir: 2, layers: 3 });
+    putBlock(s, 3, 1, 'grootBlok', { tag: 1, dir: 2, layers: 3 });
+    const { state, events } = play(s);
+    expect(events.filter((e) => e.type === 'ObjectDestroyed' && e.mech === 'grootBlok')).toHaveLength(2);
+    expect(state.goals[0].done).toBe(1);
+  });
+
+  it('groot blok (taart): elk deel gaat apart weg', () => {
+    const s = boardFromText(rows('#10x23'), { mechanics: ['goud', 'grootBlok'] });
+    putBlock(s, 3, 0, 'grootBlok', { tag: 1, dir: 0 });
+    putBlock(s, 2, 0, 'grootBlok', { tag: 1, dir: 0 });
+    const { state } = play(s);
+    expect(pieceAt(state, 2, 0)?.kind).toBe('block');
+    expect(pieceAt(state, 3, 0)?.kind === 'block' && (pieceAt(state, 3, 0) as BlockPiece).mech === 'grootBlok').toBe(
+      false,
+    );
+  });
+});
